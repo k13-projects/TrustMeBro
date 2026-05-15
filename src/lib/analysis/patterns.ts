@@ -1,4 +1,5 @@
 import type { PlayerGameStatLine, PropMarket } from "./types";
+import { MARKET_TO_FIELD } from "./market-field";
 
 export type DetectedPattern = {
   pattern_type: "cycle" | "home_away_split" | "rest_day_dip" | "cold_streak";
@@ -6,16 +7,6 @@ export type DetectedPattern = {
   description: string;
   confidence: number;
   evidence: Record<string, unknown>;
-};
-
-const MARKET_TO_FIELD: Record<PropMarket, keyof PlayerGameStatLine> = {
-  points: "points",
-  rebounds: "rebounds",
-  assists: "assists",
-  threes_made: "fg3m",
-  minutes: "minutes",
-  steals: "steals",
-  blocks: "blocks",
 };
 
 function values(history: PlayerGameStatLine[], market: PropMarket): number[] {

@@ -44,6 +44,7 @@ export default function RootLayout({
                 <NavLink href="/games">Games</NavLink>
                 <NavLink href="/teams">Teams</NavLink>
                 <NavLink href="/players">Players</NavLink>
+                <NavLink href="/score">Score</NavLink>
               </nav>
             </div>
           </div>

@@ -4,16 +4,7 @@ import type {
   PlayerGameStatLine,
   PropMarket,
 } from "./types";
-
-const MARKET_TO_FIELD: Record<PropMarket, keyof PlayerGameStatLine> = {
-  points: "points",
-  rebounds: "rebounds",
-  assists: "assists",
-  threes_made: "fg3m",
-  minutes: "minutes",
-  steals: "steals",
-  blocks: "blocks",
-};
+import { MARKET_TO_FIELD } from "./market-field";
 
 const EMPTY: FeatureWindow = {
   count: 0,
