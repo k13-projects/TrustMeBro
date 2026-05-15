@@ -33,6 +33,7 @@ Karar log'u — değiştirilirse buraya tarih + sebep ekle:
 - **2026-05-14**: Dashboard renk kodu: sezon avg / önceki maç / ondan önceki maç farklı renk; son 5 ayrı + son 10 ortalama yan yana.
 - **2026-05-14**: History: kullanıcı tek tıkla "ben bu beti oynadım" işaretler, sonucu kaydeder.
 - **2026-05-14**: Pattern engine: anomalileri/döngüleri yakalamalı (örn. "her 6 maçta sıfırlanma"). Sapma alert'i: "ortalama 8 ama önceki maç 5 yaptı".
+- **2026-05-14**: Canonical timezone = **America/Los_Angeles**. NBA maçları US saatinde oynanıyor ve PT gece yarısı sleyt'in en geç kapanma anı, dolayısıyla "bugün" tüm sayfa/cron/chat için LA günü demektir. `todayIsoDate()` LA tarihini döndürür; sabit `PROJECT_TIMEZONE` ifadesi [src/lib/date.ts](src/lib/date.ts)'te.
 
 ## Stack
 
@@ -195,9 +196,10 @@ type Reasoning = {
 - Color coding (Tailwind tokens):
   - Season average → `text-blue-500`
   - Previous game → `text-amber-500`
-  - Two games ago → `text-purple-500`
+  - Two games ago → `text-cyan-500` (was purple — purple is banned outside of team colors; see [src/components/StatColor.ts](src/components/StatColor.ts))
   - Last 5 individual bars → neutral with delta arrows
   - Last 10 average → `text-emerald-500`
+- **Palette rule (2026-05-14):** `purple` / `fuchsia` / `violet` / `indigo` are **banned** in app chrome and components. They may only appear when rendering a team's actual brand color. The accent palette is Robinhood-style: emerald/green for primary action, rose for negatives, white-on-dark for text.
 - Pattern alert badge appears when last-game value is more than 1.5 standard deviations from L10 average.
 - Compact display: prefer sparkline + scalar over multi-row tables when possible.
 

@@ -1,47 +1,49 @@
-import Link from "next/link";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { isoDateOffset, isValidIsoDate, todayIsoDate } from "@/lib/date";
-import type { Reasoning } from "@/lib/analysis/types";
+import { teamColors } from "@/lib/sports/nba/branding";
+import { generateCombos } from "@/lib/analysis/combos";
+import { loadPayoutMap } from "@/lib/analysis/payouts";
+import type { Prediction } from "@/lib/analysis/types";
+import { AddToCouponButton } from "@/components/cart/AddToCouponButton";
+import { ComboCard } from "@/components/ComboCard";
+import { ConfidenceRing } from "@/components/ConfidenceRing";
+import { DatePill } from "@/components/DatePill";
+import { JerseyChip } from "@/components/JerseyChip";
+import { marketLabel } from "@/components/MarketLabel";
+import { PickRow } from "@/components/PickRow";
+import { PicksFilterBar } from "@/components/PicksFilterBar";
+import { PickSideTag } from "@/components/PickSideTag";
+import { PlayButton } from "@/components/PlayButton";
+import { PlayerAvatar } from "@/components/PlayerAvatar";
+import { ReasoningPanel } from "@/components/ReasoningPanel";
+import { TeamBadge } from "@/components/TeamBadge";
+import type { PredictionRow, TeamLite } from "@/components/types";
 
 export const revalidate = 30;
 
+const ALLOWED_MARKETS = new Set([
+  "points",
+  "rebounds",
+  "assists",
+  "threes_made",
+  "minutes",
+  "pra",
+  "steals",
+  "blocks",
+]);
+
 type PageProps = {
-  searchParams: Promise<{ date?: string }>;
-};
-
-type PredictionRow = {
-  id: string;
-  game_id: number;
-  player_id: number;
-  market: string;
-  line: number;
-  pick: "over" | "under";
-  projection: number;
-  confidence: number;
-  is_bet_of_the_day: boolean;
-  reasoning: Reasoning;
-  player: {
-    id: number;
-    first_name: string;
-    last_name: string;
-    team_id: number | null;
-    position: string | null;
-  };
-};
-
-const MARKET_LABEL: Record<string, string> = {
-  points: "Points",
-  rebounds: "Rebounds",
-  assists: "Assists",
-  threes_made: "3PT Made",
-  minutes: "Minutes",
-  steals: "Steals",
-  blocks: "Blocks",
+  searchParams: Promise<{ date?: string; market?: string; min?: string }>;
 };
 
 export default async function HomePage({ searchParams }: PageProps) {
   const params = await searchParams;
   const date = isValidIsoDate(params.date) ? params.date : todayIsoDate();
+  const marketFilter =
+    params.market && ALLOWED_MARKETS.has(params.market) ? params.market : null;
+  const minConfidenceFilter = Number.isFinite(Number(params.min))
+    ? Math.max(0, Math.min(100, Number(params.min)))
+    : 0;
   const prev = isoDateOffset(date, -1);
   const next = isoDateOffset(date, 1);
 
@@ -58,7 +60,7 @@ export default async function HomePage({ searchParams }: PageProps) {
     const { data } = await supabase
       .from("predictions")
       .select(
-        "id, game_id, player_id, market, line, pick, projection, confidence, is_bet_of_the_day, reasoning, player:players!inner(id, first_name, last_name, team_id, position)",
+        "id, game_id, player_id, market, line, pick, projection, confidence, is_bet_of_the_day, reasoning, player:players!inner(id, first_name, last_name, team_id, position, jersey_number)",
       )
       .in("game_id", gameIds)
       .order("is_bet_of_the_day", { ascending: false })
@@ -80,44 +82,88 @@ export default async function HomePage({ searchParams }: PageProps) {
         .in("id", teamIds)
     : { data: [] };
   const teamById = new Map(
-    (teams ?? []).map((t) => [t.id, t] as const),
+    ((teams ?? []) as TeamLite[]).map((t) => [t.id, t] as const),
   );
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const playedSet = new Set<string>();
+  if (user && predictions.length > 0) {
+    const { data: userBets } = await supabase
+      .from("user_bets")
+      .select("prediction_id")
+      .eq("user_id", user.id)
+      .in(
+        "prediction_id",
+        predictions.map((p) => p.id),
+      );
+    for (const ub of userBets ?? []) playedSet.add(ub.prediction_id);
+  }
+  const isSignedIn = !!user;
+
+  const playerIdsWithPicks = Array.from(
+    new Set(predictions.map((p) => p.player_id)),
+  );
+  const patternKeys = new Set<string>();
+  if (playerIdsWithPicks.length > 0) {
+    const { data: patternRows } = await supabase
+      .from("patterns")
+      .select("player_id, market")
+      .in("player_id", playerIdsWithPicks);
+    for (const row of (patternRows ?? []) as Array<{
+      player_id: number;
+      market: string | null;
+    }>) {
+      patternKeys.add(`${row.player_id}:${row.market ?? ""}`);
+    }
+  }
+  const hasPatternFor = (p: PredictionRow) =>
+    patternKeys.has(`${p.player_id}:${p.market}`);
+
   const botd = predictions.find((p) => p.is_bet_of_the_day) ?? null;
-  const others = botd ? predictions.filter((p) => p.id !== botd.id) : predictions;
+  const allOthers = botd
+    ? predictions.filter((p) => p.id !== botd.id)
+    : predictions;
+
+  const filteredOthers = allOthers.filter((p) => {
+    if (marketFilter && p.market !== marketFilter) return false;
+    if (minConfidenceFilter > 0 && p.confidence < minConfidenceFilter)
+      return false;
+    return true;
+  });
+  const filtersActive =
+    marketFilter !== null || minConfidenceFilter > 0;
+
+  const payouts = await loadPayoutMap();
+  const combos = generateCombos(
+    predictions as unknown as Prediction[],
+    { minConfidence: 80, size: 2, max: 5, payouts },
+  ).map((c) => ({
+    ...c,
+    picks: c.picks as unknown as PredictionRow[],
+  }));
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8 space-y-8">
+    <div className="mx-auto max-w-6xl px-4 py-10 space-y-8 fade-up">
       <header className="flex items-end justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">
+          <p className="text-[11px] font-medium tracking-[0.22em] uppercase text-foreground/45">
+            NBA · Today
+          </p>
+          <h1 className="mt-2 text-3xl sm:text-4xl font-semibold tracking-tight">
             Today&apos;s Picks
           </h1>
-          <p className="text-sm text-foreground/60 mt-1">
+          <p className="text-sm text-foreground/55 mt-1">
             {predictions.length > 0
               ? `${predictions.length} picks for ${date}`
               : `No picks for ${date} yet`}
           </p>
         </div>
-        <nav className="flex items-center gap-2 text-sm">
-          <Link
-            href={`/?date=${prev}`}
-            className="rounded border border-black/10 dark:border-white/15 px-3 py-1.5 hover:bg-black/5 dark:hover:bg-white/5"
-          >
-            ← {prev}
-          </Link>
-          <Link
-            href="/"
-            className="rounded border border-black/10 dark:border-white/15 px-3 py-1.5 hover:bg-black/5 dark:hover:bg-white/5"
-          >
-            Today
-          </Link>
-          <Link
-            href={`/?date=${next}`}
-            className="rounded border border-black/10 dark:border-white/15 px-3 py-1.5 hover:bg-black/5 dark:hover:bg-white/5"
-          >
-            {next} →
-          </Link>
+        <nav className="glass rounded-full flex items-center gap-1 p-1 text-sm">
+          <DatePill href={`/?date=${prev}`} label={`← ${prev}`} />
+          <DatePill href="/" label="Today" emphasis />
+          <DatePill href={`/?date=${next}`} label={`${next} →`} />
         </nav>
       </header>
 
@@ -128,23 +174,62 @@ export default async function HomePage({ searchParams }: PageProps) {
           {botd ? (
             <BetOfTheDayCard
               prediction={botd}
-              teamAbbrev={
-                teamById.get(botd.player.team_id ?? -1)?.abbreviation ?? ""
-              }
+              team={teamById.get(botd.player.team_id ?? -1) ?? null}
+              played={playedSet.has(botd.id)}
+              isSignedIn={isSignedIn}
             />
           ) : null}
 
+          {combos.length > 0 ? (
+            <section className="space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <h2 className="text-[11px] font-medium tracking-[0.22em] uppercase text-foreground/45">
+                  Suggested Combos
+                </h2>
+                <span className="text-[10px] uppercase tracking-widest text-foreground/45">
+                  PrizePicks-ready
+                </span>
+              </div>
+              <div className="grid gap-3 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+                {combos.map((combo) => (
+                  <ComboCard
+                    key={combo.picks.map((p) => p.id).join("|")}
+                    combo={combo}
+                    teamById={teamById}
+                  />
+                ))}
+              </div>
+            </section>
+          ) : null}
+
+          <PicksFilterBar
+            totalCount={allOthers.length}
+            filteredCount={filteredOthers.length}
+          />
+
           <section className="space-y-3">
-            <h2 className="text-xs font-medium tracking-widest uppercase text-foreground/50">
-              All Picks
+            <h2 className="text-[11px] font-medium tracking-[0.22em] uppercase text-foreground/45">
+              {filtersActive ? "Filtered Picks" : "All Picks"}
             </h2>
-            <div className="grid gap-2">
-              {others.map((p) => (
+            {filteredOthers.length === 0 ? (
+              <div className="glass rounded-2xl p-6 text-sm text-foreground/55 text-center">
+                No picks match your filters. Try widening the market or lowering
+                the confidence threshold.
+              </div>
+            ) : null}
+            <div className="grid gap-3">
+              {filteredOthers.map((p) => (
                 <PickRow
                   key={p.id}
                   prediction={p}
-                  teamAbbrev={
-                    teamById.get(p.player.team_id ?? -1)?.abbreviation ?? ""
+                  team={teamById.get(p.player.team_id ?? -1) ?? null}
+                  hasPattern={hasPatternFor(p)}
+                  trailing={
+                    <PlayButton
+                      predictionId={p.id}
+                      initialPlayed={playedSet.has(p.id)}
+                      isSignedIn={isSignedIn}
+                    />
                   }
                 />
               ))}
@@ -156,142 +241,113 @@ export default async function HomePage({ searchParams }: PageProps) {
   );
 }
 
-function ConfidenceBadge({ score }: { score: number }) {
-  const tone =
-    score >= 90
-      ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30"
-      : score >= 75
-        ? "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30"
-        : "bg-foreground/5 text-foreground/60 border-foreground/15";
-  return (
-    <span
-      className={`inline-flex items-center rounded border px-2 py-0.5 text-xs font-mono tabular-nums ${tone}`}
-    >
-      {Math.round(score)}
-    </span>
-  );
-}
-
-function PickHeadline({
-  prediction,
-  teamAbbrev,
-}: {
-  prediction: PredictionRow;
-  teamAbbrev: string;
-}) {
-  const name = `${prediction.player.first_name} ${prediction.player.last_name}`;
-  const market = MARKET_LABEL[prediction.market] ?? prediction.market;
-  return (
-    <div>
-      <div className="flex items-baseline gap-2">
-        <span className="font-semibold">{name}</span>
-        {teamAbbrev ? (
-          <span className="text-xs text-foreground/50 font-mono">
-            {teamAbbrev}
-          </span>
-        ) : null}
-        {prediction.player.position ? (
-          <span className="text-xs text-foreground/40">
-            {prediction.player.position}
-          </span>
-        ) : null}
-      </div>
-      <div className="text-sm mt-0.5">
-        <span className="uppercase tracking-wide text-foreground/60 text-xs">
-          {prediction.pick}
-        </span>{" "}
-        <span className="font-mono tabular-nums">{prediction.line}</span>{" "}
-        <span className="text-foreground/60">{market}</span>
-      </div>
-    </div>
-  );
-}
-
 function BetOfTheDayCard({
   prediction,
-  teamAbbrev,
+  team,
+  played,
+  isSignedIn,
 }: {
   prediction: PredictionRow;
-  teamAbbrev: string;
+  team: TeamLite | null;
+  played: boolean;
+  isSignedIn: boolean;
 }) {
+  const colors = teamColors(team?.abbreviation);
+  const market = marketLabel(prediction.market);
+  const name = `${prediction.player.first_name} ${prediction.player.last_name}`;
+
   return (
-    <section className="rounded-xl border border-amber-500/40 bg-gradient-to-br from-amber-500/10 to-amber-500/5 p-5 space-y-4">
-      <div className="flex items-center gap-2 text-amber-700 dark:text-amber-300">
-        <span aria-hidden>★</span>
-        <h2 className="text-xs font-medium tracking-widest uppercase">
-          Bet of the Day
+    <section className="relative overflow-hidden rounded-3xl glass-strong glass-sheen grain ring-1 ring-amber-300/20 shadow-[0_0_60px_rgba(251,191,36,0.18)]">
+      <div
+        aria-hidden
+        className="absolute -inset-px opacity-90 pointer-events-none"
+        style={{
+          background: `radial-gradient(48rem 26rem at 12% 25%, ${colors.primary}99, transparent 60%), radial-gradient(36rem 22rem at 92% 85%, ${colors.secondary}77, transparent 62%), radial-gradient(28rem 18rem at 50% 0%, rgba(251,191,36,0.22), transparent 70%)`,
+        }}
+      />
+      <div
+        aria-hidden
+        className="absolute top-4 right-4 size-24 rounded-full bg-amber-300/10 blur-2xl pointer-events-none"
+      />
+      <div className="relative p-6 sm:p-8 space-y-6">
+        <h2 className="flex items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-400/20 border border-amber-300/40 px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.22em] text-amber-200">
+            <span aria-hidden className="text-sm leading-none">★</span>
+            Bet of the Day
+          </span>
         </h2>
-      </div>
 
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div className="space-y-1">
-          <PickHeadline prediction={prediction} teamAbbrev={teamAbbrev} />
-          <p className="text-xs text-foreground/60">
-            Projection:{" "}
-            <span className="font-mono tabular-nums text-foreground">
-              {prediction.projection.toFixed(1)}
-            </span>
-          </p>
+        <div className="flex items-start gap-6 flex-wrap">
+          <PlayerAvatar
+            playerId={prediction.player.id}
+            firstName={prediction.player.first_name}
+            lastName={prediction.player.last_name}
+            abbreviation={team?.abbreviation ?? ""}
+            size={120}
+          />
+          <div className="flex-1 min-w-[200px] space-y-3">
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2 flex-wrap">
+                <TeamBadge team={team} size={28} />
+                <span className="text-xs text-foreground/65">
+                  {team?.full_name ?? ""}
+                </span>
+                <JerseyChip number={prediction.player.jersey_number} />
+                {prediction.player.position ? (
+                  <span className="text-[11px] text-foreground/50 font-mono uppercase">
+                    {prediction.player.position}
+                  </span>
+                ) : null}
+              </div>
+              <h3 className="text-2xl sm:text-3xl font-semibold tracking-tight">
+                {name}
+              </h3>
+            </div>
+            <div className="flex items-baseline gap-3 flex-wrap">
+              <PickSideTag side={prediction.pick} />
+              <span className="text-2xl font-semibold tabular-nums">
+                {prediction.line}
+              </span>
+              <span className="text-foreground/65">{market}</span>
+            </div>
+            <p className="text-xs text-foreground/55">
+              Engine projection:{" "}
+              <span className="font-mono tabular-nums text-foreground/90">
+                {prediction.projection.toFixed(1)}
+              </span>
+            </p>
+          </div>
+          <ConfidenceRing score={prediction.confidence} />
         </div>
-        <ConfidenceBadge score={prediction.confidence} />
-      </div>
 
-      <ReasoningPanel reasoning={prediction.reasoning} />
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <ReasoningPanel reasoning={prediction.reasoning} />
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <PlayButton
+            predictionId={prediction.id}
+            initialPlayed={played}
+            isSignedIn={isSignedIn}
+          />
+          <AddToCouponButton
+            pick={{
+              prediction_id: prediction.id,
+              game_id: prediction.game_id,
+              player_id: prediction.player_id,
+              player_first_name: prediction.player.first_name,
+              player_last_name: prediction.player.last_name,
+              team_id: prediction.player.team_id,
+              team_abbreviation: team?.abbreviation ?? null,
+              market: prediction.market,
+              line: prediction.line,
+              pick: prediction.pick,
+              confidence: prediction.confidence,
+              jersey_number: prediction.player.jersey_number,
+            }}
+          />
+        </div>
+      </div>
     </section>
-  );
-}
-
-function PickRow({
-  prediction,
-  teamAbbrev,
-}: {
-  prediction: PredictionRow;
-  teamAbbrev: string;
-}) {
-  return (
-    <details className="rounded-lg border border-black/10 dark:border-white/10 bg-background open:border-black/20 dark:open:border-white/20">
-      <summary className="cursor-pointer list-none p-3 flex items-center justify-between gap-3">
-        <PickHeadline prediction={prediction} teamAbbrev={teamAbbrev} />
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-foreground/60 font-mono tabular-nums">
-            {prediction.projection.toFixed(1)}
-          </span>
-          <ConfidenceBadge score={prediction.confidence} />
-        </div>
-      </summary>
-      <div className="px-3 pb-3 -mt-1">
-        <ReasoningPanel reasoning={prediction.reasoning} />
-      </div>
-    </details>
-  );
-}
-
-function ReasoningPanel({ reasoning }: { reasoning: Reasoning }) {
-  if (!reasoning?.checks?.length) return null;
-  return (
-    <div className="rounded-lg border border-black/10 dark:border-white/10 bg-background/50 divide-y divide-black/5 dark:divide-white/5 text-xs">
-      {reasoning.checks.map((c, i) => (
-        <div
-          key={i}
-          className="flex items-center justify-between px-3 py-1.5"
-        >
-          <span className="flex items-center gap-2">
-            <span
-              className={c.passed ? "text-emerald-500" : "text-foreground/30"}
-              aria-hidden
-            >
-              {c.passed ? "✓" : "·"}
-            </span>
-            <span className={c.passed ? "" : "text-foreground/50"}>
-              {c.label}
-            </span>
-          </span>
-          <span className="font-mono tabular-nums text-foreground/60">
-            {c.value.toFixed(1)} vs {c.target}
-          </span>
-        </div>
-      ))}
-    </div>
   );
 }
 
@@ -303,18 +359,15 @@ function EmptyState({
   hasGames: boolean;
 }) {
   return (
-    <div className="rounded-lg border border-black/10 dark:border-white/10 p-8 text-center space-y-2">
+    <div className="glass glass-sheen rounded-2xl p-8 text-center space-y-2">
       <p className="text-foreground/70">
         {hasGames
-          ? `Games are scheduled for ${date} but no predictions have been generated yet.`
+          ? `Games are scheduled for ${date}. Picks will appear here shortly — check back soon.`
           : `No NBA games (and no picks) for ${date}.`}
       </p>
-      {hasGames ? (
-        <p className="text-xs text-foreground/50 font-mono">
-          Run: <code>/api/cron/generate-predictions?date={date}</code> (with
-          the cron Bearer token)
-        </p>
-      ) : null}
+      <p className="text-xs text-foreground/45">
+        Picks refresh automatically each day.
+      </p>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 import type { BetStatus } from "@/lib/analysis/types";
 
 const WIN_DELTA = 1.0;
@@ -16,9 +16,10 @@ export function rewardDelta(outcome: BetStatus): number {
  * Apply the +1.0 / -0.5 reward to system_score and append a history row.
  * Called by `/api/cron/settle-bets` after a prediction is settled.
  *
- * Uses two writes (no transaction): if the second fails, the live score may
- * drift from history. Acceptable for MVP — settlement is replayable from
- * predictions.status. Revisit if/when score becomes user-facing money.
+ * Uses service-role client because RLS has no UPDATE policy on system_score.
+ * Two writes, no transaction: if the second fails, the live score may drift
+ * from history. The defensive partial unique index on system_score_history
+ * (migration 0003) prevents double-credit if settle-bets re-runs.
  */
 export async function applyReward(args: {
   prediction_id: string;
@@ -28,7 +29,7 @@ export async function applyReward(args: {
   const delta = rewardDelta(outcome);
   if (delta === 0 && outcome !== "won" && outcome !== "lost") return null;
 
-  const supabase = await createSupabaseServerClient();
+  const supabase = supabaseAdmin();
 
   const { data: current, error: readErr } = await supabase
     .from("system_score")

@@ -7,7 +7,8 @@ export type PropMarket =
   | "threes_made"
   | "minutes"
   | "steals"
-  | "blocks";
+  | "blocks"
+  | "pra";
 
 export type PickSide = "over" | "under";
 
