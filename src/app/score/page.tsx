@@ -72,12 +72,23 @@ export default async function ScorePage() {
           Engine Ledger
         </h1>
         <p className="text-sm text-foreground/55 mt-1">
-          +1.0 per win, −0.5 per loss. Voids are no-ops. The engine&apos;s
-          objective is to stay above zero.
+          Is the prediction engine keeping itself above zero? +1.0 per win,
+          −0.5 per loss, voids are no-ops. Reset 2026-05-14 — every settlement
+          below is real.{" "}
+          <Link href="/engine" className="underline underline-offset-2 hover:text-foreground">
+            See every pick the engine has graded →
+          </Link>
         </p>
       </header>
 
-      <HeroCard score={score} wins={wins} losses={losses} voids={voids} pending={pending} />
+      <HeroCard
+        score={score}
+        wins={wins}
+        losses={losses}
+        voids={voids}
+        pending={pending}
+        settled={wins + losses + voids}
+      />
 
       {chartPoints.length > 1 ? (
         <section className="glass glass-sheen rounded-2xl p-5 sm:p-6 space-y-3">
@@ -110,13 +121,16 @@ function HeroCard({
   losses,
   voids,
   pending,
+  settled,
 }: {
   score: number;
   wins: number;
   losses: number;
   voids: number;
   pending: number;
+  settled: number;
 }) {
+  const totalPredictions = settled + pending;
   const tone =
     score > 0
       ? "text-emerald-300"
@@ -147,7 +161,7 @@ function HeroCard({
               {score.toFixed(1)}
             </div>
             <p className="text-xs text-foreground/55 font-mono">
-              +1.0 / −0.5 ledger
+              {settled} of {totalPredictions} settled · +1.0 / −0.5 ledger
             </p>
           </div>
           <div className="flex gap-2 flex-wrap">

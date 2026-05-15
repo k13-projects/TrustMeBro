@@ -2,7 +2,9 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { isoDateOffset, isValidIsoDate, todayIsoDate } from "@/lib/date";
 import { teamColors } from "@/lib/sports/nba/branding";
 import { generateCombos } from "@/lib/analysis/combos";
+import { loadPayoutMap } from "@/lib/analysis/payouts";
 import type { Prediction } from "@/lib/analysis/types";
+import { AddToCouponButton } from "@/components/cart/AddToCouponButton";
 import { ComboCard } from "@/components/ComboCard";
 import { ConfidenceRing } from "@/components/ConfidenceRing";
 import { DatePill } from "@/components/DatePill";
@@ -133,16 +135,17 @@ export default async function HomePage({ searchParams }: PageProps) {
   const filtersActive =
     marketFilter !== null || minConfidenceFilter > 0;
 
+  const payouts = await loadPayoutMap();
   const combos = generateCombos(
     predictions as unknown as Prediction[],
-    { minConfidence: 80, size: 2, max: 5 },
+    { minConfidence: 80, size: 2, max: 5, payouts },
   ).map((c) => ({
     ...c,
     picks: c.picks as unknown as PredictionRow[],
   }));
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-10 space-y-8">
+    <div className="mx-auto max-w-6xl px-4 py-10 space-y-8 fade-up">
       <header className="flex items-end justify-between gap-4 flex-wrap">
         <div>
           <p className="text-[11px] font-medium tracking-[0.22em] uppercase text-foreground/45">
@@ -320,11 +323,27 @@ function BetOfTheDayCard({
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <ReasoningPanel reasoning={prediction.reasoning} />
         </div>
-        <div>
+        <div className="flex items-center gap-2 flex-wrap">
           <PlayButton
             predictionId={prediction.id}
             initialPlayed={played}
             isSignedIn={isSignedIn}
+          />
+          <AddToCouponButton
+            pick={{
+              prediction_id: prediction.id,
+              game_id: prediction.game_id,
+              player_id: prediction.player_id,
+              player_first_name: prediction.player.first_name,
+              player_last_name: prediction.player.last_name,
+              team_id: prediction.player.team_id,
+              team_abbreviation: team?.abbreviation ?? null,
+              market: prediction.market,
+              line: prediction.line,
+              pick: prediction.pick,
+              confidence: prediction.confidence,
+              jersey_number: prediction.player.jersey_number,
+            }}
           />
         </div>
       </div>

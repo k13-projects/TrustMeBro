@@ -12,10 +12,10 @@ export const STAT_COLORS = {
   },
   prev2: {
     label: "Two games ago",
-    fg: "text-purple-400",
-    bg: "bg-purple-500/15",
-    bar: "bg-purple-500/45",
-    raw: "#a855f7",
+    fg: "text-cyan-400",
+    bg: "bg-cyan-500/15",
+    bar: "bg-cyan-500/45",
+    raw: "#22d3ee",
   },
   prev: {
     label: "Previous game",

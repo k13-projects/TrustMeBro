@@ -21,8 +21,8 @@ export function NavLink({
       aria-current={active ? "page" : undefined}
       className={
         active
-          ? "rounded-full px-3 py-1.5 text-foreground bg-white/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
-          : "rounded-full px-3 py-1.5 text-foreground/70 hover:text-foreground hover:bg-white/5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+          ? "nav-pill relative isolate rounded-full px-4 py-2 text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50"
+          : "nav-pill relative isolate rounded-full px-4 py-2 text-foreground/70 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50"
       }
     >
       {children}

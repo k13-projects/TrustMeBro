@@ -12,7 +12,9 @@ const ITEMS: Item[] = [
   { href: "/games", label: "Games" },
   { href: "/teams", label: "Teams" },
   { href: "/players", label: "Players" },
+  { href: "/engine", label: "Engine" },
   { href: "/score", label: "Score" },
+  { href: "/history", label: "History" },
 ];
 
 export function MobileNav() {

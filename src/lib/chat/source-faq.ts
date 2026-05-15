@@ -48,7 +48,7 @@ System reward/penalty (the "Trust Me Bro" honesty mechanism):
 Dashboard color code:
   - Season average: blue.
   - Previous game: amber.
-  - Two games ago: purple.
+  - Two games ago: cyan.
   - Last 10 average: emerald.
   - Anomaly alert: triggers when the last-game value is > 1.5 std dev
     from the L10 average.

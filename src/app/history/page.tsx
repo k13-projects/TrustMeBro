@@ -10,6 +10,12 @@ export const revalidate = 30;
 
 type Outcome = "pending" | "won" | "lost" | "void";
 
+type HistoryTab = "bets" | "coupons";
+
+type PageProps = {
+  searchParams: Promise<{ tab?: string }>;
+};
+
 type RawUserBet = {
   id: string;
   status: Outcome;
@@ -44,7 +50,10 @@ type RawUserBet = {
     | null;
 };
 
-export default async function HistoryPage() {
+export default async function HistoryPage({ searchParams }: PageProps) {
+  const params = await searchParams;
+  const tab: HistoryTab = params.tab === "coupons" ? "coupons" : "bets";
+
   const supabase = await createSupabaseServerClient();
 
   const {
@@ -76,16 +85,29 @@ export default async function HistoryPage() {
     );
   }
 
-  const { data: betsRaw } = await supabase
-    .from("user_bets")
-    .select(
-      `id, status, stake, taken_odds, result_value, user_note, created_at, settled_at,
-       prediction:predictions!inner(id, game_id, player_id, market, line, pick, projection, confidence, is_bet_of_the_day,
-         player:players!inner(id, first_name, last_name, team_id, position, jersey_number))`,
-    )
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false })
-    .limit(200);
+  const [{ data: betsRaw }, { data: couponsRaw }] = await Promise.all([
+    supabase
+      .from("user_bets")
+      .select(
+        `id, status, stake, taken_odds, result_value, user_note, created_at, settled_at,
+         prediction:predictions!inner(id, game_id, player_id, market, line, pick, projection, confidence, is_bet_of_the_day,
+           player:players!inner(id, first_name, last_name, team_id, position, jersey_number))`,
+      )
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(200),
+    supabase
+      .from("user_coupons")
+      .select(
+        `id, mode, pick_count, stake, payout_multiplier, potential_payout,
+         status, result_payout, settled_at, created_at,
+         picks:user_coupon_picks(pick_order, prediction:predictions(id, game_id, market, line, pick,
+           player:players(id, first_name, last_name, team_id)))`,
+      )
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(100),
+  ]);
 
   const bets = (betsRaw ?? []).map((b: unknown) => {
     const row = b as RawUserBet & {
@@ -104,11 +126,34 @@ export default async function HistoryPage() {
     };
   });
 
+  const coupons: NormalizedCoupon[] = (couponsRaw ?? []).map((raw: unknown) => {
+    const c = raw as CouponRow;
+    const picks = (c.picks ?? []).map((p) => {
+      const pred = Array.isArray(p.prediction)
+        ? p.prediction[0] ?? null
+        : p.prediction;
+      const player = pred
+        ? Array.isArray(pred.player)
+          ? pred.player[0] ?? null
+          : pred.player
+        : null;
+      return {
+        pick_order: p.pick_order,
+        prediction: pred ? { ...pred, player } : null,
+      };
+    });
+    picks.sort((a, b) => a.pick_order - b.pick_order);
+    return { ...c, picks };
+  });
+
   const teamIds = Array.from(
     new Set(
-      bets
-        .map((b) => b.prediction?.player?.team_id)
-        .filter((id): id is number => id != null),
+      [
+        ...bets.map((b) => b.prediction?.player?.team_id),
+        ...coupons.flatMap((c) =>
+          c.picks.map((p) => p.prediction?.player?.team_id ?? null),
+        ),
+      ].filter((id): id is number => id != null),
     ),
   );
   const { data: teams } = teamIds.length
@@ -121,7 +166,7 @@ export default async function HistoryPage() {
     ((teams ?? []) as TeamLite[]).map((t) => [t.id, t]),
   );
 
-  const totals = bets.reduce(
+  const betTotals = bets.reduce(
     (acc, b) => {
       acc[b.status]++;
       acc.total++;
@@ -132,9 +177,25 @@ export default async function HistoryPage() {
       number
     >,
   );
-  const settled = totals.won + totals.lost;
-  const winRate =
-    settled > 0 ? Math.round((totals.won / settled) * 100) : null;
+  const couponTotals = coupons.reduce(
+    (acc, c) => {
+      acc[c.status]++;
+      acc.total++;
+      return acc;
+    },
+    { total: 0, pending: 0, won: 0, lost: 0, void: 0 } as Record<
+      "total" | Outcome,
+      number
+    >,
+  );
+  const betsSettled = betTotals.won + betTotals.lost;
+  const betsWinRate =
+    betsSettled > 0 ? Math.round((betTotals.won / betsSettled) * 100) : null;
+  const couponsSettled = couponTotals.won + couponTotals.lost;
+  const couponsWinRate =
+    couponsSettled > 0
+      ? Math.round((couponTotals.won / couponsSettled) * 100)
+      : null;
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-10 space-y-8">
@@ -143,42 +204,237 @@ export default async function HistoryPage() {
           Your History
         </p>
         <h1 className="mt-2 text-3xl sm:text-4xl font-semibold tracking-tight">
-          Played Picks
+          {tab === "coupons" ? "Saved Coupons" : "Played Picks"}
         </h1>
         <p className="text-sm text-foreground/55 mt-1">
-          {totals.total === 0
-            ? "You haven't marked any picks yet. Tap \"I played this\" on the dashboard."
-            : `${totals.total} total · ${settled} settled${winRate !== null ? ` · ${winRate}% win rate` : ""}`}
+          {tab === "coupons"
+            ? couponTotals.total === 0
+              ? "You haven't saved any coupons yet. Build one with the + Coupon button on any pick."
+              : `${couponTotals.total} total · ${couponsSettled} settled${couponsWinRate !== null ? ` · ${couponsWinRate}% hit rate` : ""}`
+            : betTotals.total === 0
+              ? "You haven't marked any picks yet. Tap \"I played this\" on the dashboard."
+              : `${betTotals.total} total · ${betsSettled} settled${betsWinRate !== null ? ` · ${betsWinRate}% win rate` : ""}`}
         </p>
       </header>
 
-      {totals.total > 0 ? (
-        <div className="flex gap-2 flex-wrap">
-          <Pill label="Pending" value={totals.pending} tone="amber" />
-          <Pill label="Won" value={totals.won} tone="emerald" />
-          <Pill label="Lost" value={totals.lost} tone="rose" />
-          <Pill label="Voids" value={totals.void} tone="neutral" />
-        </div>
-      ) : null}
+      <nav className="glass rounded-full inline-flex items-center gap-1 p-1 text-sm" aria-label="History sections">
+        <TabLink href="/history" active={tab === "bets"} count={betTotals.total} label="Bets" />
+        <TabLink href="/history?tab=coupons" active={tab === "coupons"} count={couponTotals.total} label="Coupons" />
+      </nav>
 
-      {bets.length === 0 ? null : (
-        <section className="space-y-2">
-          {bets.map((b) => (
-            <BetRow
-              key={b.id}
-              bet={b}
-              team={
-                b.prediction?.player?.team_id != null
-                  ? teamById.get(b.prediction.player.team_id) ?? null
-                  : null
-              }
-            />
-          ))}
-        </section>
+      {tab === "bets" ? (
+        <>
+          {betTotals.total > 0 ? (
+            <div className="flex gap-2 flex-wrap">
+              <Pill label="Pending" value={betTotals.pending} tone="amber" />
+              <Pill label="Won" value={betTotals.won} tone="emerald" />
+              <Pill label="Lost" value={betTotals.lost} tone="rose" />
+              <Pill label="Voids" value={betTotals.void} tone="neutral" />
+            </div>
+          ) : null}
+
+          {bets.length === 0 ? null : (
+            <section className="space-y-2">
+              {bets.map((b) => (
+                <BetRow
+                  key={b.id}
+                  bet={b}
+                  team={
+                    b.prediction?.player?.team_id != null
+                      ? teamById.get(b.prediction.player.team_id) ?? null
+                      : null
+                  }
+                />
+              ))}
+            </section>
+          )}
+        </>
+      ) : (
+        <>
+          {couponTotals.total > 0 ? (
+            <div className="flex gap-2 flex-wrap">
+              <Pill label="Pending" value={couponTotals.pending} tone="amber" />
+              <Pill label="Won" value={couponTotals.won} tone="emerald" />
+              <Pill label="Lost" value={couponTotals.lost} tone="rose" />
+              <Pill label="Refunded" value={couponTotals.void} tone="neutral" />
+            </div>
+          ) : null}
+
+          {coupons.length === 0 ? null : (
+            <section className="space-y-3">
+              {coupons.map((c) => (
+                <CouponRowCard key={c.id} coupon={c} teamById={teamById} />
+              ))}
+            </section>
+          )}
+        </>
       )}
     </div>
   );
 }
+
+type CouponPickPlayerLite = {
+  id: number;
+  first_name: string;
+  last_name: string;
+  team_id: number | null;
+};
+
+type CouponPickPrediction = {
+  id: string;
+  game_id: number;
+  market: string;
+  line: number;
+  pick: "over" | "under";
+  player: CouponPickPlayerLite | CouponPickPlayerLite[] | null;
+};
+
+type CouponRow = {
+  id: string;
+  mode: "power" | "flex";
+  pick_count: number;
+  stake: number | string;
+  payout_multiplier: number | string;
+  potential_payout: number | string;
+  status: Outcome;
+  result_payout: number | string | null;
+  settled_at: string | null;
+  created_at: string;
+  picks: Array<{
+    pick_order: number;
+    prediction: CouponPickPrediction | CouponPickPrediction[] | null;
+  }>;
+};
+
+type NormalizedCoupon = Omit<CouponRow, "picks"> & {
+  picks: Array<{
+    pick_order: number;
+    prediction:
+      | (Omit<CouponPickPrediction, "player"> & {
+          player: CouponPickPlayerLite | null;
+        })
+      | null;
+  }>;
+};
+
+function TabLink({
+  href,
+  active,
+  label,
+  count,
+}: {
+  href: string;
+  active: boolean;
+  label: string;
+  count: number;
+}) {
+  return (
+    <Link
+      href={href}
+      aria-current={active ? "page" : undefined}
+      className={
+        active
+          ? "rounded-full bg-white/12 text-foreground px-3 py-1.5 text-sm font-medium"
+          : "rounded-full text-foreground/65 px-3 py-1.5 text-sm hover:bg-white/5"
+      }
+    >
+      <span>{label}</span>
+      <span className="ml-2 font-mono tabular-nums text-[11px] opacity-70">{count}</span>
+    </Link>
+  );
+}
+
+function CouponRowCard({
+  coupon,
+  teamById,
+}: {
+  coupon: NormalizedCoupon;
+  teamById: Map<number, TeamLite>;
+}) {
+  const outcomeTones = {
+    pending: "bg-white/5 text-foreground/55 border-white/10",
+    won: "bg-emerald-400/15 text-emerald-300 border-emerald-400/30",
+    lost: "bg-rose-400/15 text-rose-300 border-rose-400/30",
+    void: "bg-white/5 text-foreground/55 border-white/10",
+  } as const;
+  const stake = Number(coupon.stake);
+  const multiplier = Number(coupon.payout_multiplier);
+  const potential = Number(coupon.potential_payout);
+  const resultPayout =
+    coupon.result_payout !== null ? Number(coupon.result_payout) : null;
+
+  return (
+    <article className="glass glass-sheen rounded-2xl p-4 space-y-3">
+      <header className="flex items-center justify-between gap-2 flex-wrap">
+        <div className="flex items-center gap-2">
+          <span className="rounded-full bg-amber-400/15 text-amber-200 border border-amber-400/30 px-2.5 py-0.5 text-[10px] uppercase tracking-widest font-medium">
+            {coupon.pick_count}-pick {coupon.mode}
+          </span>
+          <span className="text-[11px] text-foreground/45 font-mono tabular-nums">
+            ${stake.toFixed(2)} × {multiplier}× → ${potential.toFixed(2)}
+          </span>
+        </div>
+        <span
+          className={`rounded-full border px-2.5 py-1 text-[10px] uppercase tracking-wider font-medium ${outcomeTones[coupon.status]}`}
+        >
+          {coupon.status === "void" ? "refunded" : coupon.status}
+        </span>
+      </header>
+
+      <ul className="space-y-1.5">
+        {coupon.picks.map((p) =>
+          p.prediction && p.prediction.player ? (
+            <li
+              key={p.prediction.id}
+              className="flex items-center gap-2 text-xs"
+            >
+              <span className="size-1.5 rounded-full bg-amber-300/70" aria-hidden />
+              <span className="font-medium">
+                {p.prediction.player.first_name} {p.prediction.player.last_name}
+              </span>
+              <TeamBadge
+                team={
+                  p.prediction.player.team_id != null
+                    ? teamById.get(p.prediction.player.team_id) ?? null
+                    : null
+                }
+                size={14}
+              />
+              <PickSideTag side={p.prediction.pick} />
+              <span className="font-mono tabular-nums">{p.prediction.line}</span>
+              <span className="text-foreground/55">
+                {marketLabel(p.prediction.market)}
+              </span>
+            </li>
+          ) : null,
+        )}
+      </ul>
+
+      {resultPayout !== null ? (
+        <footer className="text-xs text-foreground/65 font-mono tabular-nums border-t border-white/8 pt-2 flex items-center justify-between">
+          <span className="uppercase tracking-widest text-[10px] text-foreground/45">
+            Settled
+          </span>
+          <span>
+            paid{" "}
+            <span
+              className={
+                coupon.status === "won"
+                  ? "text-emerald-300"
+                  : coupon.status === "void"
+                    ? "text-foreground/65"
+                    : "text-rose-300"
+              }
+            >
+              ${resultPayout.toFixed(2)}
+            </span>
+          </span>
+        </footer>
+      ) : null}
+    </article>
+  );
+}
+
 
 // American odds: +150 means $100 stake wins $150; -200 means $200 stake wins $100.
 // Decimal odds (>=1.0): multiplier directly. We accept either; positive numbers

@@ -196,9 +196,10 @@ type Reasoning = {
 - Color coding (Tailwind tokens):
   - Season average → `text-blue-500`
   - Previous game → `text-amber-500`
-  - Two games ago → `text-purple-500`
+  - Two games ago → `text-cyan-500` (was purple — purple is banned outside of team colors; see [src/components/StatColor.ts](src/components/StatColor.ts))
   - Last 5 individual bars → neutral with delta arrows
   - Last 10 average → `text-emerald-500`
+- **Palette rule (2026-05-14):** `purple` / `fuchsia` / `violet` / `indigo` are **banned** in app chrome and components. They may only appear when rendering a team's actual brand color. The accent palette is Robinhood-style: emerald/green for primary action, rose for negatives, white-on-dark for text.
 - Pattern alert badge appears when last-game value is more than 1.5 standard deviations from L10 average.
 - Compact display: prefer sparkline + scalar over multi-row tables when possible.
 

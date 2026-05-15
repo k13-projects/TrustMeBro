@@ -3,9 +3,11 @@ import Image from "next/image";
 import Link from "next/link";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { CartShell } from "@/components/cart/CartShell";
 import { ChatLauncher } from "@/components/chat/ChatLauncher";
 import { MobileNav } from "@/components/MobileNav";
 import { NavLink } from "@/components/NavLink";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -22,11 +24,17 @@ export const metadata: Metadata = {
   description: "Live NBA stats and analysis for teams and players.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const isSignedIn = !!user;
+
   return (
     <html
       lang="en"
@@ -44,37 +52,41 @@ export default function RootLayout({
             <div className="mx-auto max-w-6xl px-4 py-3 flex items-center justify-between gap-3 relative">
               <Link
                 href="/"
-                className="flex items-center gap-2 font-semibold tracking-tight text-lg"
+                className="group flex items-center gap-3 font-semibold tracking-tight text-xl"
               >
                 <Image
                   src="/logo.png"
                   alt="TrustMeBro"
-                  width={36}
-                  height={36}
+                  width={108}
+                  height={108}
                   priority
-                  className="rounded-lg shadow-[0_0_24px_rgba(244,63,94,0.45)]"
+                  className="rounded-xl logo-float transition-transform duration-300 ease-out group-hover:rotate-[-6deg] group-hover:scale-[1.04] motion-reduce:transition-none motion-reduce:transform-none motion-reduce:animate-none"
                 />
-                TrustMeBro
+                <span className="hidden sm:inline">TrustMeBro</span>
               </Link>
-              <nav className="hidden sm:flex items-center gap-1 text-sm" aria-label="Primary">
+              <nav className="hidden sm:flex items-center gap-1 text-base font-medium" aria-label="Primary">
                 <NavLink href="/" exact>Picks</NavLink>
                 <NavLink href="/games">Games</NavLink>
                 <NavLink href="/teams">Teams</NavLink>
                 <NavLink href="/players">Players</NavLink>
+                <NavLink href="/engine">Engine</NavLink>
                 <NavLink href="/score">Score</NavLink>
+                <NavLink href="/history">History</NavLink>
               </nav>
               <MobileNav />
             </div>
           </div>
         </header>
-        <main id="main" className="relative z-10 flex-1">{children}</main>
-        <footer className="relative z-10 mt-12">
-          <div className="glass">
-            <div className="mx-auto max-w-6xl px-4 py-4 text-xs text-foreground/55">
-              Data: ESPN · NBA only (more sports coming)
+        <CartShell isSignedIn={isSignedIn}>
+          <main id="main" className="relative z-10 flex-1">{children}</main>
+          <footer className="relative z-10 mt-12">
+            <div className="glass">
+              <div className="mx-auto max-w-6xl px-4 py-4 text-xs text-foreground/55">
+                Data: ESPN · NBA only (more sports coming)
+              </div>
             </div>
-          </div>
-        </footer>
+          </footer>
+        </CartShell>
         <ChatLauncher />
       </body>
     </html>
