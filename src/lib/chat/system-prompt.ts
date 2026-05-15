@@ -1,11 +1,53 @@
-import type { ChatPredictionSummary } from "./types";
+import type { ChatCouponContext, ChatPredictionSummary } from "./types";
 import { SOURCE_FAQ } from "./source-faq";
+import { marketLabel } from "@/components/MarketLabel";
+import {
+  fallbackPayoutMap,
+  powerPayoutFrom,
+  flexPayoutFrom,
+} from "@/lib/analysis/payouts";
+
+function renderCoupon(coupon: ChatCouponContext): string {
+  const map = fallbackPayoutMap();
+  const n = coupon.picks.length;
+  const multiplier =
+    coupon.mode === "power"
+      ? powerPayoutFrom(map, n)
+      : flexPayoutFrom(map, n);
+  const potential = multiplier !== null ? coupon.stake * multiplier : null;
+  // Combined-confidence math mirrors generateCombos: naive independence
+  // product, percentage with one-decimal floor.
+  const combined =
+    Math.floor(
+      coupon.picks.reduce((acc, p) => acc * (p.confidence / 100), 1) * 1000,
+    ) / 10;
+  const headerBits = [
+    `${n}-pick ${coupon.mode.toUpperCase()}`,
+    `stake $${coupon.stake.toFixed(2)}`,
+    multiplier !== null && potential !== null
+      ? `${multiplier}× → $${potential.toFixed(2)}`
+      : "no multiplier available for this pick count/mode",
+    `combined ${combined}%`,
+  ];
+  const lines = coupon.picks.map(
+    (p, i) =>
+      `${i + 1}. **${p.player_name}** (${p.team_abbr ?? "—"}) — ${p.pick.toUpperCase()} ${p.line} ${marketLabel(p.market)} · conf ${p.confidence.toFixed(0)}`,
+  );
+  return [
+    `**User's current draft coupon** (not yet saved — they're building it in the cart drawer):`,
+    `- ${headerBits.join(" · ")}`,
+    ...lines.map((l) => `- ${l}`),
+    "",
+    `When the user asks about "my coupon" / "this combo" / "my picks", refer to these picks specifically. If they ask whether a pick is risky, compare its confidence to the rest of the slate. Don't recommend they remove or add picks unless they ask — they decide.`,
+  ].join("\n");
+}
 
 export function buildSystemPrompt(args: {
   date: string;
   predictions: ChatPredictionSummary[];
+  coupon?: ChatCouponContext | null;
 }): string {
-  const { date, predictions } = args;
+  const { date, predictions, coupon } = args;
 
   const persona = `
 You are the TrustMeBro analyst — a sports betting assistant embedded in an NBA stats dashboard.
@@ -52,5 +94,15 @@ Follow-ups:
           })
           .join("\n\n");
 
-  return [persona, "", picksBlock, "", SOURCE_FAQ].join("\n");
+  const couponBlock =
+    coupon && coupon.picks.length > 0 ? renderCoupon(coupon) : "";
+
+  return [
+    persona,
+    "",
+    picksBlock,
+    ...(couponBlock ? ["", couponBlock] : []),
+    "",
+    SOURCE_FAQ,
+  ].join("\n");
 }

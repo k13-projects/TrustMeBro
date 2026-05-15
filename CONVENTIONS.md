@@ -59,6 +59,21 @@ When triggered, run these steps in order:
 Same as Hail Mary, but **skip step 1**. Use this when we are already on the
 branch we want the work to land on.
 
+### Variant: `hm++`
+
+Full end-to-end ship. Same as Hail Mary, plus two more steps:
+
+4. **Open a pull request** against `main` using `gh pr create` with a tight
+   summary + test plan (same format as the project's previous PRs).
+5. **Merge the PR** with `gh pr merge <num> --merge` (a real merge commit;
+   no squash, no rebase, no `--delete-branch` — keep every `tmb_*` branch
+   on origin per the standing rule).
+
+Use `hm++` when the work is ready to land on `main` and you don't want to
+ceremoniously do the PR + merge in a separate turn. The PR title and body
+should mirror the commit message's overview (short summary + test plan);
+the deeper technical detail still lives in the commit.
+
 ---
 
 ## Notes for future conventions
