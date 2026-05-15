@@ -98,8 +98,11 @@ export default async function RootLayout({
               </div>
             </div>
           </footer>
+          {/* ChatLauncher (and the ChatPanel it renders) reads useCart() to
+              dodge the coupon drawer when both are open — must live inside
+              the CartProvider tree. */}
+          <ChatLauncher />
         </CartShell>
-        <ChatLauncher />
       </body>
     </html>
   );
