@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { ScoreChart, type ScorePoint } from "@/components/ScoreChart";
 
 export const revalidate = 30;
 
@@ -53,7 +54,12 @@ export default async function ScorePage() {
     ).length;
 
   const rows = (history ?? []) as HistoryRow[];
-  const series = rows.map((r) => Number(r.score_after));
+  const chartPoints: ScorePoint[] = rows.map((r) => ({
+    scoreAfter: Number(r.score_after),
+    delta: Number(r.delta),
+    outcome: r.outcome,
+    recordedAt: r.recorded_at,
+  }));
   const recent = [...rows].reverse().slice(0, 20);
 
   return (
@@ -73,12 +79,12 @@ export default async function ScorePage() {
 
       <HeroCard score={score} wins={wins} losses={losses} voids={voids} pending={pending} />
 
-      {series.length > 1 ? (
+      {chartPoints.length > 1 ? (
         <section className="glass glass-sheen rounded-2xl p-5 sm:p-6 space-y-3">
           <h2 className="text-[11px] font-medium tracking-[0.22em] uppercase text-foreground/45">
             Score over time
           </h2>
-          <ScoreChart values={series} />
+          <ScoreChart points={chartPoints} />
         </section>
       ) : null}
 
@@ -176,91 +182,6 @@ function StatPill({
       <div className="text-[10px] uppercase tracking-widest opacity-80">{label}</div>
       <div className="font-mono tabular-nums text-2xl font-semibold">{value}</div>
     </div>
-  );
-}
-
-function ScoreChart({ values }: { values: number[] }) {
-  const W = 720;
-  const H = 220;
-  const P = 16;
-  const min = Math.min(0, ...values);
-  const max = Math.max(0, ...values);
-  const range = max - min || 1;
-  const stepX = (W - P * 2) / Math.max(1, values.length - 1);
-  const yFor = (v: number) =>
-    H - P - ((v - min) / range) * (H - P * 2);
-  const points = values.map((v, i) => [P + i * stepX, yFor(v)] as const);
-  const linePath = points
-    .map(([x, y], i) => (i === 0 ? `M ${x} ${y}` : `L ${x} ${y}`))
-    .join(" ");
-  const areaPath =
-    `${linePath} L ${points[points.length - 1][0]} ${H - P} L ${P} ${H - P} Z`;
-  const zeroY = yFor(0);
-  const finalTone = values[values.length - 1] >= 0 ? "emerald" : "rose";
-  return (
-    <svg
-      viewBox={`0 0 ${W} ${H}`}
-      className="w-full h-auto"
-      role="img"
-      aria-label={`Score history over ${values.length} settlements`}
-    >
-      <defs>
-        <linearGradient id="score-stroke" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="rgb(52 211 153)" />
-          <stop offset={`${((max - 0) / range) * 100}%`} stopColor="rgb(52 211 153)" />
-          <stop offset={`${((max - 0) / range) * 100}%`} stopColor="rgb(244 63 94)" />
-          <stop offset="100%" stopColor="rgb(244 63 94)" />
-        </linearGradient>
-        <linearGradient id="score-fill" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="rgb(52 211 153)" stopOpacity="0.25" />
-          <stop offset="100%" stopColor="rgb(52 211 153)" stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      <line
-        x1={P}
-        y1={zeroY}
-        x2={W - P}
-        y2={zeroY}
-        stroke="rgba(255,255,255,0.18)"
-        strokeDasharray="3 5"
-        strokeWidth="1"
-      />
-      <path d={areaPath} fill="url(#score-fill)" />
-      <path
-        d={linePath}
-        fill="none"
-        stroke="url(#score-stroke)"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <circle
-        cx={points[points.length - 1][0]}
-        cy={points[points.length - 1][1]}
-        r="4"
-        fill={finalTone === "emerald" ? "rgb(52 211 153)" : "rgb(244 63 94)"}
-      />
-      <text
-        x={W - P}
-        y={P + 4}
-        textAnchor="end"
-        className="text-[10px]"
-        fill="rgba(255,255,255,0.55)"
-        fontFamily="ui-monospace, SFMono-Regular, monospace"
-      >
-        {max.toFixed(1)}
-      </text>
-      <text
-        x={W - P}
-        y={H - P + 12}
-        textAnchor="end"
-        className="text-[10px]"
-        fill="rgba(255,255,255,0.55)"
-        fontFamily="ui-monospace, SFMono-Regular, monospace"
-      >
-        {min.toFixed(1)}
-      </text>
-    </svg>
   );
 }
 

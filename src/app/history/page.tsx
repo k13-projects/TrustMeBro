@@ -180,6 +180,24 @@ export default async function HistoryPage() {
   );
 }
 
+// American odds: +150 means $100 stake wins $150; -200 means $200 stake wins $100.
+// Decimal odds (>=1.0): multiplier directly. We accept either; positive numbers
+// >= 100 are treated as american, otherwise decimal.
+function formatOdds(odds: number): string {
+  if (Math.abs(odds) >= 100 && Number.isInteger(odds)) {
+    return odds > 0 ? `+${odds}` : `${odds}`;
+  }
+  return odds.toFixed(2);
+}
+
+function potentialPayout(stake: number, odds: number): number {
+  if (Math.abs(odds) >= 100 && Number.isInteger(odds)) {
+    const ratio = odds > 0 ? odds / 100 : 100 / Math.abs(odds);
+    return stake + stake * ratio;
+  }
+  return stake * odds;
+}
+
 function Pill({
   label,
   value,
@@ -245,7 +263,7 @@ function BetRow({
               </span>
             ) : null}
           </div>
-          <div className="mt-1 flex items-baseline gap-2 text-sm">
+          <div className="mt-1 flex items-baseline gap-2 text-sm flex-wrap">
             <PickSideTag side={p.pick} />
             <span className="font-mono tabular-nums">{p.line}</span>
             <span className="text-foreground/60">{marketLabel(p.market)}</span>
@@ -255,6 +273,34 @@ function BetRow({
               </span>
             ) : null}
           </div>
+          {bet.taken_odds !== null || bet.stake !== null ? (
+            <div className="mt-1 flex items-center gap-3 text-[11px] text-foreground/55 font-mono tabular-nums flex-wrap">
+              {bet.taken_odds !== null ? (
+                <span>
+                  <span className="text-foreground/45 uppercase tracking-widest text-[10px] mr-1">
+                    Odds
+                  </span>
+                  {formatOdds(bet.taken_odds)}
+                </span>
+              ) : null}
+              {bet.stake !== null ? (
+                <span>
+                  <span className="text-foreground/45 uppercase tracking-widest text-[10px] mr-1">
+                    Stake
+                  </span>
+                  {bet.stake.toFixed(2)}
+                </span>
+              ) : null}
+              {bet.stake !== null && bet.taken_odds !== null ? (
+                <span title="Potential payout if pick wins">
+                  <span className="text-foreground/45 uppercase tracking-widest text-[10px] mr-1">
+                    To win
+                  </span>
+                  {potentialPayout(bet.stake, bet.taken_odds).toFixed(2)}
+                </span>
+              ) : null}
+            </div>
+          ) : null}
         </div>
         <span
           className={`rounded-full border px-2.5 py-1 text-[10px] uppercase tracking-wider font-medium ${outcomeTones[bet.status]}`}

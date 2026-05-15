@@ -9,6 +9,7 @@ import { DatePill } from "@/components/DatePill";
 import { JerseyChip } from "@/components/JerseyChip";
 import { marketLabel } from "@/components/MarketLabel";
 import { PickRow } from "@/components/PickRow";
+import { PicksFilterBar } from "@/components/PicksFilterBar";
 import { PickSideTag } from "@/components/PickSideTag";
 import { PlayButton } from "@/components/PlayButton";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
@@ -18,13 +19,29 @@ import type { PredictionRow, TeamLite } from "@/components/types";
 
 export const revalidate = 30;
 
+const ALLOWED_MARKETS = new Set([
+  "points",
+  "rebounds",
+  "assists",
+  "threes_made",
+  "minutes",
+  "pra",
+  "steals",
+  "blocks",
+]);
+
 type PageProps = {
-  searchParams: Promise<{ date?: string }>;
+  searchParams: Promise<{ date?: string; market?: string; min?: string }>;
 };
 
 export default async function HomePage({ searchParams }: PageProps) {
   const params = await searchParams;
   const date = isValidIsoDate(params.date) ? params.date : todayIsoDate();
+  const marketFilter =
+    params.market && ALLOWED_MARKETS.has(params.market) ? params.market : null;
+  const minConfidenceFilter = Number.isFinite(Number(params.min))
+    ? Math.max(0, Math.min(100, Number(params.min)))
+    : 0;
   const prev = isoDateOffset(date, -1);
   const next = isoDateOffset(date, 1);
 
@@ -103,7 +120,18 @@ export default async function HomePage({ searchParams }: PageProps) {
     patternKeys.has(`${p.player_id}:${p.market}`);
 
   const botd = predictions.find((p) => p.is_bet_of_the_day) ?? null;
-  const others = botd ? predictions.filter((p) => p.id !== botd.id) : predictions;
+  const allOthers = botd
+    ? predictions.filter((p) => p.id !== botd.id)
+    : predictions;
+
+  const filteredOthers = allOthers.filter((p) => {
+    if (marketFilter && p.market !== marketFilter) return false;
+    if (minConfidenceFilter > 0 && p.confidence < minConfidenceFilter)
+      return false;
+    return true;
+  });
+  const filtersActive =
+    marketFilter !== null || minConfidenceFilter > 0;
 
   const combos = generateCombos(
     predictions as unknown as Prediction[],
@@ -171,12 +199,23 @@ export default async function HomePage({ searchParams }: PageProps) {
             </section>
           ) : null}
 
+          <PicksFilterBar
+            totalCount={allOthers.length}
+            filteredCount={filteredOthers.length}
+          />
+
           <section className="space-y-3">
             <h2 className="text-[11px] font-medium tracking-[0.22em] uppercase text-foreground/45">
-              All Picks
+              {filtersActive ? "Filtered Picks" : "All Picks"}
             </h2>
+            {filteredOthers.length === 0 ? (
+              <div className="glass rounded-2xl p-6 text-sm text-foreground/55 text-center">
+                No picks match your filters. Try widening the market or lowering
+                the confidence threshold.
+              </div>
+            ) : null}
             <div className="grid gap-3">
-              {others.map((p) => (
+              {filteredOthers.map((p) => (
                 <PickRow
                   key={p.id}
                   prediction={p}

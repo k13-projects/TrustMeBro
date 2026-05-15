@@ -38,18 +38,44 @@ export function ComboCard({
           />
         ))}
       </div>
-      <footer className="flex items-center justify-between text-[10px] uppercase tracking-widest text-foreground/55 pt-2 border-t border-white/8">
-        <span>PrizePicks</span>
-        <span className="flex items-center gap-3 font-mono tabular-nums">
-          <span title="Power: all picks must hit">
-            Power <span className="text-amber-300">{combo.power_payout}×</span>
-          </span>
-          {combo.flex_payout > 0 ? (
-            <span title="Flex: most picks must hit">
-              Flex <span className="text-foreground/65">{combo.flex_payout}×</span>
+      <footer className="pt-2 border-t border-white/8 space-y-2">
+        <div className="flex items-center justify-between text-[10px] uppercase tracking-widest text-foreground/55">
+          <span>PrizePicks payout</span>
+          <span className="flex items-center gap-3 font-mono tabular-nums">
+            <span className="flex items-center gap-1">
+              <span>Power</span>
+              <span className="text-amber-300">{combo.power_payout}×</span>
             </span>
+            {combo.flex_payout > 0 ? (
+              <span className="flex items-center gap-1">
+                <span>Flex</span>
+                <span className="text-foreground/65">
+                  {combo.flex_payout}×
+                </span>
+              </span>
+            ) : null}
+          </span>
+        </div>
+        <p className="text-[10px] text-foreground/50 leading-relaxed">
+          <span className="text-amber-300">Power</span> requires every pick to
+          hit.
+          {combo.flex_payout > 0 ? (
+            <>
+              {" "}
+              <span className="text-foreground/75">Flex</span> pays a smaller
+              multiple if most picks hit.
+            </>
           ) : null}
-        </span>
+        </p>
+        <a
+          href="https://app.prizepicks.com/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 rounded-full bg-white/8 hover:bg-white/12 border border-white/10 px-3 py-1 text-[11px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:ring-offset-2 focus-visible:ring-offset-[#050508]"
+        >
+          Open on PrizePicks
+          <span aria-hidden>↗</span>
+        </a>
       </footer>
     </article>
   );
