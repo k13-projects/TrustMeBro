@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { teamColors } from "@/lib/sports/nba/branding";
 import { ConfidencePill } from "./ConfidencePill";
 import { JerseyChip } from "./JerseyChip";
@@ -11,9 +12,11 @@ import type { PredictionRow, TeamLite } from "./types";
 export function PickRow({
   prediction,
   team,
+  trailing,
 }: {
   prediction: PredictionRow;
   team: TeamLite | null;
+  trailing?: ReactNode;
 }) {
   const market = marketLabel(prediction.market);
   const colors = teamColors(team?.abbreviation);
@@ -62,6 +65,7 @@ export function PickRow({
           </div>
         </div>
         <ConfidencePill score={prediction.confidence} />
+        {trailing}
         <span
           aria-hidden
           className="text-foreground/40 transition-transform group-open:rotate-90"

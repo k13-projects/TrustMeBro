@@ -7,6 +7,7 @@ import { JerseyChip } from "@/components/JerseyChip";
 import { marketLabel } from "@/components/MarketLabel";
 import { PickRow } from "@/components/PickRow";
 import { PickSideTag } from "@/components/PickSideTag";
+import { PlayButton } from "@/components/PlayButton";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
 import { ReasoningPanel } from "@/components/ReasoningPanel";
 import { TeamBadge } from "@/components/TeamBadge";
@@ -62,6 +63,23 @@ export default async function HomePage({ searchParams }: PageProps) {
     ((teams ?? []) as TeamLite[]).map((t) => [t.id, t] as const),
   );
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const playedSet = new Set<string>();
+  if (user && predictions.length > 0) {
+    const { data: userBets } = await supabase
+      .from("user_bets")
+      .select("prediction_id")
+      .eq("user_id", user.id)
+      .in(
+        "prediction_id",
+        predictions.map((p) => p.id),
+      );
+    for (const ub of userBets ?? []) playedSet.add(ub.prediction_id);
+  }
+  const isSignedIn = !!user;
+
   const botd = predictions.find((p) => p.is_bet_of_the_day) ?? null;
   const others = botd ? predictions.filter((p) => p.id !== botd.id) : predictions;
 
@@ -96,6 +114,8 @@ export default async function HomePage({ searchParams }: PageProps) {
             <BetOfTheDayCard
               prediction={botd}
               team={teamById.get(botd.player.team_id ?? -1) ?? null}
+              played={playedSet.has(botd.id)}
+              isSignedIn={isSignedIn}
             />
           ) : null}
 
@@ -109,6 +129,13 @@ export default async function HomePage({ searchParams }: PageProps) {
                   key={p.id}
                   prediction={p}
                   team={teamById.get(p.player.team_id ?? -1) ?? null}
+                  trailing={
+                    <PlayButton
+                      predictionId={p.id}
+                      initialPlayed={playedSet.has(p.id)}
+                      isSignedIn={isSignedIn}
+                    />
+                  }
                 />
               ))}
             </div>
@@ -122,9 +149,13 @@ export default async function HomePage({ searchParams }: PageProps) {
 function BetOfTheDayCard({
   prediction,
   team,
+  played,
+  isSignedIn,
 }: {
   prediction: PredictionRow;
   team: TeamLite | null;
+  played: boolean;
+  isSignedIn: boolean;
 }) {
   const colors = teamColors(team?.abbreviation);
   const market = marketLabel(prediction.market);
@@ -190,7 +221,16 @@ function BetOfTheDayCard({
           <ConfidenceRing score={prediction.confidence} />
         </div>
 
-        <ReasoningPanel reasoning={prediction.reasoning} />
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <ReasoningPanel reasoning={prediction.reasoning} />
+        </div>
+        <div>
+          <PlayButton
+            predictionId={prediction.id}
+            initialPlayed={played}
+            isSignedIn={isSignedIn}
+          />
+        </div>
       </div>
     </section>
   );
