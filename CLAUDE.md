@@ -33,6 +33,7 @@ Karar log'u — değiştirilirse buraya tarih + sebep ekle:
 - **2026-05-14**: Dashboard renk kodu: sezon avg / önceki maç / ondan önceki maç farklı renk; son 5 ayrı + son 10 ortalama yan yana.
 - **2026-05-14**: History: kullanıcı tek tıkla "ben bu beti oynadım" işaretler, sonucu kaydeder.
 - **2026-05-14**: Pattern engine: anomalileri/döngüleri yakalamalı (örn. "her 6 maçta sıfırlanma"). Sapma alert'i: "ortalama 8 ama önceki maç 5 yaptı".
+- **2026-05-14**: Canonical timezone = **America/Los_Angeles**. NBA maçları US saatinde oynanıyor ve PT gece yarısı sleyt'in en geç kapanma anı, dolayısıyla "bugün" tüm sayfa/cron/chat için LA günü demektir. `todayIsoDate()` LA tarihini döndürür; sabit `PROJECT_TIMEZONE` ifadesi [src/lib/date.ts](src/lib/date.ts)'te.
 
 ## Stack
 

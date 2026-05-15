@@ -46,16 +46,22 @@ async function runToolByName(
 export async function* streamChat(args: {
   systemInstruction: string;
   messages: ChatMessage[];
+  signal?: AbortSignal;
 }): AsyncGenerator<ChatStreamEvent> {
   const ai = client();
   const config = {
     systemInstruction: args.systemInstruction,
     tools: [{ functionDeclarations: [LOOKUP_PLAYER_DECLARATION] }],
+    // NOTE: abort only stops us reading further chunks — Google still bills
+    // tokens already generated. But it unblocks our route handler so the
+    // dev server / function instance isn't held by a dead tab.
+    abortSignal: args.signal,
   };
 
   const contents = toContents(args.messages);
 
   for (let iter = 0; iter < MAX_TOOL_ITERATIONS; iter++) {
+    if (args.signal?.aborted) return;
     const stream = await ai.models.generateContentStream({
       model: MODEL,
       contents,
@@ -70,6 +76,7 @@ export async function* streamChat(args: {
     }> = [];
 
     for await (const chunk of stream) {
+      if (args.signal?.aborted) return;
       const text = chunk.text;
       if (text) {
         yield { type: "text", value: text };

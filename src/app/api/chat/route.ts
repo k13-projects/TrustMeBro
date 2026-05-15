@@ -24,10 +24,19 @@ const BodySchema = z.object({
 // Token bucket per IP: 50 reqs / hour. Resets on cold start; fine for now.
 const RATE_LIMIT = 50;
 const WINDOW_MS = 60 * 60 * 1000;
+const MAX_BUCKETS = 5_000;
 const buckets = new Map<string, { count: number; resetAt: number }>();
 
 function rateLimit(ip: string): { ok: true } | { ok: false; retryAfter: number } {
   const now = Date.now();
+
+  // Opportunistic sweep so the Map doesn't grow without bound.
+  if (buckets.size > MAX_BUCKETS) {
+    for (const [k, v] of buckets) {
+      if (v.resetAt < now) buckets.delete(k);
+    }
+  }
+
   const b = buckets.get(ip);
   if (!b || b.resetAt < now) {
     buckets.set(ip, { count: 1, resetAt: now + WINDOW_MS });
@@ -40,10 +49,46 @@ function rateLimit(ip: string): { ok: true } | { ok: false; retryAfter: number }
   return { ok: true };
 }
 
+// Soft anti-CSRF: only respond to same-origin POSTs. Returns null on success,
+// or a response with the rejection. Loose by design — we just want to keep
+// random sites from posting to /api/chat and burning our free-tier quota.
+function assertSameOrigin(req: Request): NextResponse | null {
+  const origin = req.headers.get("origin");
+  const host = req.headers.get("host");
+  // No Origin header (e.g. curl, server-to-server) → allow; the rate limiter
+  // is the backstop. Browsers always send Origin on cross-site POSTs.
+  if (!origin || !host) return null;
+  let originHost: string;
+  try {
+    originHost = new URL(origin).host;
+  } catch {
+    return NextResponse.json({ error: "bad_origin" }, { status: 403 });
+  }
+  if (originHost !== host) {
+    return NextResponse.json({ error: "cross_origin_denied" }, { status: 403 });
+  }
+  return null;
+}
+
 function clientIp(req: Request): string {
   const fwd = req.headers.get("x-forwarded-for");
   if (fwd) return fwd.split(",")[0].trim();
   return req.headers.get("x-real-ip") ?? "unknown";
+}
+
+// Compose multiple AbortSignals; replace with AbortSignal.any() once we drop
+// any environment that doesn't ship it (Node 20.x is borderline).
+function anySignal(signals: AbortSignal[]): AbortSignal {
+  if (typeof AbortSignal.any === "function") return AbortSignal.any(signals);
+  const ctrl = new AbortController();
+  for (const s of signals) {
+    if (s.aborted) {
+      ctrl.abort(s.reason);
+      return ctrl.signal;
+    }
+    s.addEventListener("abort", () => ctrl.abort(s.reason), { once: true });
+  }
+  return ctrl.signal;
 }
 
 type PredictionRowWithRelations = {
@@ -81,7 +126,9 @@ async function fetchTodayPredictions(
     .in("game_id", gameIds)
     .order("is_bet_of_the_day", { ascending: false })
     .order("confidence", { ascending: false })
-    .limit(30);
+    // Cap context to top 10 — feeding all 30 daily picks burns ~3× the tokens
+    // for little benefit; bot can call lookup_player for anything off this list.
+    .limit(10);
 
   const preds = (rows ?? []) as unknown as PredictionRowWithRelations[];
   const teamIds = Array.from(
@@ -128,6 +175,9 @@ async function fetchTodayPredictions(
 }
 
 export async function POST(req: Request) {
+  const originReject = assertSameOrigin(req);
+  if (originReject) return originReject;
+
   const ip = clientIp(req);
   const rl = rateLimit(ip);
   if (!rl.ok) {
@@ -162,27 +212,53 @@ export async function POST(req: Request) {
 
   const systemInstruction = buildSystemPrompt({ date, predictions });
 
+  // Hard cap: 60s per chat request. Combined with the client's req.signal so a
+  // closed tab tears down the upstream Gemini call instead of burning quota.
+  const timeoutController = new AbortController();
+  const timer = setTimeout(() => timeoutController.abort(), 60_000);
+  const signal = anySignal([req.signal, timeoutController.signal]);
+
   const encoder = new TextEncoder();
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
+      let closed = false;
       const write = (event: ChatStreamEvent) => {
-        controller.enqueue(encoder.encode(JSON.stringify(event) + "\n"));
+        if (closed) return;
+        try {
+          controller.enqueue(encoder.encode(JSON.stringify(event) + "\n"));
+        } catch {
+          closed = true;
+        }
       };
       try {
         for await (const event of streamChat({
           systemInstruction,
           messages: parsed.data.messages,
+          signal,
         })) {
+          if (signal.aborted) break;
           write(event);
         }
       } catch (err) {
-        write({
-          type: "error",
-          message: err instanceof Error ? err.message : "Unknown error",
-        });
+        if (!signal.aborted) {
+          write({
+            type: "error",
+            message: err instanceof Error ? err.message : "Unknown error",
+          });
+        }
       } finally {
-        controller.close();
+        clearTimeout(timer);
+        closed = true;
+        try {
+          controller.close();
+        } catch {
+          // already closed by aborted client
+        }
       }
+    },
+    cancel() {
+      timeoutController.abort();
+      clearTimeout(timer);
     },
   });
 

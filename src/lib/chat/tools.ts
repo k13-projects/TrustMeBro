@@ -58,34 +58,51 @@ const MARKETS: PropMarket[] = [
 export async function runLookupPlayer(args: {
   name: string;
 }): Promise<LookupPlayerResult> {
-  const raw = (args.name ?? "").trim();
+  // Strip PostgREST filter metacharacters (commas, parens, dots, asterisks)
+  // so a name like "O'Neal, Jr." can't escape the .or() filter expression.
+  // Keep letters, spaces, hyphens, apostrophes — the union of real NBA names.
+  const raw = (args.name ?? "")
+    .replace(/[^\p{L}\s'\-]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
   if (!raw) return { ok: false, reason: "Empty player name." };
 
   const supabase = await createSupabaseServerClient();
 
-  // Split on whitespace so "LeBron James" matches first+last,
-  // but "Tatum" still matches a last name on its own.
-  const tokens = raw.split(/\s+/).filter(Boolean);
-  let query = supabase
+  // Tokens >= 2 chars only — a stray letter shouldn't broaden the search.
+  const tokens = raw.split(" ").filter((t) => t.length >= 2);
+  if (tokens.length === 0) return { ok: false, reason: `Couldn't parse player name "${args.name}".` };
+
+  // Build one combined OR that requires SOME token to hit first/last name.
+  // Final disambiguation happens in JS so we don't trust .or() chain semantics.
+  const orExpr = tokens
+    .flatMap((t) => [`first_name.ilike.%${t}%`, `last_name.ilike.%${t}%`])
+    .join(",");
+
+  const { data: players, error } = await supabase
     .from("players")
     .select("id, first_name, last_name, position, team_id, teams:teams(abbreviation)")
-    .limit(5);
-  for (const t of tokens) {
-    query = query.or(`first_name.ilike.%${t}%,last_name.ilike.%${t}%`);
-  }
-
-  const { data: players, error } = await query;
+    .or(orExpr)
+    .limit(20);
   if (error) return { ok: false, reason: `db error: ${error.message}` };
   if (!players || players.length === 0) {
     return { ok: false, reason: `No player matched "${raw}".` };
   }
 
-  // Prefer an exact full-name match when ambiguous.
-  const exact = players.find((p) => {
-    const full = `${p.first_name} ${p.last_name}`.toLowerCase();
-    return full === raw.toLowerCase();
-  });
-  const player = exact ?? players[0];
+  // Score candidates: exact full-name match > all-tokens-present > anything.
+  const lcTokens = tokens.map((t) => t.toLowerCase());
+  const scored = players
+    .map((p) => {
+      const full = `${p.first_name} ${p.last_name}`.toLowerCase();
+      const allTokensHit = lcTokens.every((t) => full.includes(t));
+      const isExact = full === raw.toLowerCase();
+      return { p, score: (isExact ? 100 : 0) + (allTokensHit ? 10 : 0) };
+    })
+    .sort((a, b) => b.score - a.score);
+  if (scored[0].score === 0) {
+    return { ok: false, reason: `No player matched "${raw}".` };
+  }
+  const player = scored[0].p;
   const team = Array.isArray(player.teams) ? player.teams[0] : player.teams;
 
   const { data: rows, error: statsErr } = await supabase
@@ -94,8 +111,7 @@ export async function runLookupPlayer(args: {
       "game_id, player_id, team_id, minutes, points, rebounds, assists, steals, blocks, turnovers, personal_fouls, fgm, fga, fg3m, fg3a, ftm, fta, is_home, started, games:games!inner(date)",
     )
     .eq("player_id", player.id)
-    .order("game_id", { ascending: false })
-    .limit(20);
+    .limit(40);
 
   if (statsErr) return { ok: false, reason: `db error: ${statsErr.message}` };
   if (!rows || rows.length === 0) {
@@ -105,9 +121,17 @@ export async function runLookupPlayer(args: {
     };
   }
 
-  const history: PlayerGameStatLine[] = rows.map((r) => {
-    const g = Array.isArray(r.games) ? r.games[0] : r.games;
-    return {
+  // computeFeatures contract: history MUST be sorted desc by game_date.
+  // Sort in JS off the joined date — game_id isn't monotonic with date
+  // (postseason, postponed games, all-star break).
+  const history: PlayerGameStatLine[] = rows
+    .map((r) => {
+      const g = Array.isArray(r.games) ? r.games[0] : r.games;
+      return { row: r, date: g?.date ?? "" };
+    })
+    .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
+    .slice(0, 20)
+    .map(({ row: r, date }) => ({
       game_id: r.game_id,
       player_id: r.player_id,
       team_id: r.team_id,
@@ -127,9 +151,8 @@ export async function runLookupPlayer(args: {
       fta: r.fta,
       is_home: r.is_home,
       started: r.started,
-      game_date: g?.date ?? "",
-    };
-  });
+      game_date: date,
+    }));
 
   type MarketSummary = {
     season_avg: number;

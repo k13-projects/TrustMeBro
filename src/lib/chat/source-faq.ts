@@ -9,6 +9,10 @@
 export const SOURCE_FAQ = `
 TrustMeBro — Source & Methodology FAQ
 
+"Today" everywhere in the app means today in America/Los_Angeles.
+NBA games are played on US clock, and PT midnight is the latest a slate
+can run, so the date rolls over there — not at UTC midnight.
+
 Data sources, in priority order:
   1. Official NBA API / NBA.com.
   2. balldontlie.io (free tier) — currently the primary feed.

@@ -42,6 +42,8 @@ export function ChatPanel({
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const stickyBottomRef = useRef(true);
 
   useEffect(() => {
     // Hydrate from sessionStorage post-mount so SSR and first client render
@@ -67,9 +69,29 @@ export function ChatPanel({
   }, [messages]);
 
   useEffect(() => {
-    if (!listRef.current) return;
-    listRef.current.scrollTop = listRef.current.scrollHeight;
+    const el = listRef.current;
+    if (!el) return;
+    // Only autoscroll when the user is already pinned to the bottom — otherwise
+    // a stream-in mid-read yanks them away from what they're trying to read.
+    if (stickyBottomRef.current) {
+      el.scrollTop = el.scrollHeight;
+    }
   }, [messages, open]);
+
+  function onListScroll() {
+    const el = listRef.current;
+    if (!el) return;
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    stickyBottomRef.current = distanceFromBottom < 80;
+  }
+
+  // Auto-grow textarea up to max-h-32 (128px).
+  useEffect(() => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    ta.style.height = "auto";
+    ta.style.height = `${Math.min(ta.scrollHeight, 128)}px`;
+  }, [input]);
 
   async function send(text: string) {
     const trimmed = text.trim();
@@ -93,16 +115,19 @@ export function ChatPanel({
     setInput("");
     setBusy(true);
 
+    // Server caps history at 20 and requires non-empty content. Drop empty
+    // assistant turns (tool-only responses can end with no text) and keep
+    // only the most recent window so long sessions don't 400.
+    const wirePayload = [...messages, userMsg]
+      .filter((m) => m.content.trim().length > 0)
+      .slice(-19)
+      .map((m) => ({ role: m.role, content: m.content }));
+
     try {
       const resp = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages: [...messages, userMsg].map((m) => ({
-            role: m.role,
-            content: m.content,
-          })),
-        }),
+        body: JSON.stringify({ messages: wirePayload }),
       });
 
       if (!resp.ok || !resp.body) {
@@ -254,6 +279,7 @@ export function ChatPanel({
 
           <div
             ref={listRef}
+            onScroll={onListScroll}
             className="flex-1 overflow-y-auto px-4 py-4 space-y-3"
           >
             {messages.length === 0 ? (
@@ -267,22 +293,26 @@ export function ChatPanel({
           <form
             onSubmit={(e) => {
               e.preventDefault();
+              stickyBottomRef.current = true;
               send(input);
             }}
             className="border-t border-white/10 p-3 flex items-end gap-2"
           >
             <textarea
+              ref={textareaRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
+                  // Force-scroll on send so the user sees their own message.
+                  stickyBottomRef.current = true;
                   send(input);
                 }
               }}
               rows={1}
               placeholder="Ask about today's picks, players, sources…"
-              className="flex-1 resize-none bg-white/5 rounded-xl px-3 py-2 text-sm placeholder:text-foreground/35 focus:outline-none focus:bg-white/10 transition-colors max-h-32"
+              className="flex-1 resize-none bg-white/5 rounded-xl px-3 py-2 text-sm placeholder:text-foreground/35 focus:outline-none focus:bg-white/10 transition-colors overflow-y-auto"
             />
             <button
               type="submit"

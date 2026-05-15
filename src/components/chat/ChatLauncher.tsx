@@ -23,6 +23,13 @@ export function ChatLauncher() {
         onClick={() => setOpen((o) => !o)}
         className="fixed bottom-6 right-6 z-40 size-14 rounded-full glass glass-sheen grain flex items-center justify-center text-foreground/90 hover:text-foreground transition-transform hover:scale-105 active:scale-95 shadow-[0_0_30px_rgba(99,102,241,0.45)]"
       >
+        {/* Idle pulse — only when closed, so it advertises itself without distracting. */}
+        {!open ? (
+          <span
+            aria-hidden
+            className="absolute inset-0 rounded-full ring-2 ring-indigo-400/50 animate-ping opacity-60"
+          />
+        ) : null}
         <span
           aria-hidden
           className="absolute inset-0 rounded-full bg-gradient-to-br from-indigo-400/30 via-fuchsia-500/20 to-rose-500/30 opacity-80"
