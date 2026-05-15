@@ -72,6 +72,35 @@ body::before {
     0 30px 80px -25px rgba(0, 0, 0, 0.65);
 }
 
+/* Chat panel surface — dense enough that body text reads against any page
+   underneath. Uses the page background tone with high opacity instead of
+   the translucent white tint of `glass` / `glass-strong`. */
+@utility glass-chat {
+  position: relative;
+  background-color: rgb(8 10 18 / 0.86);
+  backdrop-filter: blur(40px) saturate(160%);
+  -webkit-backdrop-filter: blur(40px) saturate(160%);
+  border: 1px solid rgb(var(--glass-tint) / 0.10);
+  box-shadow:
+    inset 0 1px 0 0 rgb(var(--glass-tint) / 0.10),
+    0 40px 120px -30px rgba(0, 0, 0, 0.75);
+}
+
+@keyframes shimmer {
+  0%, 100% { opacity: 0.85; transform: scale(1); }
+  50%      { opacity: 1;    transform: scale(1.12); }
+}
+.shimmer { animation: shimmer 2.6s ease-in-out infinite; }
+
+@keyframes gradient-shift {
+  0%, 100% { background-position: 0% 50%; }
+  50%      { background-position: 100% 50%; }
+}
+.gradient-shift {
+  background-size: 200% 200%;
+  animation: gradient-shift 6s ease-in-out infinite;
+}
+
 /* Top sheen that gives glass surfaces the Apple-style highlight. */
 .glass-sheen::after {
   content: "";
