@@ -1,0 +1,793 @@
+NBA İSTATISTIK ANALIZI VE BAHIS TAHMIN SISTEMI KARARLARI
+──────────────────────────────────────────────────
+Date: 5/14/2026, 4:15:31 PM
+Duration: 15m 8s
+Platform: desktop
+Messages: 254  |  AI Responses: 0
+
+SUMMARY
+──────────────────────────────────────────────────
+Bu toplantıda Speaker 1 ve Speaker 2, NBA oyuncu ve takım istatistiklerini analiz ederek bahis tahminleri üreten bir sistemin operasyonel çerçevesini belirlemişlerdir. Sistem, oyuncuların son 5 ve 10 maçlık performanslarını, sezon ortalamalarını ve iç/dış saha verilerini Google ve resmi NBA kaynaklarından çekerek analiz edecektir. Speaker 2, sistemin sadece sayısal verilerle sınırlı kalmayıp oyuncuların özel hayatlarını ve magazin haberlerini de performans tahmini için birer girdi olarak kullanması gerektiğini vurgulamıştır. En kritik karar, sistemin her maç için en fazla süre alan oyuncular üzerinden güven puanı yüksek bahis önerileri sunması ve bir ödül/ceza mekanizmasıyla (kazanç için +1, kayıp için -0.5 puan) optimize edilmesidir. Ayrıca, tüm bu verilerin görselleştirildiği bir dashboard ve geçmiş bahislerin takibi için bir geçmiş (history) sekmesi oluşturulacaktır. Toplantı sonunda sistemin ilk etapta sadece NBA odaklı çalışmasına karar verilmiştir.
+
+NBA OYUNCU VE TAKIM VERI ANALIZ KURALLARI
+  • [object Object]
+  • [object Object]
+  • [object Object]
+
+TAHMIN ALGORITMASI VE GÜVEN PUANLAMASI
+  • [object Object]
+  • [object Object]
+  • [object Object]
+
+PERFORMANS TAKIBI VE ÖDÜL MEKANIZMASI
+  • [object Object]
+  • [object Object]
+  • [object Object]
+
+DASHBOARD VE GÖRSELLEŞTIRME STANDARTLARI
+  • [object Object]
+  • [object Object]
+
+TRANSCRIPT
+──────────────────────────────────────────────────
+[4:15:37 PM] participant:
+Yok, önce bir oyuncuyla sonra bir takımla
+
+[4:15:41 PM] participant:
+sonra bir başla ilgili.
+
+[4:15:41 PM] participant:
+Yani öncelikle
+
+[4:15:45 PM] participant:
+Yani öncelikle personel oyuncuların
+
+[4:15:45 PM] participant:
+genel olarak
+
+[4:15:48 PM] participant:
+genel olarak kaç dakika oynadıkları
+
+[4:15:52 PM] participant:
+maç, kaç dakika oynadıkları, dakika başına yaptıkları analistler,
+
+[4:15:57 PM] participant:
+sezon boyunca, son beş maç boyunca olma
+
+[4:16:01 PM] participant:
+boyunca aldığı ribaund attığı sayı
+
+[4:16:03 PM] user:
+Başka?
+
+[4:16:10 PM] participant:
+İşte oynadığı, oynadığı şurayı
+
+[4:16:14 PM] participant:
+bilmemiz gerekiyor, bütün sezon boyunca, tamam mı?
+
+[4:16:17 PM] participant:
+Yani başladığı şeyinden beri bütün sezonda ya da play-off'larda, seride
+
+[4:16:21 PM] participant:
+son son on maçını bilmemiz gerekiyor yani. Ama
+
+[4:16:25 PM] participant:
+bize son on maçını direkt net olarak gösterebilmeli.
+
+[4:16:28 PM] participant:
+Ve sezon boyunca algoritmasını yapabilmeli.
+
+[4:16:33 PM] participant:
+Excels mi?
+
+[4:16:33 PM] user:
+Peki bunu hangi sorgedan almalı?
+
+[4:16:36 PM] user:
+Nedir Trusted sorce'lar?
+
+[4:16:46 PM] participant:
+Buna bakmamız gerekiyor, bundan çok emin değilim.
+
+[4:16:50 PM] participant:
+Yani hangi yerden detayı çekeceğini soruyorsun, doğru muyum?
+
+[4:16:53 PM] user:
+Aynen yani hangi sorsa güvensin. Çünkü herkes başka bir şey yazabilir.
+
+[4:16:58 PM] participant:
+Google
+
+[4:16:58 PM] user:
+Veya bazıları yalan olabilir. İnternette ara demek mantıklı değil yani.
+
+[4:17:01 PM] participant:
+Google'a güvenebilir miyiz Google'dan aldığı yere detaya?
+
+[4:17:06 PM] user:
+Yani direkt Google'ın kendi verdiği data olabilir ama bence daha spesifik
+
+[4:17:11 PM] user:
+bir şey daha mantıklı olur. İyi bir pad, iyi bir analiz sitesi vardır mesela NBA'i
+
+[4:17:16 PM] user:
+official sitesi vardır, ne bileyim
+
+[4:17:16 PM] user:
+nedir mantıklı olan sence? Sen
+
+[4:17:17 PM] user:
+nedir mantıklı olan sence? Sen nereden bakıyorsun?
+
+[4:17:20 PM] participant:
+Ben genelde Google'dan bakıyorum.
+
+[4:17:25 PM] participant:
+Maç istatistiklerine.
+
+[4:17:26 PM] participant:
+Maç istatistikleri
+
+[4:17:29 PM] participant:
+Maç istatistiklerinden kişi istatistiklerine gidiyorum.
+
+[4:17:32 PM] user:
+Okay.
+
+[4:17:45 PM] user:
+Başka nelere bakmalıyız abi? Sen aklına gelen bütün şeyleri
+
+[4:17:48 PM] user:
+söyle yadur ben şu anda kuruluyorum.
+
+[4:17:54 PM] participant:
+Sonra,
+
+[4:17:55 PM] participant:
+orta
+
+[4:17:59 PM] participant:
+ortalama bu takımın bir sene
+
+[4:18:02 PM] participant:
+içerisinde yani ortalama yani ortalama olarak
+
+[4:18:06 PM] participant:
+her maçta kaç sayı attığı, bu sayıların kaçıncı
+
+[4:18:10 PM] participant:
+periyotlarda atıldığı, bu atılan sayıların
+
+[4:18:14 PM] participant:
+ortalama dakika başına düşen oyuncularda, sürü düşüyor ya,
+
+[4:18:18 PM] participant:
+mesela ilk beşindeki oyuncuların yüzdesi, işte
+
+[4:18:21 PM] participant:
+sayıların işte genelde yüzde o yirmi birini azaltıyor, yüzde on dokuzunu
+
+[4:18:26 PM] participant:
+el atıyor, yüzde kırkını şu atıyor. İşte
+
+[4:18:29 PM] participant:
+vibantları genelde şu insanlar alıyor. Şu işte anıl
+
+[4:18:33 PM] participant:
+her maç başına ortalama şu şu şu şu istatistiklerle oynuyor.
+
+[4:18:38 PM] participant:
+Anıl iç saha maçlarında şöyle, dış saha maçlarında şu şekilde oynuyor.
+
+[4:18:43 PM] participant:
+Anıl'ın geçen sene bu takıma karşı oynadığı
+
+[4:18:45 PM] participant:
+oyna oynadığı
+
+[4:18:48 PM] participant:
+oyna oynadığı
+
+[4:18:48 PM] participant:
+performansı göre
+
+[4:18:50 PM] participant:
+performansı görebiliriz.
+
+[4:18:58 PM] participant:
+Bir sonraki, bir sene önceki
+
+[4:19:02 PM] participant:
+istatistikleriyle bu seneki istatistiklerin
+
+[4:19:05 PM] participant:
+şeylerini karşılaştırabiliriz. Şu an sesli düşünüyorum yanlış anlaşılmasın.
+
+[4:19:08 PM] user:
+Tamam, veya NBA ile başlayacağız.
+
+[4:19:09 PM] user:
+Değil mi? Başka bir şey ekleyeyim mi? NFL'de ekleyeyim mi?
+
+[4:19:11 PM] participant:
+Şu an NBA.
+
+[4:19:14 PM] user:
+Sadece NBA yeterli ilk etapta.
+
+[4:19:29 PM] participant:
+Ama her şeyden önce ben bir takıma girdiğim
+
+[4:19:32 PM] participant:
+girdiğimde o takımın bütün oyuncularının ilk görmek istediğim şeyleri
+
+[4:19:37 PM] participant:
+bu adamın son beş maçtaki ribaund'ı.
+
+[4:19:42 PM] participant:
+Son beş maçtaki sayısı, son beş maçtaki faul'ü, son beş maçtaki
+
+[4:19:46 PM] participant:
+attığı üçlük, denediği üçlük, son beş maçtaki
+
+[4:19:46 PM] participant:
+bütün
+
+[4:19:50 PM] participant:
+bütün istatistiklerini girer girmez görebilmeliyim. Son beş maçtaki
+
+[4:19:55 PM] participant:
+işte puan ortalaması gibi. Anladım. Girdim ya.
+
+[4:19:59 PM] participant:
+Mesela Los Angeles'le'yi kısa girdim. Bütün takımı görebilmeliyim.
+
+[4:20:01 PM] participant:
+Sonra o
+
+[4:20:03 PM] participant:
+Sonra oyuncunun içine girdiğimde
+
+[4:20:04 PM] participant:
+mesela Anıl'a tık
+
+[4:20:08 PM] participant:
+mesela anıl'a tıklat, blabran'a tıkladım. Laboran'a
+
+[4:20:11 PM] participant:
+o sezonki bütün performanslarını görebilmeliyim. Asistors asistleri,
+
+[4:20:16 PM] participant:
+şu asist, şu maçta asiste.
+
+[4:20:17 PM] participant:
+Puanı ribaund'ı,
+
+[4:20:22 PM] participant:
+takıma olan katkısı,
+
+[4:20:30 PM] user:
+Tamam.
+
+[4:20:31 PM] user:
+Başka
+
+[4:20:33 PM] user:
+Başka ne geliyor aklına?
+
+[4:20:47 PM] participant:
+Birtakım için şu an için işte bunlar geliyor.
+
+[4:21:05 PM] participant:
+Düşünüyorum.
+
+[4:21:09 PM] participant:
+Ondan sonracığını düşünüyorum.
+
+[4:21:12 PM] participant:
+Düşünüyorum, düşünüyorum. Başka ne olabilir?
+
+[4:21:21 PM] participant:
+Evet, sessizliklerim bu kadar kanka baktığın zaman.
+
+[4:21:24 PM] participant:
+Yani bir takımla ilgili bir numaraları, bütün de tat numaraları.
+
+[4:21:29 PM] participant:
+Yani bunların örüntülerini örüntülerini işte kaç maçta bir,
+
+[4:21:33 PM] participant:
+şey yaptığını falan nasıl yaparız onu bence zamanla görebileceğimiz bir şey.
+
+[4:21:34 PM] user:
+Neyi abi? Bir daha söyle.
+
+[4:21:37 PM] participant:
+Mesela bu örüntüler ne kadar da bir bozuldu? Evet,
+
+[4:21:42 PM] participant:
+Anıl her maç yirmi sayı atıyor ama Anıl'ı altı maçla biri
+
+[4:21:46 PM] participant:
+istatistikleri Anıl'ın sıfırlanıyor. Anladın mı?
+
+[4:21:50 PM] user:
+Ya da ne olduğunu ne olduğunda bu tarz
+
+[4:21:54 PM] user:
+düşüşler yaşadığına dair bu paronlardan
+
+[4:21:58 PM] user:
+çıkarım yapıp böyle bir şey yaşanacaksa bunun da
+
+[4:22:02 PM] user:
+bize öngörüsünü bildireceği, inside'lar
+
+[4:22:05 PM] user:
+olsun mesela her oyuncu için veya
+
+[4:22:07 PM] participant:
+Evet.
+
+[4:22:09 PM] user:
+her takım için bunu topladığımız datadan
+
+[4:22:14 PM] user:
+genel olarak pattern'ları yakalamaya çalışsın. Bununla birlikte
+
+[4:22:19 PM] user:
+kişisel hayatlarında bu oyuncuların neler olduğunu da takip
+
+[4:22:23 PM] user:
+gerekiyor. İşte magazin haberleri olsun,
+
+[4:22:24 PM] user:
+takıma yakın insanların
+
+[4:22:26 PM] user:
+takıma yakın insanların hesapları olsun, yakın arkadaşları olsun,
+
+[4:22:31 PM] user:
+bunlar için de ayrı bir çalışma yapılması gerekiyor çünkü
+
+[4:22:35 PM] user:
+oyuncuların performanslarına etki eden
+
+[4:22:39 PM] user:
+istatistiklerin belirlenmesini sağlayan şeylerin büyük bir kısmı
+
+[4:22:42 PM] user:
+oyuncuların personal hayatından da geçiyor. Bunu da
+
+[4:22:46 PM] user:
+göz ardı etmemesi gerekiyor. Bununla birlikte kendi başına
+
+[4:22:50 PM] user:
+buna etki eden diğer faktörleri de belirleyip bize sunması gerekiyor.
+
+[4:22:54 PM] user:
+Kendi tahminlerini
+
+[4:22:57 PM] user:
+bize bildirmesi gerekiyor. Bu oyuncu bu maç önümüzdeki maç şu kadar sayı atar,
+
+[4:22:59 PM] participant:
+Evet,
+
+[4:23:02 PM] user:
+ortalamaya göre gibi tahminler yapması gerekiyor. Bizim tahminlerimizi kolaylaştırması gerekiyor.
+
+[4:23:07 PM] participant:
+Evet, katılıyorum.
+
+[4:23:07 PM] user:
+Başka?
+
+[4:23:10 PM] participant:
+Bize mesela
+
+[4:23:14 PM] participant:
+internetteki şeyleri, işte
+
+[4:23:17 PM] participant:
+bet sitelerindeki şeyleri takip edebilir.
+
+[4:23:20 PM] participant:
+Hafta boyunca kaç açılmış, bu açılan, ya ama işte step,
+
+[4:23:21 PM] participant:
+diye düşünüyor.
+
+[4:23:23 PM] participant:
+diye düşünüyorum. Baksanıza mı?
+
+[4:23:25 PM] user:
+Şimdi biz bir girelim yine
+
+[4:23:30 PM] user:
+onları da ilerletmeye çalışırız. Diyorsun ki bahis sitelerindeki canlı
+
+[4:23:31 PM] user:
+oranların değişimine de
+
+[4:23:34 PM] user:
+oranların değişimine de dikkat etmesi gerekiyor.
+
+[4:23:37 PM] participant:
+Evet. Oranın değişimine dikkat etsin. Bize mesela biz hep
+
+[4:23:41 PM] participant:
+iki katına katlamak istiyoruz ya. En yüksek gördüğü oranları
+
+[4:23:46 PM] participant:
+yani şey yap, bir duvarlandırma oluşturması lazım kendine.
+
+[4:23:50 PM] participant:
+Evet, ben bu oyuncuya bu maçta dokuz puan veriyorum. Dokuz puan vermemin sebebi
+
+[4:23:54 PM] participant:
+şunlar. Şunu check ettim, şu çek var, şu çek var, şu çek var,
+
+[4:23:59 PM] participant:
+şu çek var. Bu yüzden dokuz veriyorum, iki tane dokuz oyuncuyu
+
+[4:24:02 PM] participant:
+yan yana getirebilme kombinasyonu da yapabilmeli. Anladın mı?
+
+[4:24:03 PM] user:
+Dokuz oyuncu demek ne demek?
+
+[4:24:07 PM] participant:
+Yani güven olarak işte diyorum ki
+
+[4:24:11 PM] participant:
+Parisbaşı mesela Dembail'e gol yatar. Anladın mı mesela?
+
+[4:24:16 PM] user:
+Bu bir örnek. Bu biz MBA konuştuğumuz için anladım ne demek istediğini ama yani
+
+[4:24:18 PM] user:
+kendince bu
+
+[4:24:24 PM] participant:
+Avıl her maça on beş tane rebound yapmış.
+
+[4:24:27 PM] participant:
+Demek ki Anıl'ın bu maç altı ribaund'ı benim için yüzde doksan beş
+
+[4:24:33 PM] participant:
+Evren ve her maç dokuz tane
+
+[4:24:36 PM] participant:
+üçlük atmış. Baba diyorum ki GLGA bugün en iyi kötü iki tane üçlük atar.
+
+[4:24:38 PM] participant:
+Dokuz puan yani anladın mı?
+
+[4:24:40 PM] user:
+Tamam şöyle diyelim. Bize günlük
+
+[4:24:41 PM] participant:
+Dokuz dokuz.
+
+[4:24:45 PM] user:
+günlük ya da haftalık minimum on tane
+
+[4:24:45 PM] user:
+bet çıkar
+
+[4:24:49 PM] user:
+bet çıkarsın ve bunları yüz üzerinden
+
+[4:24:52 PM] user:
+güven oranına göre sıralasın. En yükseği en yukarıda
+
+[4:24:56 PM] user:
+aşağıya doğru sıralasın. Yani bize verdiği üstteki üç tanesi
+
+[4:25:01 PM] participant:
+Bence bunu her maç için yapsın, her maç için
+
+[4:25:08 PM] participant:
+maçta beş oyuncu mu var? Her maçtaki altı oyuncu için yapsın mesela, iki takımdakine.
+
+[4:25:12 PM] user:
+Tamam, yani her maç için bize altışar tane
+
+[4:25:13 PM] user:
+bet
+
+[4:25:17 PM] user:
+bet versin ve bu betlerin amacı
+
+[4:25:21 PM] user:
+ikiye katlamak. Yani nasıl yaparız da bire iki alırızı
+
+[4:25:25 PM] user:
+kovalayacak ve bunun için en güvendiği bet'leri
+
+[4:25:28 PM] user:
+yukarıdan aşağıya sıralayacak ve güven puanını da yanında yazacak.
+
+[4:25:31 PM] participant:
+Evet.
+
+[4:25:38 PM] user:
+Orada mesela görsel olarak görmek istediğimiz istatistiklerin
+
+[4:25:43 PM] user:
+işte ne bileyim şablonları
+
+[4:25:48 PM] user:
+ne bileyim yan yana karşılaştırmaları vesaire gibi
+
+[4:25:52 PM] user:
+bize görsel olarak da bunu gösterebileceği
+
+[4:25:52 PM] user:
+kıyaslama
+
+[4:25:53 PM] user:
+kıyaslamalar
+
+[4:25:57 PM] user:
+bulunduran bir dashboard da istiyoruz.
+
+[4:26:00 PM] participant:
+Tabii ki.
+
+[4:26:03 PM] participant:
+Her şeyi rahatça görebileceğimiz.
+
+[4:26:05 PM] user:
+Bize bir tane de günün beti olarak
+
+[4:26:09 PM] user:
+yıldızlı bu günlük verdiği betin
+
+[4:26:13 PM] user:
+en üzerinde günün beti olarak yüzde yüz inandığı veya
+
+[4:26:16 PM] user:
+yüzde yüze en yakın olan inandığı
+
+[4:26:17 PM] user:
+beti verecek. Yani
+
+[4:26:21 PM] user:
+beti verecek. Yani bize her gün paramızı ikiye katlamamız için
+
+[4:26:25 PM] user:
+gereken tüyoyu yaptığı araştırmayla veren bir
+
+[4:26:30 PM] user:
+uygulama olacak bu ve bunun için de birçok kaynağın kendi başına
+
+[4:26:34 PM] user:
+analiz edip gerekiyorsa API'larla, gerekiyorsa newslet
+
+[4:26:38 PM] user:
+olup bu datayı kendisi çekip o sistemi yaratıp
+
+[4:26:42 PM] user:
+düzenli olarak gündelik bu haberleri ve
+
+[4:26:46 PM] user:
+kaynakları takip edip insanların yorumlarını okuyup
+
+[4:26:48 PM] user:
+insanların haberlerini okuyup
+
+[4:26:49 PM] user:
+bir
+
+[4:26:49 PM] user:
+bir
+
+[4:26:54 PM] user:
+analiz yapacak ve bir tahminde bulunacak bizim için ve
+
+[4:26:59 PM] user:
+bu yaptığı tahminlere göre ödül kazanacak.
+
+[4:27:03 PM] user:
+İyi tahmin yaptıkça, kazandıkça onu ödüllendireceğiz.
+
+[4:27:08 PM] user:
+Ona artı bir puan vereceğiz her
+
+[4:27:13 PM] user:
+kazandığı bET için. Her kaybettiği bET için de eksi sıfır nokta beş
+
+[4:27:17 PM] user:
+kaybedecek. Böylece artıda kalması onun
+
+[4:27:21 PM] user:
+hayati amacı olacak ve ne kadar yukarıya çıkarsa puanı
+
+[4:27:24 PM] user:
+o kadar büyük ödüller kazanmaya başlayacak. Bizim şu anda
+
+[4:27:28 PM] user:
+o bir teste tabi ve biz onu
+
+[4:27:31 PM] user:
+artıda kalabilecek mi yoksa eksiye mi düşecek onu anlamaya çalışacağız.
+
+[4:27:39 PM] participant:
+Iyi.
+
+[4:27:40 PM] user:
+Buraya kadar güzel.
+
+[4:27:45 PM] user:
+Başka var mı aklına gelen herhangi bir şey?
+
+[4:27:45 PM] participant:
+Çok iyi sistem.
+
+[4:27:50 PM] participant:
+Düşünüyorum,
+
+[4:27:53 PM] user:
+Biraz düşün biraz zaman ayır.
+
+[4:27:54 PM] user:
+Son
+
+[4:27:55 PM] participant:
+Şimdi bilgisayara odaklan. Hıhı.
+
+[4:27:58 PM] user:
+Son yaptığım bet'leri düşün.
+
+[4:27:58 PM] user:
+A bir yaptığımız
+
+[4:28:01 PM] user:
+A bir yaptığımız bet'ler olursa oradan seçip
+
+[4:28:05 PM] user:
+bunları da history'de tek tıkla
+
+[4:28:09 PM] user:
+biz bu beti oynadık deyip sonucunun ne olduğunu kaydedebileceğimiz
+
+[4:28:13 PM] user:
+eski betlerimizi ve sonuçlarını takip edebileceğimiz bir de sistemi olsun.
+
+[4:28:14 PM] participant:
+Evet, tabii ki.
+
+[4:28:17 PM] user:
+History gibisinden. Oynadığımız betleri oradan işaretleyebilelim ve takibini yapabilelim.
+
+[4:28:18 PM] participant:
+Bak sen bunu, sen bunu böyle oynamıştın.
+
+[4:28:19 PM] participant:
+Tabii
+
+[4:28:23 PM] participant:
+Tabii şeyi de verebilmeli, mesela
+
+[4:28:27 PM] participant:
+ortalamada istatistiklerde
+
+[4:28:29 PM] participant:
+normalde sekiz ama bak bir önceki var sekiz yapamamış diyebilmeli de.
+
+[4:28:34 PM] participant:
+Anladın mı ne eleştirdiğimi?
+
+[4:28:39 PM] user:
+Yani end fresh datasından mı bahset
+
+[4:28:43 PM] user:
+bahsediyorsun? Geçen maç böyle olmuş ama ortalaması bu şekilde gibi.
+
+[4:28:45 PM] user:
+Yoksa biz oynadıktan sonra mı?
+
+[4:28:48 PM] participant:
+Yani şöyle düşün, peki bir önceki maç
+
+[4:28:52 PM] participant:
+bir önceki maç ortalama istatistikleri böyle, bir önceki maça kadar böyleymiş.
+
+[4:28:55 PM] participant:
+On ikiymiş ama bir önceki maç sekiz yapmış, on iki yapamamış bak.
+
+[4:28:59 PM] user:
+Ha, okay, şöyle yapalım o zaman. Dedim ya sana böyle bir dashboard'da bir
+
+[4:29:02 PM] participant:
+Hıhı. Evet.
+
+[4:29:03 PM] user:
+şey, karşılaştırma göstersin. Mesela bir renkle
+
+[4:29:06 PM] user:
+ortalamasını göstersin, başka bir renkle
+
+[4:29:09 PM] user:
+bir önceki maçı, başka bir renkle ondan önceki maçı göstersin. Bize
+
+[4:29:13 PM] user:
+bir doğru bir yolunu bularak çok yer kaplamadan
+
+[4:29:16 PM] user:
+hem son beş maçtaki performansını ayrı ayrı göster
+
+[4:29:19 PM] user:
+göstersin hem de son mesela on maçtaki ortalamasını göstersin.
+
+[4:29:21 PM] participant:
+Evet.
+
+[4:29:22 PM] user:
+Uygun mudur?
+
+[4:29:25 PM] user:
+Güzel. Başka?
+
+[4:29:30 PM] user:
+Tekrardan recap yapalım.
+
+[4:29:34 PM] user:
+Her maç için iki takımdan da
+
+[4:29:39 PM] user:
+altı oyuncu için, ilk altıya gireceğini düşündüğümüz oyuncu için
+
+[4:29:40 PM] user:
+mi yapsın?
+
+[4:29:43 PM] participant:
+En fazla süre alabileceğini düşündüğümüz oyuncular için yapalım.
+
+[4:29:45 PM] user:
+Tamam, en fazla süre alacağını düşündüğü oyuncular
+
+[4:29:46 PM] user:
+için bunun bir sınırı yok.
+
+[4:29:56 PM] user:
+Buraya başka data sokmazsak yalnız burada
+
+[4:30:00 PM] user:
+edition seni kaydediyor.
+
+[4:30:09 PM] user:
+Tamam abi, şu an için bu kadar mı?
+
+[4:30:14 PM] participant:
+Şu an aklıma gelen bunlar.
+
+[4:30:16 PM] participant:
+Ben ama tekrar hepsini düşün, yazdıklarıma bakarım.
+
+[4:30:21 PM] participant:
+Şimdi tekrar şey yaparım mesela neye ihtiyacın var?
+
+[4:30:22 PM] participant:
+Bir oynamaya çalışırım.
+
+[4:30:30 PM] user:
+Dur bakayım ben şimdi yazacağım o uygulamayı, bir şuraya kadar bir alayım.
+
+[4:30:31 PM] user:
+Burada bir duralım.
+
+[4:30:37 PM] participant:
+Sen bizi şey yapıyordun,
+
+[4:30:37 PM] participant:
+sen bizi tayin ediyorsun,
+
+[4:30:38 PM] participant:
+sen bizi tayin ediyorsun, sen Edi, sen Edi
+
+[4:30:38 PM] participant:
+sen bizi tayin ediyorsun, sen Edi, sen Edison
