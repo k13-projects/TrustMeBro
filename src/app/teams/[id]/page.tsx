@@ -50,8 +50,8 @@ type StatRow = {
   fg3a: number | null;
   is_home: boolean;
   games:
-    | { date: string }
-    | { date: string }[]
+    | { date: string; home_team_id: number; visitor_team_id: number }
+    | { date: string; home_team_id: number; visitor_team_id: number }[]
     | null;
 };
 
@@ -83,7 +83,7 @@ export default async function TeamDetailPage({ params }: PageProps) {
     ? await supabase
         .from("player_game_stats")
         .select(
-          "game_id, player_id, team_id, minutes, points, rebounds, assists, steals, blocks, fgm, fga, fg3m, fg3a, is_home, games!inner(date)",
+          "game_id, player_id, team_id, minutes, points, rebounds, assists, steals, blocks, fgm, fga, fg3m, fg3a, is_home, games!inner(date, home_team_id, visitor_team_id)",
         )
         .in("player_id", playerIds)
         .order("games(date)", { ascending: false })
@@ -95,10 +95,16 @@ export default async function TeamDetailPage({ params }: PageProps) {
     const list = historyByPlayer.get(s.player_id) ?? [];
     if (list.length >= 30) continue;
     const games = Array.isArray(s.games) ? (s.games[0] ?? null) : s.games;
+    const opponentId = games
+      ? s.is_home
+        ? games.visitor_team_id
+        : games.home_team_id
+      : null;
     list.push({
       game_id: s.game_id,
       player_id: s.player_id,
       team_id: s.team_id,
+      opponent_team_id: opponentId,
       minutes: s.minutes,
       points: s.points,
       rebounds: s.rebounds,

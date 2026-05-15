@@ -103,8 +103,8 @@ export async function generateForDate(date: string) {
 
     for (const teamId of [g.home_team_id, g.visitor_team_id]) {
       const team = teamById.get(teamId)!;
-      const opponentId =
-        teamId === g.home_team_id ? g.visitor_team_id : g.home_team_id;
+      const isHome = teamId === g.home_team_id;
+      const opponentId = isHome ? g.visitor_team_id : g.home_team_id;
       const opponent = teamById.get(opponentId)!;
       const roster = playersByTeam.get(teamId) ?? [];
 
@@ -114,7 +114,7 @@ export async function generateForDate(date: string) {
       const { data: stats, error: statsErr } = await supabase
         .from("player_game_stats")
         .select(
-          "game_id, player_id, team_id, minutes, points, rebounds, assists, steals, blocks, turnovers, personal_fouls, fgm, fga, fg3m, fg3a, ftm, fta, is_home, started, games!inner(date)",
+          "game_id, player_id, team_id, minutes, points, rebounds, assists, steals, blocks, turnovers, personal_fouls, fgm, fga, fg3m, fg3a, ftm, fta, is_home, started, games!inner(date, home_team_id, visitor_team_id)",
         )
         .in("player_id", playerIds)
         .order("games(date)", { ascending: false })
@@ -125,13 +125,23 @@ export async function generateForDate(date: string) {
       for (const row of stats ?? []) {
         const list = historyByPlayer.get(row.player_id) ?? [];
         if (list.length >= HISTORY_DEPTH) continue;
-        const gameDate = Array.isArray(row.games)
-          ? (row.games[0] as { date: string } | undefined)?.date
-          : (row.games as { date: string } | null)?.date;
+        const gameJoin = Array.isArray(row.games)
+          ? (row.games[0] as
+              | { date: string; home_team_id: number; visitor_team_id: number }
+              | undefined)
+          : (row.games as
+              | { date: string; home_team_id: number; visitor_team_id: number }
+              | null);
+        const opponentId = gameJoin
+          ? row.is_home
+            ? gameJoin.visitor_team_id
+            : gameJoin.home_team_id
+          : null;
         list.push({
           game_id: row.game_id,
           player_id: row.player_id,
           team_id: row.team_id,
+          opponent_team_id: opponentId,
           minutes: row.minutes,
           points: row.points,
           rebounds: row.rebounds,
@@ -148,7 +158,7 @@ export async function generateForDate(date: string) {
           fta: row.fta,
           is_home: row.is_home,
           started: row.started,
-          game_date: gameDate ?? "",
+          game_date: gameJoin?.date ?? "",
         });
         historyByPlayer.set(row.player_id, list);
       }
@@ -177,15 +187,37 @@ export async function generateForDate(date: string) {
 
           // Detect patterns for this market and surface them as signals to
           // the confidence scorer. Pattern impact aligns with the implied
-          // pick direction: a cold streak penalizes overs, a hot home/away
-          // split nudges the side it favors.
+          // pick direction.
+          //
+          // cold_streak — boosts an under, penalizes an over.
+          // home_away_split — boosts an over only when the player is on
+          //   their better side tonight; penalizes overs and boosts unders
+          //   when they're on their worse side. Without this check, a split
+          //   would nudge confidence positive no matter which side the
+          //   player was playing — which is what the audit flagged.
           const patterns = detectAll(history, market);
           const patternSignals: SignalImpact[] = patterns.map((p) => {
             const provisionalPick = l10mean >= line ? "over" : "under";
-            const aligns =
-              p.pattern_type === "cold_streak"
-                ? provisionalPick === "under"
-                : true;
+            let aligns: boolean;
+            if (p.pattern_type === "cold_streak") {
+              aligns = provisionalPick === "under";
+            } else if (p.pattern_type === "home_away_split") {
+              const ev = p.evidence as {
+                home_mean?: number;
+                away_mean?: number;
+              };
+              const homeMean = ev.home_mean ?? 0;
+              const awayMean = ev.away_mean ?? 0;
+              const onBetterSide = isHome
+                ? homeMean >= awayMean
+                : awayMean >= homeMean;
+              // Better side → confirm over / contradict under.
+              // Worse side  → confirm under / contradict over.
+              aligns =
+                provisionalPick === "over" ? onBetterSide : !onBetterSide;
+            } else {
+              aligns = true;
+            }
             return {
               source: `pattern:${p.pattern_type}`,
               impact: p.confidence * (aligns ? 0.5 : -0.5),

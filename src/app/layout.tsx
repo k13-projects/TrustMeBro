@@ -7,7 +7,8 @@ import { CartShell } from "@/components/cart/CartShell";
 import { ChatLauncher } from "@/components/chat/ChatLauncher";
 import { MobileNav } from "@/components/MobileNav";
 import { NavLink } from "@/components/NavLink";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { IdentityBadge } from "@/components/auth/IdentityBadge";
+import { getRequester } from "@/lib/identity";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -29,11 +30,10 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const isSignedIn = !!user;
+  // Both auth users and guests can save coupons and mark bets played, so
+  // CartShell needs to treat either identity as "signed in".
+  const requester = await getRequester();
+  const isSignedIn = !!requester;
 
   return (
     <html
@@ -73,7 +73,19 @@ export default async function RootLayout({
                 <NavLink href="/score">Score</NavLink>
                 <NavLink href="/history">History</NavLink>
               </nav>
-              <MobileNav />
+              <div className="flex items-center gap-3">
+                <IdentityBadge />
+                <MobileNav
+                  identity={
+                    requester
+                      ? {
+                          kind: requester.kind,
+                          display_name: requester.display_name,
+                        }
+                      : null
+                  }
+                />
+              </div>
             </div>
           </div>
         </header>

@@ -76,7 +76,7 @@ export function computeFeatures(args: {
     market,
   );
   const vs = extractValues(
-    history.filter((g) => g.team_id !== opponent_team_id),
+    history.filter((g) => g.opponent_team_id === opponent_team_id),
     market,
   );
 

@@ -149,6 +149,13 @@ src/
 
 ## Prediction Engine Contract
 
+Until real bookmaker odds wire in, the engine constructs lines synthetically as
+`line = floor(L10_mean) + 0.5`. By construction the L10 mean is always above
+that line, which biases the slate toward **over**. Confidence is computed
+relative to that synthetic line, so a high-confidence pick today is *not* a
+value bet — it's a high-conviction projection. "Confidence ≠ EV" until
+`/api/cron/track-odds` ships with `ODDS_API_KEY`.
+
 A `Prediction` must include:
 ```ts
 type Prediction = {

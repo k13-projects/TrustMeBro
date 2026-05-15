@@ -1,8 +1,12 @@
 import "server-only";
 
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { MARKET_TO_FIELD } from "@/lib/analysis/market-field";
-import type { BetStatus, PropMarket } from "@/lib/analysis/types";
+import { statValue } from "@/lib/analysis/market-field";
+import type {
+  BetStatus,
+  PlayerGameStatLine,
+  PropMarket,
+} from "@/lib/analysis/types";
 import { applyReward } from "./reward";
 
 type PendingPrediction = {
@@ -55,9 +59,10 @@ export function resolveOutcome(
   if (!stat || stat.minutes === null || stat.minutes === 0) {
     return { outcome: "void", result_value: null };
   }
-  const field = MARKET_TO_FIELD[pending.market] as keyof GameStatRow;
-  const raw = stat[field];
-  const value = typeof raw === "number" ? raw : null;
+  // statValue handles combined markets like 'pra' that aren't a single
+  // column. GameStatRow is a subset of PlayerGameStatLine, so this cast is
+  // safe for every market we read here.
+  const value = statValue(stat as unknown as PlayerGameStatLine, pending.market);
   if (value === null) return { outcome: "void", result_value: null };
   if (value === pending.line) return { outcome: "void", result_value: value };
   const over = value > pending.line;

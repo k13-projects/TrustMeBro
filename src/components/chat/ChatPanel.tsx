@@ -93,7 +93,6 @@ export function ChatPanel({
         // If we have leftover live messages on first mount, treat them as
         // archived — a closed panel always reopens to a fresh empty state.
         if (parsed.length > 0) {
-          // eslint-disable-next-line react-hooks/set-state-in-effect
           setArchived((prev) => (prev.length > 0 ? prev : parsed));
           sessionStorage.setItem(ARCHIVE_KEY, JSON.stringify(parsed));
           sessionStorage.removeItem(STORAGE_KEY);
