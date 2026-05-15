@@ -8,11 +8,14 @@ export const revalidate = 86400;
 
 export default async function TeamsPage() {
   let teams: Team[] = [];
-  let error: string | null = null;
+  let hasError = false;
   try {
     teams = await nbaProvider().listTeams();
   } catch (e) {
-    error = e instanceof Error ? e.message : "Unknown error";
+    hasError = true;
+    if (process.env.NODE_ENV !== "production") {
+      console.error("[teams/page] listTeams failed", e);
+    }
   }
 
   const byConf = teams.reduce<Record<string, Team[]>>((acc, t) => {
@@ -37,9 +40,19 @@ export default async function TeamsPage() {
         </h1>
       </header>
 
-      {error ? (
-        <div className="glass glass-sheen rounded-2xl p-6 border-amber-400/30">
-          <p className="text-sm text-foreground/80">{error}</p>
+      {hasError ? (
+        <div className="glass glass-sheen rounded-2xl p-6 border border-amber-400/30 space-y-3">
+          <h2 className="font-semibold">Couldn&apos;t load teams</h2>
+          <p className="text-sm text-foreground/70">
+            We had trouble reaching the team directory. This is usually a
+            temporary issue with the upstream data provider.
+          </p>
+          <Link
+            href="/teams"
+            className="inline-flex items-center rounded-full bg-white/8 hover:bg-white/12 border border-white/10 px-3 py-1.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:ring-offset-2 focus-visible:ring-offset-[#050508]"
+          >
+            Retry
+          </Link>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

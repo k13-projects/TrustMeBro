@@ -18,12 +18,15 @@ export default async function GamesPage({ searchParams }: PageProps) {
   const next = isoDateOffset(date, 1);
 
   let games: Game[] = [];
-  let error: string | null = null;
+  let hasError = false;
   try {
     const res = await nbaProvider().listGames({ dates: [date], per_page: 100 });
     games = res.data;
   } catch (e) {
-    error = e instanceof Error ? e.message : "Unknown error";
+    hasError = true;
+    if (process.env.NODE_ENV !== "production") {
+      console.error("[games/page] listGames failed", e);
+    }
   }
 
   return (
@@ -47,8 +50,8 @@ export default async function GamesPage({ searchParams }: PageProps) {
         </nav>
       </div>
 
-      {error ? (
-        <ErrorCard message={error} />
+      {hasError ? (
+        <ErrorCard date={date} />
       ) : games.length === 0 ? (
         <div className="glass glass-sheen rounded-2xl p-8 text-center text-foreground/60">
           No games on {date}.
@@ -181,11 +184,15 @@ function TeamRow({
   );
 }
 
-function ErrorCard({ message }: { message: string }) {
+function ErrorCard({ date }: { date: string }) {
   return (
-    <div className="glass glass-sheen rounded-2xl p-6 border-amber-400/30">
+    <div className="glass glass-sheen rounded-2xl p-6 border border-amber-400/30 space-y-3">
       <h2 className="font-semibold">Couldn&apos;t load games</h2>
-      <p className="text-sm text-foreground/70 mt-2 break-words">{message}</p>
+      <p className="text-sm text-foreground/70">
+        We had trouble reaching the scoreboard for {date}. This is usually a
+        temporary issue with the upstream data provider — try again in a moment.
+      </p>
+      <DatePill href={`/games?date=${date}`} label="Retry" />
     </div>
   );
 }

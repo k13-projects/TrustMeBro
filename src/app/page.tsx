@@ -9,6 +9,7 @@ import { DatePill } from "@/components/DatePill";
 import { JerseyChip } from "@/components/JerseyChip";
 import { marketLabel } from "@/components/MarketLabel";
 import { PickRow } from "@/components/PickRow";
+import { PicksFilterBar } from "@/components/PicksFilterBar";
 import { PickSideTag } from "@/components/PickSideTag";
 import { PlayButton } from "@/components/PlayButton";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
@@ -18,13 +19,29 @@ import type { PredictionRow, TeamLite } from "@/components/types";
 
 export const revalidate = 30;
 
+const ALLOWED_MARKETS = new Set([
+  "points",
+  "rebounds",
+  "assists",
+  "threes_made",
+  "minutes",
+  "pra",
+  "steals",
+  "blocks",
+]);
+
 type PageProps = {
-  searchParams: Promise<{ date?: string }>;
+  searchParams: Promise<{ date?: string; market?: string; min?: string }>;
 };
 
 export default async function HomePage({ searchParams }: PageProps) {
   const params = await searchParams;
   const date = isValidIsoDate(params.date) ? params.date : todayIsoDate();
+  const marketFilter =
+    params.market && ALLOWED_MARKETS.has(params.market) ? params.market : null;
+  const minConfidenceFilter = Number.isFinite(Number(params.min))
+    ? Math.max(0, Math.min(100, Number(params.min)))
+    : 0;
   const prev = isoDateOffset(date, -1);
   const next = isoDateOffset(date, 1);
 
@@ -103,7 +120,18 @@ export default async function HomePage({ searchParams }: PageProps) {
     patternKeys.has(`${p.player_id}:${p.market}`);
 
   const botd = predictions.find((p) => p.is_bet_of_the_day) ?? null;
-  const others = botd ? predictions.filter((p) => p.id !== botd.id) : predictions;
+  const allOthers = botd
+    ? predictions.filter((p) => p.id !== botd.id)
+    : predictions;
+
+  const filteredOthers = allOthers.filter((p) => {
+    if (marketFilter && p.market !== marketFilter) return false;
+    if (minConfidenceFilter > 0 && p.confidence < minConfidenceFilter)
+      return false;
+    return true;
+  });
+  const filtersActive =
+    marketFilter !== null || minConfidenceFilter > 0;
 
   const combos = generateCombos(
     predictions as unknown as Prediction[],
@@ -171,12 +199,23 @@ export default async function HomePage({ searchParams }: PageProps) {
             </section>
           ) : null}
 
+          <PicksFilterBar
+            totalCount={allOthers.length}
+            filteredCount={filteredOthers.length}
+          />
+
           <section className="space-y-3">
             <h2 className="text-[11px] font-medium tracking-[0.22em] uppercase text-foreground/45">
-              All Picks
+              {filtersActive ? "Filtered Picks" : "All Picks"}
             </h2>
+            {filteredOthers.length === 0 ? (
+              <div className="glass rounded-2xl p-6 text-sm text-foreground/55 text-center">
+                No picks match your filters. Try widening the market or lowering
+                the confidence threshold.
+              </div>
+            ) : null}
             <div className="grid gap-3">
-              {others.map((p) => (
+              {filteredOthers.map((p) => (
                 <PickRow
                   key={p.id}
                   prediction={p}
@@ -215,21 +254,25 @@ function BetOfTheDayCard({
   const name = `${prediction.player.first_name} ${prediction.player.last_name}`;
 
   return (
-    <section className="relative overflow-hidden rounded-3xl glass-strong glass-sheen grain">
+    <section className="relative overflow-hidden rounded-3xl glass-strong glass-sheen grain ring-1 ring-amber-300/20 shadow-[0_0_60px_rgba(251,191,36,0.18)]">
       <div
         aria-hidden
-        className="absolute -inset-px opacity-50 pointer-events-none"
+        className="absolute -inset-px opacity-90 pointer-events-none"
         style={{
-          background: `radial-gradient(40rem 22rem at 12% 30%, ${colors.primary}66, transparent 60%), radial-gradient(30rem 18rem at 90% 80%, ${colors.secondary}55, transparent 60%)`,
+          background: `radial-gradient(48rem 26rem at 12% 25%, ${colors.primary}99, transparent 60%), radial-gradient(36rem 22rem at 92% 85%, ${colors.secondary}77, transparent 62%), radial-gradient(28rem 18rem at 50% 0%, rgba(251,191,36,0.22), transparent 70%)`,
         }}
       />
+      <div
+        aria-hidden
+        className="absolute top-4 right-4 size-24 rounded-full bg-amber-300/10 blur-2xl pointer-events-none"
+      />
       <div className="relative p-6 sm:p-8 space-y-6">
-        <div className="flex items-center gap-2 text-amber-300">
-          <span aria-hidden className="text-base">★</span>
-          <h2 className="text-[11px] font-medium tracking-[0.22em] uppercase">
+        <h2 className="flex items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-400/20 border border-amber-300/40 px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.22em] text-amber-200">
+            <span aria-hidden className="text-sm leading-none">★</span>
             Bet of the Day
-          </h2>
-        </div>
+          </span>
+        </h2>
 
         <div className="flex items-start gap-6 flex-wrap">
           <PlayerAvatar
@@ -300,15 +343,12 @@ function EmptyState({
     <div className="glass glass-sheen rounded-2xl p-8 text-center space-y-2">
       <p className="text-foreground/70">
         {hasGames
-          ? `Games are scheduled for ${date} but no predictions have been generated yet.`
+          ? `Games are scheduled for ${date}. Picks will appear here shortly — check back soon.`
           : `No NBA games (and no picks) for ${date}.`}
       </p>
-      {hasGames ? (
-        <p className="text-xs text-foreground/50 font-mono">
-          Run: <code>/api/cron/generate-predictions?date={date}</code> (with the
-          cron Bearer token)
-        </p>
-      ) : null}
+      <p className="text-xs text-foreground/45">
+        Picks refresh automatically each day.
+      </p>
     </div>
   );
 }

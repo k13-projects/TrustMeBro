@@ -289,13 +289,19 @@ function GameHero({
             ) : null}
           </div>
         </div>
-        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr] items-center gap-4 sm:gap-6">
           <TeamHero team={away} score={game.visitor_team_score} won={awayWins} finalized={isFinal} side="left" />
-          <div className="text-center">
+          <div className="text-center order-first sm:order-none flex sm:block items-center justify-center gap-2">
             <div className="text-[10px] uppercase tracking-widest text-foreground/45">
               {game.date}
             </div>
-            <div className="text-3xl font-semibold tabular-nums text-foreground/40 mt-1">
+            <div className="hidden sm:block text-3xl font-semibold tabular-nums text-foreground/40 mt-1">
+              @
+            </div>
+            <div
+              aria-hidden
+              className="sm:hidden inline-flex items-center justify-center size-6 rounded-full bg-white/8 text-foreground/55 text-xs"
+            >
               @
             </div>
           </div>
@@ -372,7 +378,7 @@ function TeamHero({
   return (
     <Link
       href={team ? `/teams/${team.id}` : "#"}
-      className={`flex items-center gap-4 ${side === "right" ? "flex-row-reverse text-right" : ""}`}
+      className={`flex items-center gap-4 ${side === "right" ? "sm:flex-row-reverse sm:text-right" : ""}`}
     >
       <div
         className="size-16 sm:size-20 rounded-2xl grid place-items-center shrink-0"

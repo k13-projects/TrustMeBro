@@ -21,54 +21,48 @@ export function ChatLauncher() {
         type="button"
         aria-label={open ? "Close chat" : "Open chat"}
         onClick={() => setOpen((o) => !o)}
-        className="fixed bottom-6 right-6 z-40 size-14 rounded-full glass glass-sheen grain flex items-center justify-center text-foreground/90 hover:text-foreground transition-transform hover:scale-105 active:scale-95 shadow-[0_0_30px_rgba(99,102,241,0.45)]"
+        className={
+          open
+            ? "fixed bottom-6 right-6 z-40 size-12 rounded-full bg-white/10 border border-white/15 backdrop-blur-xl flex items-center justify-center text-foreground/90 hover:bg-white/15 transition-all active:scale-95"
+            : "group fixed bottom-6 right-6 z-40 inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-indigo-500 via-fuchsia-500 to-rose-500 gradient-shift shadow-[0_10px_40px_-8px_rgba(217,70,239,0.55)] hover:shadow-[0_14px_50px_-6px_rgba(217,70,239,0.75)] transition-all hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98]"
+        }
       >
-        {/* Idle pulse — only when closed, so it advertises itself without distracting. */}
-        {!open ? (
-          <span
-            aria-hidden
-            className="absolute inset-0 rounded-full ring-2 ring-indigo-400/50 animate-ping opacity-60"
-          />
-        ) : null}
-        <span
-          aria-hidden
-          className="absolute inset-0 rounded-full bg-gradient-to-br from-indigo-400/30 via-fuchsia-500/20 to-rose-500/30 opacity-80"
-        />
-        <ChatIcon open={open} />
+        {open ? (
+          <CloseIcon />
+        ) : (
+          <>
+            <Sparkle className="size-4 shimmer" />
+            <span className="tracking-tight">Ask AI</span>
+          </>
+        )}
       </button>
       <ChatPanel open={open} onClose={() => setOpen(false)} />
     </>
   );
 }
 
-function ChatIcon({ open }: { open: boolean }) {
-  if (open) {
-    return (
-      <svg
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        className="relative size-5"
-      >
-        <path d="M18 6 6 18M6 6l12 12" />
-      </svg>
-    );
-  }
+function Sparkle({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden>
+      <path d="M12 2c.4 4.6 2.4 6.6 7 7-4.6.4-6.6 2.4-7 7-.4-4.6-2.4-6.6-7-7 4.6-.4 6.6-2.4 7-7z" />
+      <path d="M19 13.5c.2 2.3 1.2 3.3 3.5 3.5-2.3.2-3.3 1.2-3.5 3.5-.2-2.3-1.2-3.3-3.5-3.5 2.3-.2 3.3-1.2 3.5-3.5z" opacity="0.7" />
+    </svg>
+  );
+}
+
+function CloseIcon() {
   return (
     <svg
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth="1.8"
+      strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
-      className="relative size-6"
+      className="size-5"
+      aria-hidden
     >
-      <path d="M21 12a8 8 0 0 1-11.5 7.2L4 21l1.8-5.4A8 8 0 1 1 21 12Z" />
-      <path d="M8 11h.01M12 11h.01M16 11h.01" />
+      <path d="M18 6 6 18M6 6l12 12" />
     </svg>
   );
 }

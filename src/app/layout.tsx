@@ -4,6 +4,8 @@ import Link from "next/link";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ChatLauncher } from "@/components/chat/ChatLauncher";
+import { MobileNav } from "@/components/MobileNav";
+import { NavLink } from "@/components/NavLink";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,9 +33,15 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col font-sans">
+        <a
+          href="#main"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-full focus:bg-white focus:text-[#050508] focus:px-4 focus:py-2 focus:text-sm focus:font-medium"
+        >
+          Skip to content
+        </a>
         <header className="sticky top-0 z-30">
           <div className="glass glass-sheen">
-            <div className="mx-auto max-w-6xl px-4 py-3 flex items-center justify-between relative">
+            <div className="mx-auto max-w-6xl px-4 py-3 flex items-center justify-between gap-3 relative">
               <Link
                 href="/"
                 className="flex items-center gap-2 font-semibold tracking-tight text-lg"
@@ -48,17 +56,18 @@ export default function RootLayout({
                 />
                 TrustMeBro
               </Link>
-              <nav className="flex items-center gap-1 text-sm">
-                <NavLink href="/">Picks</NavLink>
+              <nav className="hidden sm:flex items-center gap-1 text-sm" aria-label="Primary">
+                <NavLink href="/" exact>Picks</NavLink>
                 <NavLink href="/games">Games</NavLink>
                 <NavLink href="/teams">Teams</NavLink>
                 <NavLink href="/players">Players</NavLink>
                 <NavLink href="/score">Score</NavLink>
               </nav>
+              <MobileNav />
             </div>
           </div>
         </header>
-        <main className="relative z-10 flex-1">{children}</main>
+        <main id="main" className="relative z-10 flex-1">{children}</main>
         <footer className="relative z-10 mt-12">
           <div className="glass">
             <div className="mx-auto max-w-6xl px-4 py-4 text-xs text-foreground/55">
@@ -72,13 +81,3 @@ export default function RootLayout({
   );
 }
 
-function NavLink({ href, children }: { href: string; children: React.ReactNode }) {
-  return (
-    <Link
-      href={href}
-      className="rounded-full px-3 py-1.5 text-foreground/70 hover:text-foreground hover:bg-white/5 transition-colors"
-    >
-      {children}
-    </Link>
-  );
-}
