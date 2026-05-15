@@ -140,9 +140,9 @@ function Last5Chips({ values }: { values: number[] }) {
           prev === null
             ? null
             : delta > 0
-              ? { glyph: "▲", cls: "text-emerald-400" }
+              ? { glyph: "▲", cls: "text-sky-300" }
               : delta < 0
-                ? { glyph: "▼", cls: "text-rose-400" }
+                ? { glyph: "▼", cls: "text-rose-300" }
                 : { glyph: "·", cls: "text-foreground/35" };
         return (
           <div key={i} className="flex items-center gap-1.5">
