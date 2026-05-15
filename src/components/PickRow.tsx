@@ -13,10 +13,12 @@ export function PickRow({
   prediction,
   team,
   trailing,
+  hasPattern,
 }: {
   prediction: PredictionRow;
   team: TeamLite | null;
   trailing?: ReactNode;
+  hasPattern?: boolean;
 }) {
   const market = marketLabel(prediction.market);
   const colors = teamColors(team?.abbreviation);
@@ -50,10 +52,18 @@ export function PickRow({
               </span>
             ) : null}
           </div>
-          <div className="mt-1 flex items-baseline gap-2 text-sm">
+          <div className="mt-1 flex items-baseline gap-2 text-sm flex-wrap">
             <PickSideTag side={prediction.pick} />
             <span className="font-mono tabular-nums">{prediction.line}</span>
             <span className="text-foreground/60">{market}</span>
+            {hasPattern ? (
+              <span
+                className="rounded-md bg-purple-500/15 text-purple-300 border border-purple-500/30 px-1.5 py-0.5 text-[10px] uppercase tracking-wider font-medium"
+                title="Active pattern detected for this player and market"
+              >
+                ◆ pattern
+              </span>
+            ) : null}
           </div>
         </div>
         <div className="hidden sm:block text-right">

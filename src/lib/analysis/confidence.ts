@@ -107,9 +107,14 @@ export function scorePrediction(input: ScoreInput): ScoreOutput {
   );
   let confidence = (passedWeight / totalWeight) * 100;
 
+  // Cap signal contribution at +/-10 points so patterns + news can't shove
+  // every pick into 90+. Important once patterns wire in at generation time.
+  let signalDelta = 0;
   for (const sig of signals) {
-    confidence += sig.impact * 5;
+    signalDelta += sig.impact * 5;
   }
+  signalDelta = Math.max(-10, Math.min(10, signalDelta));
+  confidence += signalDelta;
   confidence = Math.max(0, Math.min(100, confidence));
 
   const projection =

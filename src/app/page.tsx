@@ -1,6 +1,9 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { isoDateOffset, isValidIsoDate, todayIsoDate } from "@/lib/date";
 import { teamColors } from "@/lib/sports/nba/branding";
+import { generateCombos } from "@/lib/analysis/combos";
+import type { Prediction } from "@/lib/analysis/types";
+import { ComboCard } from "@/components/ComboCard";
 import { ConfidenceRing } from "@/components/ConfidenceRing";
 import { DatePill } from "@/components/DatePill";
 import { JerseyChip } from "@/components/JerseyChip";
@@ -80,8 +83,35 @@ export default async function HomePage({ searchParams }: PageProps) {
   }
   const isSignedIn = !!user;
 
+  const playerIdsWithPicks = Array.from(
+    new Set(predictions.map((p) => p.player_id)),
+  );
+  const patternKeys = new Set<string>();
+  if (playerIdsWithPicks.length > 0) {
+    const { data: patternRows } = await supabase
+      .from("patterns")
+      .select("player_id, market")
+      .in("player_id", playerIdsWithPicks);
+    for (const row of (patternRows ?? []) as Array<{
+      player_id: number;
+      market: string | null;
+    }>) {
+      patternKeys.add(`${row.player_id}:${row.market ?? ""}`);
+    }
+  }
+  const hasPatternFor = (p: PredictionRow) =>
+    patternKeys.has(`${p.player_id}:${p.market}`);
+
   const botd = predictions.find((p) => p.is_bet_of_the_day) ?? null;
   const others = botd ? predictions.filter((p) => p.id !== botd.id) : predictions;
+
+  const combos = generateCombos(
+    predictions as unknown as Prediction[],
+    { minConfidence: 80, size: 2, max: 5 },
+  ).map((c) => ({
+    ...c,
+    picks: c.picks as unknown as PredictionRow[],
+  }));
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10 space-y-8">
@@ -119,6 +149,28 @@ export default async function HomePage({ searchParams }: PageProps) {
             />
           ) : null}
 
+          {combos.length > 0 ? (
+            <section className="space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <h2 className="text-[11px] font-medium tracking-[0.22em] uppercase text-foreground/45">
+                  Suggested Combos
+                </h2>
+                <span className="text-[10px] uppercase tracking-widest text-foreground/45">
+                  PrizePicks-ready
+                </span>
+              </div>
+              <div className="grid gap-3 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+                {combos.map((combo) => (
+                  <ComboCard
+                    key={combo.picks.map((p) => p.id).join("|")}
+                    combo={combo}
+                    teamById={teamById}
+                  />
+                ))}
+              </div>
+            </section>
+          ) : null}
+
           <section className="space-y-3">
             <h2 className="text-[11px] font-medium tracking-[0.22em] uppercase text-foreground/45">
               All Picks
@@ -129,6 +181,7 @@ export default async function HomePage({ searchParams }: PageProps) {
                   key={p.id}
                   prediction={p}
                   team={teamById.get(p.player.team_id ?? -1) ?? null}
+                  hasPattern={hasPatternFor(p)}
                   trailing={
                     <PlayButton
                       predictionId={p.id}
