@@ -115,7 +115,9 @@ export function CouponDrawer({ isSignedIn }: { isSignedIn: boolean }) {
         aria-label="Coupon"
         aria-hidden={!cart.isOpen}
         className={cx(
-          "fixed top-0 right-0 z-50 h-full w-full sm:w-[420px] glass-strong border-l border-white/10 transition-transform duration-300 ease-out flex flex-col",
+          // Fully-opaque surface — the stake input and payout numbers need
+          // to read clearly without the page bleeding through.
+          "fixed top-0 right-0 z-50 h-full w-full sm:w-[420px] glass-coupon border-l border-white/10 transition-transform duration-300 ease-out flex flex-col",
           cart.isOpen ? "translate-x-0" : "translate-x-full",
         )}
       >

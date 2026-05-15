@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { useCart } from "@/components/cart/CartContext";
 
 type Role = "user" | "assistant";
 
@@ -71,6 +72,7 @@ export function ChatPanel({
   open: boolean;
   onClose: () => void;
 }) {
+  const cart = useCart();
   const [messages, setMessages] = useState<Message[]>([]);
   const [archived, setArchived] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -188,11 +190,30 @@ export function ChatPanel({
         return { role: m.role, content: m.content };
       });
 
+    // Snapshot the cart so the bot can answer questions about the user's
+    // current coupon ("why is X in my coupon", "what's my potential payout",
+    // etc.) without the user having to paste it in.
+    const couponCtx = cart.hydrated && cart.picks.length > 0
+      ? {
+          mode: cart.mode,
+          stake: cart.stake,
+          picks: cart.picks.map((p) => ({
+            prediction_id: p.prediction_id,
+            player_name: `${p.player_first_name} ${p.player_last_name}`.trim(),
+            team_abbr: p.team_abbreviation ?? null,
+            market: p.market,
+            line: p.line,
+            pick: p.pick,
+            confidence: p.confidence,
+          })),
+        }
+      : null;
+
     try {
       const resp = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: wirePayload }),
+        body: JSON.stringify({ messages: wirePayload, coupon: couponCtx }),
       });
 
       if (!resp.ok || !resp.body) {
@@ -325,7 +346,11 @@ export function ChatPanel({
       <aside
         role="dialog"
         aria-label="TrustMeBro chat"
-        className={`fixed top-0 right-0 z-40 h-full w-full sm:w-[440px] transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+        // When the coupon drawer is open we slide the chat panel to its left
+        // (sm:right-[420px] matches the drawer width). On mobile the drawer
+        // takes the whole screen, but the launcher is hidden in that case so
+        // this branch is only reachable from desktop.
+        className={`fixed top-0 ${cart.isOpen ? "sm:right-[420px]" : "right-0"} z-40 h-full w-full sm:w-[440px] transition-[transform,right] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
           open ? "translate-x-0" : "translate-x-full"
         }`}
       >

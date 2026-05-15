@@ -17,8 +17,42 @@ const MessageSchema = z.object({
   role: z.enum(["user", "assistant"]),
   content: z.string().min(1).max(4000),
 });
+
+const MARKETS = [
+  "points",
+  "rebounds",
+  "assists",
+  "threes_made",
+  "minutes",
+  "steals",
+  "blocks",
+  "pra",
+] as const;
+
+// Cart snapshot from the browser. We re-validate at the boundary so a
+// tampered request can't poison the prompt with arbitrary JSON.
+const CouponSchema = z.object({
+  mode: z.enum(["power", "flex"]),
+  stake: z.number().nonnegative().max(100000),
+  picks: z
+    .array(
+      z.object({
+        prediction_id: z.string().uuid(),
+        player_name: z.string().min(1).max(80),
+        team_abbr: z.string().max(8).nullable(),
+        market: z.enum(MARKETS),
+        line: z.number(),
+        pick: z.enum(["over", "under"]),
+        confidence: z.number().min(0).max(100),
+      }),
+    )
+    .min(1)
+    .max(6),
+});
+
 const BodySchema = z.object({
   messages: z.array(MessageSchema).min(1).max(20),
+  coupon: CouponSchema.nullable().optional(),
 });
 
 // Token bucket per IP: 50 reqs / hour. Resets on cold start; fine for now.
@@ -215,7 +249,11 @@ export async function POST(req: Request) {
     // the bot can still answer source/methodology questions.
   }
 
-  const systemInstruction = buildSystemPrompt({ date, predictions });
+  const systemInstruction = buildSystemPrompt({
+    date,
+    predictions,
+    coupon: parsed.data.coupon ?? null,
+  });
 
   // Hard cap: 60s per chat request. Combined with the client's req.signal so a
   // closed tab tears down the upstream Gemini call instead of burning quota.
