@@ -57,6 +57,18 @@ export default async function PlayersPage() {
         </p>
       </header>
 
+      {players.length === 0 ? (
+        <div className="glass glass-sheen rounded-2xl p-8 text-center space-y-2">
+          <p className="text-foreground/70">
+            No players have been synced yet.
+          </p>
+          <p className="text-xs text-foreground/45">
+            Player rosters refresh from the upstream provider — they&apos;ll
+            appear here once the next sync completes.
+          </p>
+        </div>
+      ) : null}
+
       {teams.map((team) => {
         const roster = playersByTeam.get(team.id) ?? [];
         if (roster.length === 0) return null;
