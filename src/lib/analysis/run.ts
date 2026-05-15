@@ -2,10 +2,13 @@ import "server-only";
 
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { buildPrediction, pickBetOfTheDay } from "./predictions";
+import { detectAll, type DetectedPattern } from "./patterns";
+import { statValue } from "./market-field";
 import type {
   PlayerGameStatLine,
   Prediction,
   PropMarket,
+  SignalImpact,
 } from "./types";
 import type { Game, Player, Team } from "@/lib/sports/types";
 
@@ -14,6 +17,7 @@ const MARKETS: PropMarket[] = [
   "rebounds",
   "assists",
   "threes_made",
+  "pra",
 ];
 
 const HISTORY_DEPTH = 30;
@@ -74,6 +78,11 @@ export async function generateForDate(date: string) {
     .lte("generated_at", `${date}T23:59:59Z`);
 
   const newPredictions: Prediction[] = [];
+  const patternsByMarket: Array<{
+    player_id: number;
+    market: PropMarket;
+    pattern: DetectedPattern;
+  }> = [];
 
   for (const g of games) {
     const game: Game = {
@@ -166,6 +175,24 @@ export async function generateForDate(date: string) {
           if (l10mean < 0.5) continue;
           const line = Math.floor(l10mean) + 0.5;
 
+          // Detect patterns for this market and surface them as signals to
+          // the confidence scorer. Pattern impact aligns with the implied
+          // pick direction: a cold streak penalizes overs, a hot home/away
+          // split nudges the side it favors.
+          const patterns = detectAll(history, market);
+          const patternSignals: SignalImpact[] = patterns.map((p) => {
+            const provisionalPick = l10mean >= line ? "over" : "under";
+            const aligns =
+              p.pattern_type === "cold_streak"
+                ? provisionalPick === "under"
+                : true;
+            return {
+              source: `pattern:${p.pattern_type}`,
+              impact: p.confidence * (aligns ? 0.5 : -0.5),
+              note: p.description,
+            };
+          });
+
           const prediction = buildPrediction({
             game,
             player,
@@ -174,8 +201,10 @@ export async function generateForDate(date: string) {
             history,
             market,
             line,
+            signals: patternSignals,
           });
           newPredictions.push(prediction);
+          patternsByMarket.push(...patterns.map((p) => ({ player_id: player.id, market, pattern: p })));
         }
       }
     }
@@ -209,31 +238,45 @@ export async function generateForDate(date: string) {
 
   const botdRow = upserted?.find((r) => r.is_bet_of_the_day);
 
+  // Persist detected patterns so dashboards can badge picks without
+  // recomputing 30 games of history per request. Dedup by
+  // (player_id, pattern_type, market) — the unique index from 0004 lets us
+  // upsert. Expire 24h out so stale patterns roll off.
+  if (patternsByMarket.length > 0) {
+    const seen = new Set<string>();
+    const expiresAt = new Date(Date.now() + 24 * 3600 * 1000).toISOString();
+    const patternRows = patternsByMarket
+      .filter(({ player_id, market, pattern }) => {
+        const key = `${player_id}:${pattern.pattern_type}:${market}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .map(({ player_id, market, pattern }) => ({
+        player_id,
+        pattern_type: pattern.pattern_type,
+        market,
+        description: pattern.description,
+        confidence: pattern.confidence,
+        evidence: pattern.evidence,
+        expires_at: expiresAt,
+      }));
+    if (patternRows.length > 0) {
+      await supabase
+        .from("patterns")
+        .upsert(patternRows, {
+          onConflict: "player_id,pattern_type,market",
+        });
+    }
+  }
+
   return {
     date,
     games: games.length,
     predictions: rows.length,
     bet_of_the_day_id: botdRow?.id ?? null,
+    patterns: patternsByMarket.length,
   };
-}
-
-function statValue(s: PlayerGameStatLine, market: PropMarket): number | null {
-  switch (market) {
-    case "points":
-      return s.points;
-    case "rebounds":
-      return s.rebounds;
-    case "assists":
-      return s.assists;
-    case "threes_made":
-      return s.fg3m;
-    case "minutes":
-      return s.minutes;
-    case "steals":
-      return s.steals;
-    case "blocks":
-      return s.blocks;
-  }
 }
 
 function sameKey(a: Prediction, b: Prediction): boolean {

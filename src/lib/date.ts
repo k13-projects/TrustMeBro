@@ -1,5 +1,16 @@
+// Project canonical "today" = America/Los_Angeles. NBA games are played on US
+// time and PT midnight is the latest the slate closes, so anchoring to LA
+// keeps "today" stable across the whole league for the entire game window.
+export const PROJECT_TIMEZONE = "America/Los_Angeles";
+
 export function todayIsoDate(): string {
-  return new Date().toISOString().slice(0, 10);
+  // en-CA gives YYYY-MM-DD already; no string surgery needed.
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: PROJECT_TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
 }
 
 export function isoDateOffset(iso: string, deltaDays: number): string {

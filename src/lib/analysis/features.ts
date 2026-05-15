@@ -4,16 +4,7 @@ import type {
   PlayerGameStatLine,
   PropMarket,
 } from "./types";
-
-const MARKET_TO_FIELD: Record<PropMarket, keyof PlayerGameStatLine> = {
-  points: "points",
-  rebounds: "rebounds",
-  assists: "assists",
-  threes_made: "fg3m",
-  minutes: "minutes",
-  steals: "steals",
-  blocks: "blocks",
-};
+import { statValue } from "./market-field";
 
 const EMPTY: FeatureWindow = {
   count: 0,
@@ -28,10 +19,9 @@ function extractValues(
   history: PlayerGameStatLine[],
   market: PropMarket,
 ): number[] {
-  const field = MARKET_TO_FIELD[market];
   const out: number[] = [];
   for (const row of history) {
-    const v = row[field];
+    const v = statValue(row, market);
     if (typeof v === "number" && Number.isFinite(v)) out.push(v);
   }
   return out;
@@ -91,11 +81,7 @@ export function computeFeatures(args: {
   );
 
   const lastGame = history[0];
-  const lastField = MARKET_TO_FIELD[market];
-  const lastValue =
-    lastGame && typeof lastGame[lastField] === "number"
-      ? (lastGame[lastField] as number)
-      : null;
+  const lastValue = lastGame ? statValue(lastGame, market) : null;
 
   return {
     player_id,

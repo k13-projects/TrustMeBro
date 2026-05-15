@@ -1,56 +1,25 @@
-import Image from "next/image";
-import Link from "next/link";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { isoDateOffset, isValidIsoDate, todayIsoDate } from "@/lib/date";
-import type { Reasoning } from "@/lib/analysis/types";
-import {
-  initials,
-  playerHeadshotUrl,
-  teamColors,
-  teamLogoUrl,
-} from "@/lib/sports/nba/branding";
+import { teamColors } from "@/lib/sports/nba/branding";
+import { generateCombos } from "@/lib/analysis/combos";
+import type { Prediction } from "@/lib/analysis/types";
+import { ComboCard } from "@/components/ComboCard";
+import { ConfidenceRing } from "@/components/ConfidenceRing";
+import { DatePill } from "@/components/DatePill";
+import { JerseyChip } from "@/components/JerseyChip";
+import { marketLabel } from "@/components/MarketLabel";
+import { PickRow } from "@/components/PickRow";
+import { PickSideTag } from "@/components/PickSideTag";
+import { PlayButton } from "@/components/PlayButton";
+import { PlayerAvatar } from "@/components/PlayerAvatar";
+import { ReasoningPanel } from "@/components/ReasoningPanel";
+import { TeamBadge } from "@/components/TeamBadge";
+import type { PredictionRow, TeamLite } from "@/components/types";
 
 export const revalidate = 30;
 
 type PageProps = {
   searchParams: Promise<{ date?: string }>;
-};
-
-type PredictionRow = {
-  id: string;
-  game_id: number;
-  player_id: number;
-  market: string;
-  line: number;
-  pick: "over" | "under";
-  projection: number;
-  confidence: number;
-  is_bet_of_the_day: boolean;
-  reasoning: Reasoning;
-  player: {
-    id: number;
-    first_name: string;
-    last_name: string;
-    team_id: number | null;
-    position: string | null;
-    jersey_number: string | null;
-  };
-};
-
-type TeamLite = {
-  id: number;
-  abbreviation: string;
-  full_name: string;
-};
-
-const MARKET_LABEL: Record<string, string> = {
-  points: "Points",
-  rebounds: "Rebounds",
-  assists: "Assists",
-  threes_made: "3PT Made",
-  minutes: "Minutes",
-  steals: "Steals",
-  blocks: "Blocks",
 };
 
 export default async function HomePage({ searchParams }: PageProps) {
@@ -97,8 +66,52 @@ export default async function HomePage({ searchParams }: PageProps) {
     ((teams ?? []) as TeamLite[]).map((t) => [t.id, t] as const),
   );
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const playedSet = new Set<string>();
+  if (user && predictions.length > 0) {
+    const { data: userBets } = await supabase
+      .from("user_bets")
+      .select("prediction_id")
+      .eq("user_id", user.id)
+      .in(
+        "prediction_id",
+        predictions.map((p) => p.id),
+      );
+    for (const ub of userBets ?? []) playedSet.add(ub.prediction_id);
+  }
+  const isSignedIn = !!user;
+
+  const playerIdsWithPicks = Array.from(
+    new Set(predictions.map((p) => p.player_id)),
+  );
+  const patternKeys = new Set<string>();
+  if (playerIdsWithPicks.length > 0) {
+    const { data: patternRows } = await supabase
+      .from("patterns")
+      .select("player_id, market")
+      .in("player_id", playerIdsWithPicks);
+    for (const row of (patternRows ?? []) as Array<{
+      player_id: number;
+      market: string | null;
+    }>) {
+      patternKeys.add(`${row.player_id}:${row.market ?? ""}`);
+    }
+  }
+  const hasPatternFor = (p: PredictionRow) =>
+    patternKeys.has(`${p.player_id}:${p.market}`);
+
   const botd = predictions.find((p) => p.is_bet_of_the_day) ?? null;
   const others = botd ? predictions.filter((p) => p.id !== botd.id) : predictions;
+
+  const combos = generateCombos(
+    predictions as unknown as Prediction[],
+    { minConfidence: 80, size: 2, max: 5 },
+  ).map((c) => ({
+    ...c,
+    picks: c.picks as unknown as PredictionRow[],
+  }));
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10 space-y-8">
@@ -131,7 +144,31 @@ export default async function HomePage({ searchParams }: PageProps) {
             <BetOfTheDayCard
               prediction={botd}
               team={teamById.get(botd.player.team_id ?? -1) ?? null}
+              played={playedSet.has(botd.id)}
+              isSignedIn={isSignedIn}
             />
+          ) : null}
+
+          {combos.length > 0 ? (
+            <section className="space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <h2 className="text-[11px] font-medium tracking-[0.22em] uppercase text-foreground/45">
+                  Suggested Combos
+                </h2>
+                <span className="text-[10px] uppercase tracking-widest text-foreground/45">
+                  PrizePicks-ready
+                </span>
+              </div>
+              <div className="grid gap-3 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+                {combos.map((combo) => (
+                  <ComboCard
+                    key={combo.picks.map((p) => p.id).join("|")}
+                    combo={combo}
+                    teamById={teamById}
+                  />
+                ))}
+              </div>
+            </section>
           ) : null}
 
           <section className="space-y-3">
@@ -144,6 +181,14 @@ export default async function HomePage({ searchParams }: PageProps) {
                   key={p.id}
                   prediction={p}
                   team={teamById.get(p.player.team_id ?? -1) ?? null}
+                  hasPattern={hasPatternFor(p)}
+                  trailing={
+                    <PlayButton
+                      predictionId={p.id}
+                      initialPlayed={playedSet.has(p.id)}
+                      isSignedIn={isSignedIn}
+                    />
+                  }
                 />
               ))}
             </div>
@@ -154,197 +199,23 @@ export default async function HomePage({ searchParams }: PageProps) {
   );
 }
 
-function DatePill({
-  href,
-  label,
-  emphasis,
-}: {
-  href: string;
-  label: string;
-  emphasis?: boolean;
-}) {
-  return (
-    <Link
-      href={href}
-      className={`rounded-full px-3.5 py-1.5 transition-colors ${
-        emphasis
-          ? "bg-white/10 text-foreground"
-          : "text-foreground/65 hover:text-foreground hover:bg-white/5"
-      }`}
-    >
-      {label}
-    </Link>
-  );
-}
-
-function PlayerAvatar({
-  playerId,
-  firstName,
-  lastName,
-  abbreviation,
-  size = 80,
-}: {
-  playerId: number;
-  firstName: string;
-  lastName: string;
-  abbreviation: string;
-  size?: number;
-}) {
-  const url = playerHeadshotUrl(playerId);
-  const colors = teamColors(abbreviation);
-  const ring = `0 0 0 2px ${colors.primary}`;
-  return (
-    <div
-      className="relative rounded-full overflow-hidden shrink-0"
-      style={{
-        width: size,
-        height: size,
-        background: `radial-gradient(circle at 50% 30%, ${colors.primary}, ${colors.secondary} 75%)`,
-        boxShadow: ring,
-      }}
-    >
-      {url ? (
-        // ESPN headshots are 1040x760 with the player off-center; this crop
-        // centers the face. Falls back to initials if image 404s.
-        <Image
-          src={url}
-          alt={`${firstName} ${lastName}`}
-          width={size * 2}
-          height={size * 2}
-          className="absolute inset-0 size-full object-cover object-top scale-110"
-          unoptimized
-        />
-      ) : (
-        <span className="absolute inset-0 grid place-items-center font-semibold text-white/95"
-              style={{ fontSize: size * 0.35 }}>
-          {initials(firstName, lastName)}
-        </span>
-      )}
-    </div>
-  );
-}
-
-function TeamBadge({
-  team,
-  size = 24,
-}: {
-  team: TeamLite | null;
-  size?: number;
-}) {
-  if (!team) return null;
-  const url = teamLogoUrl(team.abbreviation);
-  if (!url) return null;
-  return (
-    <Image
-      src={url}
-      alt={team.abbreviation}
-      width={size * 2}
-      height={size * 2}
-      className="shrink-0"
-      style={{ width: size, height: size }}
-      unoptimized
-    />
-  );
-}
-
-function JerseyChip({ number }: { number: string | null }) {
-  if (!number) return null;
-  return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-white/8 border border-white/10 px-2 py-0.5 text-[11px] font-mono tabular-nums text-foreground/80">
-      #{number}
-    </span>
-  );
-}
-
-function ConfidenceRing({ score }: { score: number }) {
-  const s = Math.max(0, Math.min(100, score));
-  const color =
-    s >= 90
-      ? "rgb(52 211 153)"
-      : s >= 75
-        ? "rgb(251 191 36)"
-        : "rgb(148 163 184)";
-  return (
-    <div className="relative shrink-0" style={{ width: 84, height: 84 }}>
-      <svg viewBox="0 0 36 36" className="size-full -rotate-90">
-        <circle
-          cx="18"
-          cy="18"
-          r="15.9155"
-          fill="none"
-          stroke="rgba(255,255,255,0.08)"
-          strokeWidth="2.5"
-        />
-        <circle
-          cx="18"
-          cy="18"
-          r="15.9155"
-          fill="none"
-          stroke={color}
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          strokeDasharray={`${s}, 100`}
-        />
-      </svg>
-      <div className="absolute inset-0 grid place-items-center">
-        <div className="text-center leading-none">
-          <div className="text-xl font-semibold tabular-nums">{Math.round(s)}</div>
-          <div className="text-[9px] uppercase tracking-widest text-foreground/50 mt-1">
-            Confidence
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ConfidencePill({ score }: { score: number }) {
-  const s = Math.max(0, Math.min(100, score));
-  const tone =
-    s >= 90
-      ? "bg-emerald-400/15 text-emerald-300 border-emerald-400/30"
-      : s >= 75
-        ? "bg-amber-400/15 text-amber-300 border-amber-400/30"
-        : "bg-white/5 text-foreground/60 border-white/10";
-  return (
-    <span
-      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-mono tabular-nums ${tone}`}
-    >
-      {Math.round(s)}
-    </span>
-  );
-}
-
-function PickSideTag({ side }: { side: "over" | "under" }) {
-  const isOver = side === "over";
-  return (
-    <span
-      className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${
-        isOver
-          ? "bg-emerald-400/15 text-emerald-300"
-          : "bg-rose-400/15 text-rose-300"
-      }`}
-    >
-      <span aria-hidden>{isOver ? "▲" : "▼"}</span>
-      {side}
-    </span>
-  );
-}
-
 function BetOfTheDayCard({
   prediction,
   team,
+  played,
+  isSignedIn,
 }: {
   prediction: PredictionRow;
   team: TeamLite | null;
+  played: boolean;
+  isSignedIn: boolean;
 }) {
   const colors = teamColors(team?.abbreviation);
-  const market = MARKET_LABEL[prediction.market] ?? prediction.market;
+  const market = marketLabel(prediction.market);
   const name = `${prediction.player.first_name} ${prediction.player.last_name}`;
 
   return (
     <section className="relative overflow-hidden rounded-3xl glass-strong glass-sheen grain">
-      {/* Team-colored aura behind the card */}
       <div
         aria-hidden
         className="absolute -inset-px opacity-50 pointer-events-none"
@@ -403,111 +274,18 @@ function BetOfTheDayCard({
           <ConfidenceRing score={prediction.confidence} />
         </div>
 
-        <ReasoningPanel reasoning={prediction.reasoning} />
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <ReasoningPanel reasoning={prediction.reasoning} />
+        </div>
+        <div>
+          <PlayButton
+            predictionId={prediction.id}
+            initialPlayed={played}
+            isSignedIn={isSignedIn}
+          />
+        </div>
       </div>
     </section>
-  );
-}
-
-function PickRow({
-  prediction,
-  team,
-}: {
-  prediction: PredictionRow;
-  team: TeamLite | null;
-}) {
-  const market = MARKET_LABEL[prediction.market] ?? prediction.market;
-  const colors = teamColors(team?.abbreviation);
-  const name = `${prediction.player.first_name} ${prediction.player.last_name}`;
-
-  return (
-    <details className="group glass glass-sheen rounded-2xl overflow-hidden">
-      <summary className="cursor-pointer list-none p-3 sm:p-4 flex items-center gap-4">
-        {/* Team-color side stripe */}
-        <span
-          aria-hidden
-          className="absolute left-0 top-0 bottom-0 w-[3px] rounded-l-2xl"
-          style={{
-            background: `linear-gradient(180deg, ${colors.primary}, ${colors.secondary})`,
-          }}
-        />
-        <PlayerAvatar
-          playerId={prediction.player.id}
-          firstName={prediction.player.first_name}
-          lastName={prediction.player.last_name}
-          abbreviation={team?.abbreviation ?? ""}
-          size={48}
-        />
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-medium truncate">{name}</span>
-            <JerseyChip number={prediction.player.jersey_number} />
-            <TeamBadge team={team} size={18} />
-            {prediction.player.position ? (
-              <span className="text-[10px] text-foreground/45 font-mono uppercase">
-                {prediction.player.position}
-              </span>
-            ) : null}
-          </div>
-          <div className="mt-1 flex items-baseline gap-2 text-sm">
-            <PickSideTag side={prediction.pick} />
-            <span className="font-mono tabular-nums">{prediction.line}</span>
-            <span className="text-foreground/60">{market}</span>
-          </div>
-        </div>
-        <div className="hidden sm:block text-right">
-          <div className="text-[10px] uppercase tracking-widest text-foreground/45">
-            Projection
-          </div>
-          <div className="font-mono tabular-nums text-foreground/80">
-            {prediction.projection.toFixed(1)}
-          </div>
-        </div>
-        <ConfidencePill score={prediction.confidence} />
-        <span
-          aria-hidden
-          className="text-foreground/40 transition-transform group-open:rotate-90"
-        >
-          ›
-        </span>
-      </summary>
-      <div className="px-3 pb-3 sm:px-4 sm:pb-4">
-        <ReasoningPanel reasoning={prediction.reasoning} />
-      </div>
-    </details>
-  );
-}
-
-function ReasoningPanel({ reasoning }: { reasoning: Reasoning }) {
-  if (!reasoning?.checks?.length) return null;
-  return (
-    <div className="rounded-xl border border-white/8 bg-black/20 divide-y divide-white/5 text-xs overflow-hidden">
-      {reasoning.checks.map((c, i) => (
-        <div
-          key={i}
-          className="flex items-center justify-between gap-3 px-3 py-2"
-        >
-          <span className="flex items-center gap-2 min-w-0">
-            <span
-              className={
-                c.passed ? "text-emerald-400" : "text-foreground/30"
-              }
-              aria-hidden
-            >
-              {c.passed ? "✓" : "·"}
-            </span>
-            <span
-              className={`truncate ${c.passed ? "text-foreground/85" : "text-foreground/50"}`}
-            >
-              {c.label}
-            </span>
-          </span>
-          <span className="font-mono tabular-nums text-foreground/60 shrink-0">
-            {c.value.toFixed(1)} vs {c.target}
-          </span>
-        </div>
-      ))}
-    </div>
   );
 }
 
@@ -527,8 +305,8 @@ function EmptyState({
       </p>
       {hasGames ? (
         <p className="text-xs text-foreground/50 font-mono">
-          Run: <code>/api/cron/generate-predictions?date={date}</code> (with
-          the cron Bearer token)
+          Run: <code>/api/cron/generate-predictions?date={date}</code> (with the
+          cron Bearer token)
         </p>
       ) : null}
     </div>

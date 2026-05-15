@@ -1,4 +1,4 @@
-import { computeFeatures } from "./features";
+import { computeFeatures, isAnomalousLastGame } from "./features";
 import { scorePrediction } from "./confidence";
 import type { Prediction, PredictionInput } from "./types";
 
@@ -24,7 +24,7 @@ export function buildPrediction(input: PredictionInput): Prediction {
   const pick =
     features.last5.count > 0 && features.last5.mean >= line ? "over" : "under";
 
-  const { confidence, projection, reasoning } = scorePrediction({
+  const scored = scorePrediction({
     features,
     line,
     pick,
@@ -32,13 +32,31 @@ export function buildPrediction(input: PredictionInput): Prediction {
     signals,
   });
 
+  // Surface the "normally 8 but last game was 5" warning Eren asked for.
+  // Weight 0 keeps it visible without skewing the score; we apply a small
+  // explicit penalty below only when the anomaly contradicts an over-pick.
+  const reasoning = { ...scored.reasoning, checks: [...scored.reasoning.checks] };
+  let confidence = scored.confidence;
+  if (isAnomalousLastGame(features) && features.last_game_value !== null) {
+    reasoning.checks.push({
+      label: "Last game anomaly",
+      passed: false,
+      value: features.last_game_value,
+      target: features.last10.mean,
+      weight: 0,
+    });
+    if (pick === "over" && features.last_game_value < features.last10.mean) {
+      confidence = Math.max(0, confidence - 3);
+    }
+  }
+
   return {
     game_id: game.id,
     player_id: player.id,
     market,
     line,
     pick,
-    projection,
+    projection: scored.projection,
     confidence,
     expected_value: null,
     reasoning,

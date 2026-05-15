@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { ChatLauncher } from "@/components/chat/ChatLauncher";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -36,7 +38,14 @@ export default function RootLayout({
                 href="/"
                 className="flex items-center gap-2 font-semibold tracking-tight text-lg"
               >
-                <span className="inline-block size-7 rounded-lg bg-gradient-to-br from-indigo-400 via-fuchsia-500 to-rose-500 shadow-[0_0_24px_rgba(244,63,94,0.55)] grain" />
+                <Image
+                  src="/logo.png"
+                  alt="TrustMeBro"
+                  width={36}
+                  height={36}
+                  priority
+                  className="rounded-lg shadow-[0_0_24px_rgba(244,63,94,0.45)]"
+                />
                 TrustMeBro
               </Link>
               <nav className="flex items-center gap-1 text-sm">
@@ -44,6 +53,7 @@ export default function RootLayout({
                 <NavLink href="/games">Games</NavLink>
                 <NavLink href="/teams">Teams</NavLink>
                 <NavLink href="/players">Players</NavLink>
+                <NavLink href="/score">Score</NavLink>
               </nav>
             </div>
           </div>
@@ -56,6 +66,7 @@ export default function RootLayout({
             </div>
           </div>
         </footer>
+        <ChatLauncher />
       </body>
     </html>
   );
