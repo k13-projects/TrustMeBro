@@ -10,7 +10,10 @@ export const dynamic = "force-dynamic";
 const QuerySchema = z.object({
   date: z.string().optional(),
   days: z.coerce.number().int().min(1).max(30).optional(),
+  upcoming: z.coerce.number().int().min(0).max(14).optional(),
 });
+
+const DEFAULT_UPCOMING_DAYS = 5;
 
 export async function GET(req: Request) {
   const unauth = assertCronAuth(req);
@@ -24,11 +27,17 @@ export async function GET(req: Request) {
       { status: 400 },
     );
   }
-  const { date, days } = parsed.data;
+  const { date, days, upcoming } = parsed.data;
 
-  // Default: yesterday. ?date=YYYY-MM-DD pins a date.
-  // ?days=N backfills last N days ending yesterday.
-  const yesterday = isoDateOffset(todayIsoDate(), -1);
+  // ?date=YYYY-MM-DD pins a date.
+  // ?days=N backfills last N days ending yesterday (box scores only).
+  // ?upcoming=N overrides how many future days to include.
+  // Default: yesterday (finalized stats) + today + next N (schedule rows so
+  // the home page and /generate-predictions have games to work with).
+  // balldontlie returns scheduled games with empty stats for future dates,
+  // and syncDates is no-op-on-empty for the stats upsert.
+  const today = todayIsoDate();
+  const yesterday = isoDateOffset(today, -1);
   let targetDates: string[];
   if (date && isValidIsoDate(date)) {
     targetDates = [date];
@@ -37,7 +46,11 @@ export async function GET(req: Request) {
       isoDateOffset(yesterday, -i),
     ).reverse();
   } else {
-    targetDates = [yesterday];
+    const ahead = upcoming ?? DEFAULT_UPCOMING_DAYS;
+    targetDates = [yesterday, today];
+    for (let i = 1; i <= ahead; i++) {
+      targetDates.push(isoDateOffset(today, i));
+    }
   }
 
   try {

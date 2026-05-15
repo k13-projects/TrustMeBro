@@ -11,6 +11,7 @@ import type {
   Team,
 } from "../types";
 import type { NbaProvider } from "./provider";
+import { isoDateInProjectTz } from "@/lib/date";
 
 const BASE = "https://site.api.espn.com/apis/site/v2/sports/basketball/nba";
 
@@ -135,7 +136,7 @@ function gameFromEvent(ev: EspnEvent): Game | null {
   const away = comp.competitors.find((c) => c.homeAway === "away");
   if (!home || !away) return null;
 
-  const date = ev.date.slice(0, 10);
+  const date = isoDateInProjectTz(ev.date);
   const slug = ev.season?.slug ?? "";
 
   return {
