@@ -5,7 +5,7 @@ import { JerseyChip } from "./JerseyChip";
 import { marketLabel } from "./MarketLabel";
 import { PickSideTag } from "./PickSideTag";
 import { PlayerAvatar } from "./PlayerAvatar";
-import { ReasoningPanel } from "./ReasoningPanel";
+import { ReasoningPanel, topReasoningCheck } from "./ReasoningPanel";
 import { TeamBadge } from "./TeamBadge";
 import type { PredictionRow, TeamLite } from "./types";
 
@@ -23,10 +23,11 @@ export function PickRow({
   const market = marketLabel(prediction.market);
   const colors = teamColors(team?.abbreviation);
   const name = `${prediction.player.first_name} ${prediction.player.last_name}`;
+  const topCheck = topReasoningCheck(prediction.reasoning);
 
   return (
     <details className="group glass glass-sheen rounded-2xl overflow-hidden relative">
-      <summary className="cursor-pointer list-none p-3 sm:p-4 flex items-center gap-4">
+      <summary className="cursor-pointer list-none p-3 sm:p-4 flex items-center gap-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 focus-visible:ring-inset">
         <span
           aria-hidden
           className="absolute left-0 top-0 bottom-0 w-[3px] rounded-l-2xl"
@@ -65,6 +66,15 @@ export function PickRow({
               </span>
             ) : null}
           </div>
+          {topCheck ? (
+            <div className="mt-1 flex items-center gap-1.5 text-[11px] text-foreground/55">
+              <span aria-hidden className="text-emerald-400">✓</span>
+              <span className="truncate">{topCheck.label}</span>
+              <span className="text-foreground/35 hidden sm:inline">
+                · open for full reasoning
+              </span>
+            </div>
+          ) : null}
         </div>
         <div className="hidden sm:block text-right">
           <div className="text-[10px] uppercase tracking-widest text-foreground/45">

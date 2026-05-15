@@ -215,21 +215,25 @@ function BetOfTheDayCard({
   const name = `${prediction.player.first_name} ${prediction.player.last_name}`;
 
   return (
-    <section className="relative overflow-hidden rounded-3xl glass-strong glass-sheen grain">
+    <section className="relative overflow-hidden rounded-3xl glass-strong glass-sheen grain ring-1 ring-amber-300/20 shadow-[0_0_60px_rgba(251,191,36,0.18)]">
       <div
         aria-hidden
-        className="absolute -inset-px opacity-50 pointer-events-none"
+        className="absolute -inset-px opacity-90 pointer-events-none"
         style={{
-          background: `radial-gradient(40rem 22rem at 12% 30%, ${colors.primary}66, transparent 60%), radial-gradient(30rem 18rem at 90% 80%, ${colors.secondary}55, transparent 60%)`,
+          background: `radial-gradient(48rem 26rem at 12% 25%, ${colors.primary}99, transparent 60%), radial-gradient(36rem 22rem at 92% 85%, ${colors.secondary}77, transparent 62%), radial-gradient(28rem 18rem at 50% 0%, rgba(251,191,36,0.22), transparent 70%)`,
         }}
       />
+      <div
+        aria-hidden
+        className="absolute top-4 right-4 size-24 rounded-full bg-amber-300/10 blur-2xl pointer-events-none"
+      />
       <div className="relative p-6 sm:p-8 space-y-6">
-        <div className="flex items-center gap-2 text-amber-300">
-          <span aria-hidden className="text-base">★</span>
-          <h2 className="text-[11px] font-medium tracking-[0.22em] uppercase">
+        <h2 className="flex items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-400/20 border border-amber-300/40 px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.22em] text-amber-200">
+            <span aria-hidden className="text-sm leading-none">★</span>
             Bet of the Day
-          </h2>
-        </div>
+          </span>
+        </h2>
 
         <div className="flex items-start gap-6 flex-wrap">
           <PlayerAvatar
