@@ -53,6 +53,10 @@ export default async function GameDetailPage({ params }: PageProps) {
   const home = teams.find((t) => t.id === game.home_team_id) ?? null;
   const away = teams.find((t) => t.id === game.visitor_team_id) ?? null;
 
+  // Series score (postseason) or season record (regular). Both pull from
+  // finalized games this season — the current game counts if it's final.
+  const context = await loadGameContext(supabase, game);
+
   const { data: predictionsRaw } = await supabase
     .from("predictions")
     .select(
@@ -97,7 +101,12 @@ export default async function GameDetailPage({ params }: PageProps) {
         ← {game.date} scoreboard
       </Link>
 
-      <GameHero game={game} home={home} away={away} />
+      <GameHero
+        game={game}
+        home={home}
+        away={away}
+        context={context}
+      />
 
       {botd ? (
         <BotDStrip
@@ -140,14 +149,112 @@ export default async function GameDetailPage({ params }: PageProps) {
   );
 }
 
+type GameContext =
+  | {
+      kind: "playoff";
+      home_wins: number;
+      away_wins: number;
+      games_played: number;
+    }
+  | {
+      kind: "regular";
+      home_record: { wins: number; losses: number };
+      away_record: { wins: number; losses: number };
+    }
+  | null;
+
+async function loadGameContext(
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
+  game: GameRow,
+): Promise<GameContext> {
+  if (game.postseason) {
+    const { data } = await supabase
+      .from("games")
+      .select(
+        "id, status, home_team_id, visitor_team_id, home_team_score, visitor_team_score",
+      )
+      .eq("season", game.season)
+      .eq("postseason", true)
+      .or(
+        `and(home_team_id.eq.${game.home_team_id},visitor_team_id.eq.${game.visitor_team_id}),and(home_team_id.eq.${game.visitor_team_id},visitor_team_id.eq.${game.home_team_id})`,
+      );
+    const seriesGames = (data ?? []) as Array<{
+      id: number;
+      status: string;
+      home_team_id: number;
+      visitor_team_id: number;
+      home_team_score: number;
+      visitor_team_score: number;
+    }>;
+    let homeWins = 0;
+    let awayWins = 0;
+    let played = 0;
+    for (const g of seriesGames) {
+      if (!g.status?.toLowerCase().includes("final")) continue;
+      played++;
+      const homeIsHomeInThisGame = g.home_team_id === game.home_team_id;
+      const homeScore = homeIsHomeInThisGame
+        ? g.home_team_score
+        : g.visitor_team_score;
+      const awayScore = homeIsHomeInThisGame
+        ? g.visitor_team_score
+        : g.home_team_score;
+      if (homeScore > awayScore) homeWins++;
+      else if (awayScore > homeScore) awayWins++;
+    }
+    return {
+      kind: "playoff",
+      home_wins: homeWins,
+      away_wins: awayWins,
+      games_played: played,
+    };
+  }
+
+  async function recordFor(teamId: number) {
+    const { data } = await supabase
+      .from("games")
+      .select(
+        "status, home_team_id, visitor_team_id, home_team_score, visitor_team_score",
+      )
+      .eq("season", game.season)
+      .eq("postseason", false)
+      .or(`home_team_id.eq.${teamId},visitor_team_id.eq.${teamId}`);
+    let wins = 0;
+    let losses = 0;
+    for (const g of (data ?? []) as Array<{
+      status: string;
+      home_team_id: number;
+      visitor_team_id: number;
+      home_team_score: number;
+      visitor_team_score: number;
+    }>) {
+      if (!g.status?.toLowerCase().includes("final")) continue;
+      const teamIsHome = g.home_team_id === teamId;
+      const teamScore = teamIsHome ? g.home_team_score : g.visitor_team_score;
+      const oppScore = teamIsHome ? g.visitor_team_score : g.home_team_score;
+      if (teamScore > oppScore) wins++;
+      else if (oppScore > teamScore) losses++;
+    }
+    return { wins, losses };
+  }
+
+  const [home_record, away_record] = await Promise.all([
+    recordFor(game.home_team_id),
+    recordFor(game.visitor_team_id),
+  ]);
+  return { kind: "regular", home_record, away_record };
+}
+
 function GameHero({
   game,
   home,
   away,
+  context,
 }: {
   game: GameRow;
   home: TeamLite | null;
   away: TeamLite | null;
+  context: GameContext;
 }) {
   const isFinal = game.status?.toLowerCase().includes("final");
   const homeWins =
@@ -167,13 +274,20 @@ function GameHero({
         }}
       />
       <div className="relative p-6 sm:p-10 space-y-6">
-        <div className="flex items-center justify-between text-[11px] uppercase tracking-[0.22em] text-foreground/55">
+        <div className="flex items-center justify-between text-[11px] uppercase tracking-[0.22em] text-foreground/55 flex-wrap gap-2">
           <span>{game.status || "Scheduled"}</span>
-          {game.postseason ? (
-            <span className="rounded-full bg-amber-400/15 text-amber-300 px-2 py-0.5 border border-amber-400/30">
-              Playoffs
-            </span>
-          ) : null}
+          <div className="flex items-center gap-2">
+            <ContextBadge
+              context={context}
+              homeAbbrev={home?.abbreviation ?? ""}
+              awayAbbrev={away?.abbreviation ?? ""}
+            />
+            {game.postseason ? (
+              <span className="rounded-full bg-amber-400/15 text-amber-300 px-2 py-0.5 border border-amber-400/30">
+                Playoffs
+              </span>
+            ) : null}
+          </div>
         </div>
         <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-6">
           <TeamHero team={away} score={game.visitor_team_score} won={awayWins} finalized={isFinal} side="left" />
@@ -189,6 +303,52 @@ function GameHero({
         </div>
       </div>
     </section>
+  );
+}
+
+function ContextBadge({
+  context,
+  homeAbbrev,
+  awayAbbrev,
+}: {
+  context: GameContext;
+  homeAbbrev: string;
+  awayAbbrev: string;
+}) {
+  if (!context) return null;
+  if (context.kind === "playoff") {
+    if (context.games_played === 0) {
+      return (
+        <span className="rounded-full bg-white/5 border border-white/10 text-foreground/65 px-2 py-0.5 normal-case">
+          Series tied 0-0
+        </span>
+      );
+    }
+    const { home_wins, away_wins } = context;
+    let label: string;
+    if (home_wins === away_wins) {
+      label = `Series tied ${home_wins}-${away_wins}`;
+    } else if (home_wins > away_wins) {
+      label = `${homeAbbrev} leads ${home_wins}-${away_wins}`;
+    } else {
+      label = `${awayAbbrev} leads ${away_wins}-${home_wins}`;
+    }
+    return (
+      <span className="rounded-full bg-amber-400/15 text-amber-300 border border-amber-400/30 px-2 py-0.5 normal-case font-mono tabular-nums">
+        {label}
+      </span>
+    );
+  }
+  return (
+    <span className="rounded-full bg-white/5 border border-white/10 text-foreground/75 px-2 py-0.5 normal-case font-mono tabular-nums">
+      <span title={`${awayAbbrev} season record`}>
+        {awayAbbrev} {context.away_record.wins}-{context.away_record.losses}
+      </span>
+      <span className="text-foreground/35 mx-1.5">·</span>
+      <span title={`${homeAbbrev} season record`}>
+        {homeAbbrev} {context.home_record.wins}-{context.home_record.losses}
+      </span>
+    </span>
   );
 }
 

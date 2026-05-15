@@ -12,6 +12,7 @@ import type {
 import { JerseyChip } from "@/components/JerseyChip";
 import { PickRow } from "@/components/PickRow";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
+import { SeasonStatsBlock } from "@/components/SeasonStatsBlock";
 import { StatComparisonCard } from "@/components/StatComparisonCard";
 import { TeamBadge } from "@/components/TeamBadge";
 import type { PredictionRow, TeamLite } from "@/components/types";
@@ -228,6 +229,8 @@ export default async function PlayerDetailPage({ params }: PageProps) {
         history={history}
         anyAnomaly={anyAnomaly}
       />
+
+      <SeasonStatsBlock history={history} variant="full" />
 
       <section className="grid gap-3 md:grid-cols-2">
         {MARKETS.map((market) => {

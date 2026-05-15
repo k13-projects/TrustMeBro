@@ -40,14 +40,21 @@ const client = new pg.Client({
 console.log(`→ Connecting to Postgres...`);
 await client.connect();
 
-console.log(`→ Applying ${migrationPath} (${sql.length.toLocaleString()} chars)`);
+// Migrations starting with `-- nontransactional` run outside a transaction.
+// Postgres forbids ALTER TYPE ADD VALUE inside a transaction block, so any
+// migration that adds enum values must opt out via this directive.
+const wantsTx = !/^\s*--\s*nontransactional/i.test(sql);
+
+console.log(
+  `→ Applying ${migrationPath} (${sql.length.toLocaleString()} chars${wantsTx ? "" : ", non-transactional"})`,
+);
 try {
-  await client.query("begin");
+  if (wantsTx) await client.query("begin");
   await client.query(sql);
-  await client.query("commit");
+  if (wantsTx) await client.query("commit");
   console.log("✓ Migration applied.");
 } catch (err) {
-  await client.query("rollback").catch(() => {});
+  if (wantsTx) await client.query("rollback").catch(() => {});
   console.error(`✗ Migration failed: ${err.message}`);
   if (err.position) console.error(`  (at SQL position ${err.position})`);
   process.exit(1);

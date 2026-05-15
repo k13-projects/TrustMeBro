@@ -3,6 +3,7 @@ import "server-only";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { buildPrediction, pickBetOfTheDay } from "./predictions";
 import { detectAll, type DetectedPattern } from "./patterns";
+import { statValue } from "./market-field";
 import type {
   PlayerGameStatLine,
   Prediction,
@@ -16,6 +17,7 @@ const MARKETS: PropMarket[] = [
   "rebounds",
   "assists",
   "threes_made",
+  "pra",
 ];
 
 const HISTORY_DEPTH = 30;
@@ -275,25 +277,6 @@ export async function generateForDate(date: string) {
     bet_of_the_day_id: botdRow?.id ?? null,
     patterns: patternsByMarket.length,
   };
-}
-
-function statValue(s: PlayerGameStatLine, market: PropMarket): number | null {
-  switch (market) {
-    case "points":
-      return s.points;
-    case "rebounds":
-      return s.rebounds;
-    case "assists":
-      return s.assists;
-    case "threes_made":
-      return s.fg3m;
-    case "minutes":
-      return s.minutes;
-    case "steals":
-      return s.steals;
-    case "blocks":
-      return s.blocks;
-  }
 }
 
 function sameKey(a: Prediction, b: Prediction): boolean {

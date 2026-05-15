@@ -1,5 +1,5 @@
 import type { PlayerGameStatLine, PropMarket } from "./types";
-import { MARKET_TO_FIELD } from "./market-field";
+import { statValue } from "./market-field";
 
 export type DetectedPattern = {
   pattern_type: "cycle" | "home_away_split" | "rest_day_dip" | "cold_streak";
@@ -10,9 +10,8 @@ export type DetectedPattern = {
 };
 
 function values(history: PlayerGameStatLine[], market: PropMarket): number[] {
-  const field = MARKET_TO_FIELD[market];
   return history
-    .map((g) => g[field])
+    .map((g) => statValue(g, market))
     .filter((v): v is number => typeof v === "number");
 }
 

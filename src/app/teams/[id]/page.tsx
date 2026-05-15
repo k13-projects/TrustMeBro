@@ -8,6 +8,7 @@ import { statValue } from "@/lib/analysis/market-field";
 import type { PlayerGameStatLine, PropMarket } from "@/lib/analysis/types";
 import { JerseyChip } from "@/components/JerseyChip";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
+import { SeasonStatsBlock } from "@/components/SeasonStatsBlock";
 
 export const revalidate = 60;
 
@@ -43,7 +44,10 @@ type StatRow = {
   assists: number | null;
   steals: number | null;
   blocks: number | null;
+  fgm: number | null;
+  fga: number | null;
   fg3m: number | null;
+  fg3a: number | null;
   is_home: boolean;
   games:
     | { date: string }
@@ -79,7 +83,7 @@ export default async function TeamDetailPage({ params }: PageProps) {
     ? await supabase
         .from("player_game_stats")
         .select(
-          "game_id, player_id, team_id, minutes, points, rebounds, assists, steals, blocks, fg3m, is_home, games!inner(date)",
+          "game_id, player_id, team_id, minutes, points, rebounds, assists, steals, blocks, fgm, fga, fg3m, fg3a, is_home, games!inner(date)",
         )
         .in("player_id", playerIds)
         .order("games(date)", { ascending: false })
@@ -103,10 +107,10 @@ export default async function TeamDetailPage({ params }: PageProps) {
       blocks: s.blocks,
       turnovers: null,
       personal_fouls: null,
-      fgm: null,
-      fga: null,
+      fgm: s.fgm,
+      fga: s.fga,
       fg3m: s.fg3m,
-      fg3a: null,
+      fg3a: s.fg3a,
       ftm: null,
       fta: null,
       is_home: s.is_home,
@@ -241,11 +245,6 @@ function PlayerTile({
   const pointsValues = recent
     .map((h) => h.points)
     .filter((v): v is number => v !== null);
-  const lastGamePoints = recent[0]?.points ?? null;
-  const l10Mean =
-    pointsValues.length > 0
-      ? pointsValues.reduce((s, v) => s + v, 0) / pointsValues.length
-      : 0;
 
   const features = computeFeatures({
     player_id: player.id,
@@ -281,7 +280,7 @@ function PlayerTile({
               </span>
             ) : null}
             <span className="text-[10px] text-foreground/45 font-mono ml-1">
-              {avgMinutes.toFixed(0)} min avg
+              {avgMinutes.toFixed(0)} min
             </span>
           </div>
         </div>
@@ -294,31 +293,19 @@ function PlayerTile({
         ) : null}
       </header>
 
+      <SeasonStatsBlock history={recent} variant="compact" />
+
       <div className="flex items-center justify-between gap-3">
         <Sparkline values={pointsValues.slice(0, 5).reverse()} />
-        <div className="text-right text-[10px] space-y-0.5 shrink-0">
-          <div>
-            <span className="text-emerald-400 font-mono tabular-nums">
-              {l10Mean.toFixed(1)}
-            </span>
-            <span className="text-foreground/45 ml-1">L10</span>
-          </div>
-          {lastGamePoints !== null ? (
-            <div>
-              <span className="text-amber-400 font-mono tabular-nums">
-                {lastGamePoints}
-              </span>
-              <span className="text-foreground/45 ml-1">last</span>
-            </div>
-          ) : null}
-        </div>
+        {anomaly ? (
+          <span
+            className="text-[10px] uppercase tracking-widest text-amber-300/85"
+            title="Last game >1.5σ from L10 mean"
+          >
+            ⚠ Anomaly
+          </span>
+        ) : null}
       </div>
-
-      {anomaly ? (
-        <div className="text-[10px] uppercase tracking-widest text-amber-300/85">
-          ⚠ Anomaly last game
-        </div>
-      ) : null}
     </Link>
   );
 }
