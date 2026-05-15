@@ -1,22 +1,38 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { assertCronAuth } from "../_auth";
+import { generateForDate } from "@/lib/analysis/run";
+import { isValidIsoDate, todayIsoDate } from "@/lib/date";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+const QuerySchema = z.object({
+  date: z.string().optional(),
+});
 
 export async function GET(req: Request) {
   const unauth = assertCronAuth(req);
   if (unauth) return unauth;
 
-  return NextResponse.json({
-    ok: true,
-    message: "generate-predictions not implemented yet",
-    todo: [
-      "Load today's games + expected starting lineups",
-      "For each player above expected-minutes threshold, load history",
-      "buildPrediction() across markets {points, rebounds, assists, threes_made}",
-      "Persist to predictions table",
-      "pickBetOfTheDay() and flag is_bet_of_the_day",
-    ],
-  });
+  const url = new URL(req.url);
+  const parsed = QuerySchema.safeParse(Object.fromEntries(url.searchParams));
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "invalid query", issues: parsed.error.issues },
+      { status: 400 },
+    );
+  }
+  const date =
+    parsed.data.date && isValidIsoDate(parsed.data.date)
+      ? parsed.data.date
+      : todayIsoDate();
+
+  try {
+    const result = await generateForDate(date);
+    return NextResponse.json({ ok: true, ...result });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+  }
 }

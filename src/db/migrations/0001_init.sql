@@ -255,7 +255,7 @@ create table patterns (
 
 create index patterns_player_idx on patterns(player_id);
 create index patterns_team_idx on patterns(team_id);
-create index patterns_active_idx on patterns(expires_at) where expires_at is null or expires_at > now();
+create index patterns_expires_idx on patterns(expires_at);
 
 -- =============================================================================
 -- RLS — Row Level Security

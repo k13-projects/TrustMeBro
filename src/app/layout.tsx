@@ -35,7 +35,8 @@ export default function RootLayout({
               TrustMeBro
             </Link>
             <nav className="flex items-center gap-5 text-sm">
-              <Link href="/" className="hover:underline">Games</Link>
+              <Link href="/" className="hover:underline">Picks</Link>
+              <Link href="/games" className="hover:underline">Games</Link>
               <Link href="/teams" className="hover:underline">Teams</Link>
               <Link href="/players" className="hover:underline">Players</Link>
             </nav>
