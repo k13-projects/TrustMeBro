@@ -16,51 +16,33 @@ export function rewardDelta(outcome: BetStatus): number {
  * Apply the +1.0 / -0.5 reward to system_score and append a history row.
  * Called by `/api/cron/settle-bets` after a prediction is settled.
  *
- * Uses service-role client because RLS has no UPDATE policy on system_score.
- * Two writes, no transaction: if the second fails, the live score may drift
- * from history. The defensive partial unique index on system_score_history
- * (migration 0003) prevents double-credit if settle-bets re-runs.
+ * Runs the score update and history insert inside a single Postgres
+ * function (migration 0008) so the two writes can't drift. The 0003
+ * partial unique index on system_score_history still blocks double-credit
+ * if settle-bets retries the same prediction.
  */
 export async function applyReward(args: {
   prediction_id: string;
   outcome: BetStatus;
 }) {
   const { prediction_id, outcome } = args;
-  const delta = rewardDelta(outcome);
-  if (delta === 0 && outcome !== "won" && outcome !== "lost") return null;
+  if (outcome !== "won" && outcome !== "lost" && outcome !== "void") {
+    return null;
+  }
 
   const supabase = supabaseAdmin();
+  const { data, error } = await supabase.rpc("apply_reward", {
+    p_prediction_id: prediction_id,
+    p_outcome: outcome,
+  });
+  if (error) throw error;
 
-  const { data: current, error: readErr } = await supabase
-    .from("system_score")
-    .select("score, wins, losses, voids")
-    .eq("id", true)
-    .single();
-  if (readErr) throw readErr;
-
-  const next = {
-    score: Number(current.score) + delta,
-    wins: current.wins + (outcome === "won" ? 1 : 0),
-    losses: current.losses + (outcome === "lost" ? 1 : 0),
-    voids: current.voids + (outcome === "void" ? 1 : 0),
-    updated_at: new Date().toISOString(),
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row) return null;
+  return {
+    score: Number(row.score),
+    wins: Number(row.wins),
+    losses: Number(row.losses),
+    voids: Number(row.voids),
   };
-
-  const { error: updErr } = await supabase
-    .from("system_score")
-    .update(next)
-    .eq("id", true);
-  if (updErr) throw updErr;
-
-  const { error: histErr } = await supabase
-    .from("system_score_history")
-    .insert({
-      prediction_id,
-      delta,
-      outcome,
-      score_after: next.score,
-    });
-  if (histErr) throw histErr;
-
-  return next;
 }

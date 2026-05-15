@@ -135,10 +135,18 @@ export default async function PlayerDetailPage({ params }: PageProps) {
 
   const stats = (statsRaw ?? []).map(normalizeStatRow);
 
+  const opponentForGame = (s: StatRow): number => {
+    if (!s.games) return 0;
+    return s.team_id === s.games.home_team_id
+      ? s.games.visitor_team_id
+      : s.games.home_team_id;
+  };
+
   const history: PlayerGameStatLine[] = stats.map((s) => ({
     game_id: s.game_id,
     player_id: id,
     team_id: s.team_id,
+    opponent_team_id: opponentForGame(s) || null,
     minutes: s.minutes,
     points: s.points,
     rebounds: s.rebounds,
@@ -157,13 +165,6 @@ export default async function PlayerDetailPage({ params }: PageProps) {
     started: s.started,
     game_date: s.games?.date ?? "",
   }));
-
-  const opponentForGame = (s: StatRow): number => {
-    if (!s.games) return 0;
-    return s.team_id === s.games.home_team_id
-      ? s.games.visitor_team_id
-      : s.games.home_team_id;
-  };
 
   const opponentIds = Array.from(
     new Set(stats.map(opponentForGame).filter((v) => v > 0)),

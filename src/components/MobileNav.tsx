@@ -17,7 +17,11 @@ const ITEMS: Item[] = [
   { href: "/history", label: "History" },
 ];
 
-export function MobileNav() {
+type Identity =
+  | { kind: "auth" | "guest"; display_name: string }
+  | null;
+
+export function MobileNav({ identity }: { identity?: Identity } = {}) {
   const pathname = usePathname() ?? "/";
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -116,6 +120,40 @@ export function MobileNav() {
               </Link>
             );
           })}
+          {identity ? (
+            <form
+              action="/api/auth/signout"
+              method="post"
+              className="border-t border-white/10 mt-1 pt-2 px-3 pb-1 space-y-1.5"
+            >
+              <div className="flex items-center gap-2 text-xs text-foreground/70">
+                <span
+                  className={`size-1.5 rounded-full ${identity.kind === "guest" ? "bg-amber-300" : "bg-emerald-400"}`}
+                  aria-hidden
+                />
+                <span className="truncate">{identity.display_name}</span>
+                {identity.kind === "guest" ? (
+                  <span className="text-[10px] uppercase tracking-widest text-foreground/45">
+                    Guest
+                  </span>
+                ) : null}
+              </div>
+              <button
+                type="submit"
+                className="w-full text-left rounded-xl px-3 py-2 text-sm text-foreground/75 hover:bg-white/5 hover:text-foreground transition-colors"
+              >
+                Sign out
+              </button>
+            </form>
+          ) : (
+            <Link
+              href="/login"
+              role="menuitem"
+              className="block border-t border-white/10 mt-1 pt-2 px-3 py-2 text-sm text-foreground/75 hover:bg-white/5 hover:text-foreground rounded-xl"
+            >
+              Sign in
+            </Link>
+          )}
         </div>
       ) : null}
     </div>

@@ -13,7 +13,10 @@ export function CouponDrawerLauncher() {
       onClick={cart.open}
       aria-label={`Open coupon (${cart.picks.length} picks)`}
       className={cx(
-        "fixed bottom-5 right-5 z-40 inline-flex items-center gap-2 rounded-full glass-strong border border-amber-400/30 px-4 py-2 text-sm font-medium text-amber-300 shadow-[0_20px_40px_-12px_rgba(251,191,36,0.5)] hover:bg-amber-400/15 transition-colors",
+        // Sits one slot above the ChatLauncher (bottom-6, h-12 + 1rem gap)
+        // so the green "Ask AI" pill and the amber "Coupon" pill never
+        // overlap when both are visible.
+        "fixed bottom-20 right-5 z-40 inline-flex items-center gap-2 rounded-full glass-strong border border-amber-400/30 px-4 py-2 text-sm font-medium text-amber-300 shadow-[0_20px_40px_-12px_rgba(251,191,36,0.5)] hover:bg-amber-400/15 transition-colors",
         focusRing,
       )}
     >

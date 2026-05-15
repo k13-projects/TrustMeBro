@@ -3,6 +3,7 @@
 import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
+import { GuestPicker } from "@/components/auth/GuestPicker";
 
 export default function LoginPage() {
   return (
@@ -20,11 +21,10 @@ function LoginFallback() {
   );
 }
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
 function safeNext(raw: string | null): string {
   if (!raw) return "/";
   if (!raw.startsWith("/")) return "/";
+  // Block protocol-relative + escaped paths.
   if (raw.startsWith("//") || raw.startsWith("/\\")) return "/";
   return raw;
 }
@@ -32,37 +32,25 @@ function safeNext(raw: string | null): string {
 function LoginForm() {
   const params = useSearchParams();
   const next = safeNext(params.get("next"));
-  const [email, setEmail] = useState("");
-  const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">(
-    "idle",
-  );
-  const [error, setError] = useState<string | null>(null);
+  const errorParam = params.get("error");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(errorParam);
 
-  const trimmedEmail = email.trim();
-  const emailValid = EMAIL_RE.test(trimmedEmail);
-
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!emailValid) {
-      setError("Please enter a valid email address.");
-      setStatus("error");
-      return;
-    }
-    setStatus("sending");
+  async function continueWithGoogle() {
+    setBusy(true);
     setError(null);
     const supabase = createSupabaseBrowserClient();
-    const { error } = await supabase.auth.signInWithOtp({
-      email: trimmedEmail,
+    const { error: oauthErr } = await supabase.auth.signInWithOAuth({
+      provider: "google",
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
+        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
       },
     });
-    if (error) {
-      setStatus("error");
-      setError(error.message);
-    } else {
-      setStatus("sent");
+    if (oauthErr) {
+      setError(oauthErr.message);
+      setBusy(false);
     }
+    // On success Supabase navigates the page itself — nothing more to do.
   }
 
   return (
@@ -72,70 +60,61 @@ function LoginForm() {
           <p className="text-[11px] font-medium tracking-[0.22em] uppercase text-foreground/45">
             Sign in
           </p>
-          <h1 className="text-3xl font-semibold tracking-tight">
-            Magic link
-          </h1>
+          <h1 className="text-3xl font-semibold tracking-tight">Welcome</h1>
           <p className="text-sm text-foreground/55">
-            Enter your email and we&apos;ll send you a one-tap link. No
-            password.
+            Two ways in. Google keeps your bets locked to your account across
+            devices. Guest mode is faster but anyone who types the same name
+            sees those bets.
           </p>
         </div>
 
-        {status === "sent" ? (
-          <div
-            role="status"
-            aria-live="polite"
-            className="rounded-xl border border-emerald-400/30 bg-emerald-400/10 p-4 text-sm text-emerald-200"
-          >
-            Check your inbox at <span className="font-mono">{trimmedEmail}</span>.
-            The link signs you in instantly.
-          </div>
-        ) : (
-          <form onSubmit={onSubmit} className="space-y-3" noValidate>
-            <div>
-              <label
-                htmlFor="login-email"
-                className="block text-[11px] uppercase tracking-widest text-foreground/55"
-              >
-                Email
-              </label>
-              <input
-                id="login-email"
-                name="email"
-                type="email"
-                inputMode="email"
-                autoComplete="email"
-                required
-                autoFocus
-                value={email}
-                onChange={(e) => {
-                  setEmail(e.target.value);
-                  if (status === "error") {
-                    setStatus("idle");
-                    setError(null);
-                  }
-                }}
-                placeholder="you@example.com"
-                aria-invalid={status === "error" && !emailValid}
-                aria-describedby={error ? "login-error" : undefined}
-                className="mt-1 w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2 outline-none focus:border-white/25 focus-visible:ring-2 focus-visible:ring-white/30 transition-colors"
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={status === "sending" || !emailValid}
-              className="w-full rounded-xl bg-white/10 hover:bg-white/15 border border-white/15 px-3 py-2 font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
-            >
-              {status === "sending" ? "Sending..." : "Send magic link"}
-            </button>
-            {error ? (
-              <p id="login-error" role="alert" className="text-sm text-rose-300">
-                {error}
-              </p>
-            ) : null}
-          </form>
-        )}
+        <button
+          type="button"
+          onClick={continueWithGoogle}
+          disabled={busy}
+          className="w-full inline-flex items-center justify-center gap-3 rounded-xl bg-white text-black px-4 py-2.5 font-medium hover:bg-white/90 disabled:opacity-60 disabled:cursor-not-allowed transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+        >
+          <GoogleGlyph />
+          <span>{busy ? "Redirecting…" : "Continue with Google"}</span>
+        </button>
+
+        {error ? (
+          <p role="alert" className="text-sm text-rose-300">
+            {error}
+          </p>
+        ) : null}
+
+        <div className="flex items-center gap-3 text-[10px] uppercase tracking-widest text-foreground/40">
+          <span className="h-px flex-1 bg-white/10" />
+          <span>or</span>
+          <span className="h-px flex-1 bg-white/10" />
+        </div>
+
+        <GuestPicker next={next} />
       </div>
     </div>
+  );
+}
+
+function GoogleGlyph() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden>
+      <path
+        d="M17.64 9.205c0-.638-.057-1.252-.164-1.841H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"
+        fill="#4285F4"
+      />
+      <path
+        d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"
+        fill="#34A853"
+      />
+      <path
+        d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"
+        fill="#FBBC05"
+      />
+      <path
+        d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"
+        fill="#EA4335"
+      />
+    </svg>
   );
 }

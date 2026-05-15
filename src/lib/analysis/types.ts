@@ -18,6 +18,9 @@ export type PlayerGameStatLine = {
   game_id: number;
   player_id: number;
   team_id: number;
+  // Derived at load time from the games row (home_team_id / visitor_team_id +
+  // is_home). Not a DB column. Null only when the joined game row is missing.
+  opponent_team_id: number | null;
   minutes: number | null;
   points: number | null;
   rebounds: number | null;

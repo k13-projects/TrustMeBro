@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { supabaseAdmin } from "@/lib/supabase/admin";
+import { getRequester } from "@/lib/identity";
 import { marketLabel } from "@/components/MarketLabel";
 import { PickSideTag } from "@/components/PickSideTag";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
@@ -54,13 +56,9 @@ export default async function HistoryPage({ searchParams }: PageProps) {
   const params = await searchParams;
   const tab: HistoryTab = params.tab === "coupons" ? "coupons" : "bets";
 
-  const supabase = await createSupabaseServerClient();
+  const requester = await getRequester();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
+  if (!requester) {
     return (
       <div className="mx-auto max-w-2xl px-4 py-16">
         <div className="rounded-3xl glass-strong glass-sheen grain p-8 space-y-4">
@@ -85,18 +83,26 @@ export default async function HistoryPage({ searchParams }: PageProps) {
     );
   }
 
+  // Authed users read through RLS; guests' rows aren't visible under anon RLS,
+  // so we use the service-role client and filter manually by guest_name.
+  const reader =
+    requester.kind === "auth" ? await createSupabaseServerClient() : supabaseAdmin();
+  const ownerCol = requester.kind === "auth" ? "user_id" : "guest_name";
+  const ownerVal =
+    requester.kind === "auth" ? requester.user_id : requester.guest_name;
+
   const [{ data: betsRaw }, { data: couponsRaw }] = await Promise.all([
-    supabase
+    reader
       .from("user_bets")
       .select(
         `id, status, stake, taken_odds, result_value, user_note, created_at, settled_at,
          prediction:predictions!inner(id, game_id, player_id, market, line, pick, projection, confidence, is_bet_of_the_day,
            player:players!inner(id, first_name, last_name, team_id, position, jersey_number))`,
       )
-      .eq("user_id", user.id)
+      .eq(ownerCol, ownerVal)
       .order("created_at", { ascending: false })
       .limit(200),
-    supabase
+    reader
       .from("user_coupons")
       .select(
         `id, mode, pick_count, stake, payout_multiplier, potential_payout,
@@ -104,7 +110,7 @@ export default async function HistoryPage({ searchParams }: PageProps) {
          picks:user_coupon_picks(pick_order, prediction:predictions(id, game_id, market, line, pick,
            player:players(id, first_name, last_name, team_id)))`,
       )
-      .eq("user_id", user.id)
+      .eq(ownerCol, ownerVal)
       .order("created_at", { ascending: false })
       .limit(100),
   ]);
@@ -157,7 +163,7 @@ export default async function HistoryPage({ searchParams }: PageProps) {
     ),
   );
   const { data: teams } = teamIds.length
-    ? await supabase
+    ? await reader
         .from("teams")
         .select("id, abbreviation, full_name")
         .in("id", teamIds)

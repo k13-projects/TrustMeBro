@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 import { loadPayoutMap } from "@/lib/analysis/payouts";
+import { getRequester } from "@/lib/identity";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,13 +17,13 @@ const BodySchema = z.object({
 });
 
 export async function POST(req: Request) {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
+  const requester = await getRequester();
+  if (!requester) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
+  // Read-only handle for prediction validation; works for either identity
+  // mode because predictions are RLS-public-readable.
+  const supabase = await createSupabaseServerClient();
 
   let body: unknown;
   try {
@@ -85,10 +87,19 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "same_game_picks" }, { status: 400 });
   }
 
-  const { data: coupon, error: cErr } = await supabase
+  // Guests don't have a Supabase session, so RLS would reject any insert
+  // gated on auth.uid(). Service role bypasses RLS; the identity in the
+  // cookie becomes the partition key via guest_name.
+  const writer = requester.kind === "auth" ? supabase : supabaseAdmin();
+  const identity =
+    requester.kind === "auth"
+      ? { user_id: requester.user_id, guest_name: null as string | null }
+      : { user_id: null as string | null, guest_name: requester.guest_name };
+
+  const { data: coupon, error: cErr } = await writer
     .from("user_coupons")
     .insert({
-      user_id: user.id,
+      ...identity,
       mode,
       pick_count: uniqueIds.length,
       stake,
@@ -110,12 +121,12 @@ export async function POST(req: Request) {
     prediction_id,
     pick_order: idx,
   }));
-  const { error: pErr } = await supabase
+  const { error: pErr } = await writer
     .from("user_coupon_picks")
     .insert(pickRows);
   if (pErr) {
     // Best-effort rollback so we don't leave an orphan coupon.
-    await supabase.from("user_coupons").delete().eq("id", coupon.id);
+    await writer.from("user_coupons").delete().eq("id", coupon.id);
     return NextResponse.json({ error: pErr.message }, { status: 500 });
   }
 

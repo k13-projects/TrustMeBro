@@ -108,7 +108,7 @@ export async function runLookupPlayer(args: {
   const { data: rows, error: statsErr } = await supabase
     .from("player_game_stats")
     .select(
-      "game_id, player_id, team_id, minutes, points, rebounds, assists, steals, blocks, turnovers, personal_fouls, fgm, fga, fg3m, fg3a, ftm, fta, is_home, started, games:games!inner(date)",
+      "game_id, player_id, team_id, minutes, points, rebounds, assists, steals, blocks, turnovers, personal_fouls, fgm, fga, fg3m, fg3a, ftm, fta, is_home, started, games:games!inner(date, home_team_id, visitor_team_id)",
     )
     .eq("player_id", player.id)
     .limit(40);
@@ -127,32 +127,48 @@ export async function runLookupPlayer(args: {
   const history: PlayerGameStatLine[] = rows
     .map((r) => {
       const g = Array.isArray(r.games) ? r.games[0] : r.games;
-      return { row: r, date: g?.date ?? "" };
+      return { row: r, joined: g };
     })
-    .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
+    .sort((a, b) =>
+      (a.joined?.date ?? "") < (b.joined?.date ?? "") ? 1
+      : (a.joined?.date ?? "") > (b.joined?.date ?? "") ? -1
+      : 0,
+    )
     .slice(0, 20)
-    .map(({ row: r, date }) => ({
-      game_id: r.game_id,
-      player_id: r.player_id,
-      team_id: r.team_id,
-      minutes: r.minutes,
-      points: r.points,
-      rebounds: r.rebounds,
-      assists: r.assists,
-      steals: r.steals,
-      blocks: r.blocks,
-      turnovers: r.turnovers,
-      personal_fouls: r.personal_fouls,
-      fgm: r.fgm,
-      fga: r.fga,
-      fg3m: r.fg3m,
-      fg3a: r.fg3a,
-      ftm: r.ftm,
-      fta: r.fta,
-      is_home: r.is_home,
-      started: r.started,
-      game_date: date,
-    }));
+    .map(({ row: r, joined }) => {
+      const j = joined as
+        | { date: string; home_team_id: number; visitor_team_id: number }
+        | null
+        | undefined;
+      const opponentId = j
+        ? r.is_home
+          ? j.visitor_team_id
+          : j.home_team_id
+        : null;
+      return {
+        game_id: r.game_id,
+        player_id: r.player_id,
+        team_id: r.team_id,
+        opponent_team_id: opponentId,
+        minutes: r.minutes,
+        points: r.points,
+        rebounds: r.rebounds,
+        assists: r.assists,
+        steals: r.steals,
+        blocks: r.blocks,
+        turnovers: r.turnovers,
+        personal_fouls: r.personal_fouls,
+        fgm: r.fgm,
+        fga: r.fga,
+        fg3m: r.fg3m,
+        fg3a: r.fg3a,
+        ftm: r.ftm,
+        fta: r.fta,
+        is_home: r.is_home,
+        started: r.started,
+        game_date: j?.date ?? "",
+      };
+    });
 
   type MarketSummary = {
     season_avg: number;

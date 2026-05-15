@@ -57,12 +57,6 @@ export async function PATCH(req: Request) {
   return NextResponse.json({ ok: true, updated: rows.length, verified_at });
 }
 
-export async function GET() {
-  const supabase = supabaseAdmin();
-  const { data, error } = await supabase
-    .from("payout_multipliers")
-    .select("*")
-    .order("pick_count");
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ rows: data });
-}
+// GET is intentionally not exported here.
+// Use `/api/payout-multipliers` instead — same data, anon client + RLS-public
+// read policy, revalidate=300. This file is for admin writes only.

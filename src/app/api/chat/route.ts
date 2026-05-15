@@ -22,6 +22,11 @@ const BodySchema = z.object({
 });
 
 // Token bucket per IP: 50 reqs / hour. Resets on cold start; fine for now.
+// LIMITATION: this Map is per-instance. On Vercel each cold start gets a
+// fresh limiter, and multi-region invocations don't share state. The IP key
+// also trusts the leftmost x-forwarded-for hop, which is correct behind
+// Vercel but spoofable in a non-proxied deployment. Upgrade to a KV/Redis
+// counter once Gemini quota becomes a real concern.
 const RATE_LIMIT = 50;
 const WINDOW_MS = 60 * 60 * 1000;
 const MAX_BUCKETS = 5_000;
