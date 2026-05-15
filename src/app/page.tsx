@@ -300,15 +300,12 @@ function EmptyState({
     <div className="glass glass-sheen rounded-2xl p-8 text-center space-y-2">
       <p className="text-foreground/70">
         {hasGames
-          ? `Games are scheduled for ${date} but no predictions have been generated yet.`
+          ? `Games are scheduled for ${date}. Picks will appear here shortly — check back soon.`
           : `No NBA games (and no picks) for ${date}.`}
       </p>
-      {hasGames ? (
-        <p className="text-xs text-foreground/50 font-mono">
-          Run: <code>/api/cron/generate-predictions?date={date}</code> (with the
-          cron Bearer token)
-        </p>
-      ) : null}
+      <p className="text-xs text-foreground/45">
+        Picks refresh automatically each day.
+      </p>
     </div>
   );
 }

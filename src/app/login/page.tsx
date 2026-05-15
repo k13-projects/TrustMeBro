@@ -20,22 +20,39 @@ function LoginFallback() {
   );
 }
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function safeNext(raw: string | null): string {
+  if (!raw) return "/";
+  if (!raw.startsWith("/")) return "/";
+  if (raw.startsWith("//") || raw.startsWith("/\\")) return "/";
+  return raw;
+}
+
 function LoginForm() {
   const params = useSearchParams();
-  const next = params.get("next") ?? "/";
+  const next = safeNext(params.get("next"));
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">(
     "idle",
   );
   const [error, setError] = useState<string | null>(null);
 
+  const trimmedEmail = email.trim();
+  const emailValid = EMAIL_RE.test(trimmedEmail);
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!emailValid) {
+      setError("Please enter a valid email address.");
+      setStatus("error");
+      return;
+    }
     setStatus("sending");
     setError(null);
     const supabase = createSupabaseBrowserClient();
     const { error } = await supabase.auth.signInWithOtp({
-      email,
+      email: trimmedEmail,
       options: {
         emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
       },
@@ -65,35 +82,56 @@ function LoginForm() {
         </div>
 
         {status === "sent" ? (
-          <div className="rounded-xl border border-emerald-400/30 bg-emerald-400/10 p-4 text-sm text-emerald-200">
-            Check your inbox at <span className="font-mono">{email}</span>.
+          <div
+            role="status"
+            aria-live="polite"
+            className="rounded-xl border border-emerald-400/30 bg-emerald-400/10 p-4 text-sm text-emerald-200"
+          >
+            Check your inbox at <span className="font-mono">{trimmedEmail}</span>.
             The link signs you in instantly.
           </div>
         ) : (
-          <form onSubmit={onSubmit} className="space-y-3">
-            <label className="block">
-              <span className="text-[11px] uppercase tracking-widest text-foreground/55">
+          <form onSubmit={onSubmit} className="space-y-3" noValidate>
+            <div>
+              <label
+                htmlFor="login-email"
+                className="block text-[11px] uppercase tracking-widest text-foreground/55"
+              >
                 Email
-              </span>
+              </label>
               <input
+                id="login-email"
+                name="email"
                 type="email"
+                inputMode="email"
+                autoComplete="email"
                 required
                 autoFocus
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  if (status === "error") {
+                    setStatus("idle");
+                    setError(null);
+                  }
+                }}
                 placeholder="you@example.com"
-                className="mt-1 w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2 outline-none focus:border-white/25 transition-colors"
+                aria-invalid={status === "error" && !emailValid}
+                aria-describedby={error ? "login-error" : undefined}
+                className="mt-1 w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2 outline-none focus:border-white/25 focus-visible:ring-2 focus-visible:ring-white/30 transition-colors"
               />
-            </label>
+            </div>
             <button
               type="submit"
-              disabled={status === "sending" || !email}
-              className="w-full rounded-xl bg-white/10 hover:bg-white/15 border border-white/15 px-3 py-2 font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              disabled={status === "sending" || !emailValid}
+              className="w-full rounded-xl bg-white/10 hover:bg-white/15 border border-white/15 px-3 py-2 font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
             >
               {status === "sending" ? "Sending..." : "Send magic link"}
             </button>
             {error ? (
-              <p className="text-sm text-rose-300">{error}</p>
+              <p id="login-error" role="alert" className="text-sm text-rose-300">
+                {error}
+              </p>
             ) : null}
           </form>
         )}

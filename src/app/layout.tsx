@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ChatLauncher } from "@/components/chat/ChatLauncher";
+import { NavLink } from "@/components/NavLink";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -49,7 +50,7 @@ export default function RootLayout({
                 TrustMeBro
               </Link>
               <nav className="flex items-center gap-1 text-sm">
-                <NavLink href="/">Picks</NavLink>
+                <NavLink href="/" exact>Picks</NavLink>
                 <NavLink href="/games">Games</NavLink>
                 <NavLink href="/teams">Teams</NavLink>
                 <NavLink href="/players">Players</NavLink>
@@ -72,13 +73,3 @@ export default function RootLayout({
   );
 }
 
-function NavLink({ href, children }: { href: string; children: React.ReactNode }) {
-  return (
-    <Link
-      href={href}
-      className="rounded-full px-3 py-1.5 text-foreground/70 hover:text-foreground hover:bg-white/5 transition-colors"
-    >
-      {children}
-    </Link>
-  );
-}

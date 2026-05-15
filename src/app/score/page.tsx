@@ -18,6 +18,10 @@ type HistoryRow = {
   score_after: number | string;
   recorded_at: string;
   prediction_id: string | null;
+  prediction:
+    | { player_id: number | null }
+    | Array<{ player_id: number | null }>
+    | null;
 };
 
 export default async function ScorePage() {
@@ -28,7 +32,9 @@ export default async function ScorePage() {
       supabase.from("system_score").select("*").eq("id", true).single(),
       supabase
         .from("system_score_history")
-        .select("delta, outcome, score_after, recorded_at, prediction_id")
+        .select(
+          "delta, outcome, score_after, recorded_at, prediction_id, prediction:predictions(player_id)",
+        )
         .order("recorded_at", { ascending: true })
         .limit(500),
       supabase.from("predictions").select("status"),
@@ -266,10 +272,15 @@ function SettlementRow({ row }: { row: HistoryRow }) {
   } as const;
   const delta = Number(row.delta);
   const scoreAfter = Number(row.score_after);
+  const predictionShape = Array.isArray(row.prediction)
+    ? row.prediction[0] ?? null
+    : row.prediction;
+  const playerId = predictionShape?.player_id ?? null;
+  const href = playerId ? `/players/${playerId}` : "/";
   return (
     <Link
-      href={row.prediction_id ? `/?pick=${row.prediction_id}` : "/"}
-      className="flex items-center justify-between gap-3 px-4 py-2.5 hover:bg-white/3"
+      href={href}
+      className="flex items-center justify-between gap-3 px-4 py-2.5 hover:bg-white/3 focus-visible:outline-none focus-visible:bg-white/5"
     >
       <span className="flex items-center gap-3">
         <span
