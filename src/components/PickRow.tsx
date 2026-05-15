@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { teamColors } from "@/lib/sports/nba/branding";
+import { AddToCouponButton } from "./cart/AddToCouponButton";
 import { ConfidencePill } from "./ConfidencePill";
 import { JerseyChip } from "./JerseyChip";
 import { marketLabel } from "./MarketLabel";
@@ -26,7 +27,7 @@ export function PickRow({
   const topCheck = topReasoningCheck(prediction.reasoning);
 
   return (
-    <details className="group glass glass-sheen rounded-2xl overflow-hidden relative">
+    <details className="group glass glass-sheen rounded-2xl overflow-hidden relative transition-all duration-300 ease-out hover:-translate-y-0.5 hover:shadow-[0_24px_60px_-30px_rgba(16,185,129,0.45)] motion-reduce:transition-none motion-reduce:hover:translate-y-0">
       <summary className="cursor-pointer list-none p-3 sm:p-4 flex items-center gap-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 focus-visible:ring-inset">
         <span
           aria-hidden
@@ -59,7 +60,7 @@ export function PickRow({
             <span className="text-foreground/60">{market}</span>
             {hasPattern ? (
               <span
-                className="rounded-md bg-purple-500/15 text-purple-300 border border-purple-500/30 px-1.5 py-0.5 text-[10px] uppercase tracking-wider font-medium"
+                className="rounded-md bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 px-1.5 py-0.5 text-[10px] uppercase tracking-wider font-medium"
                 title="Active pattern detected for this player and market"
               >
                 ◆ pattern
@@ -85,6 +86,22 @@ export function PickRow({
           </div>
         </div>
         <ConfidencePill score={prediction.confidence} />
+        <AddToCouponButton
+          pick={{
+            prediction_id: prediction.id,
+            game_id: prediction.game_id,
+            player_id: prediction.player_id,
+            player_first_name: prediction.player.first_name,
+            player_last_name: prediction.player.last_name,
+            team_id: prediction.player.team_id,
+            team_abbreviation: team?.abbreviation ?? null,
+            market: prediction.market,
+            line: prediction.line,
+            pick: prediction.pick,
+            confidence: prediction.confidence,
+            jersey_number: prediction.player.jersey_number,
+          }}
+        />
         {trailing}
         <span
           aria-hidden

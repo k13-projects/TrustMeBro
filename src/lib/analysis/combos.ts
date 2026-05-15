@@ -1,4 +1,5 @@
 import type { Prediction } from "./types";
+import { fallbackPayoutMap, powerPayoutFrom, flexPayoutFrom, type PayoutMap } from "./payouts";
 
 export type Combo = {
   picks: Prediction[];
@@ -7,31 +8,12 @@ export type Combo = {
   flex_payout: number;
 };
 
-/**
- * PrizePicks payout multipliers as of 2026.
- * Power: every pick must hit. Flex: most picks must hit, smaller miss
- * payout. These are the public per-pick-count multipliers.
- */
-const POWER_PAYOUTS: Record<number, number> = {
-  2: 3,
-  3: 5,
-  4: 10,
-  5: 20,
-  6: 37.5,
-};
-const FLEX_PAYOUTS: Record<number, number> = {
-  3: 2.25,
-  4: 5,
-  5: 10,
-  6: 25,
-};
-
-export function powerPayout(picks: number): number | null {
-  return POWER_PAYOUTS[picks] ?? null;
+export function powerPayout(picks: number, map: PayoutMap = fallbackPayoutMap()): number | null {
+  return powerPayoutFrom(map, picks);
 }
 
-export function flexPayout(picks: number): number | null {
-  return FLEX_PAYOUTS[picks] ?? null;
+export function flexPayout(picks: number, map: PayoutMap = fallbackPayoutMap()): number | null {
+  return flexPayoutFrom(map, picks);
 }
 
 /**
@@ -46,11 +28,12 @@ export function flexPayout(picks: number): number | null {
  */
 export function generateCombos(
   predictions: Prediction[],
-  opts: { minConfidence?: number; size?: number; max?: number } = {},
+  opts: { minConfidence?: number; size?: number; max?: number; payouts?: PayoutMap } = {},
 ): Combo[] {
   const minConfidence = opts.minConfidence ?? 80;
   const size = opts.size ?? 2;
   const max = opts.max ?? 5;
+  const payouts = opts.payouts ?? fallbackPayoutMap();
   const eligible = predictions.filter(
     (p) => p.confidence >= minConfidence,
   );
@@ -69,8 +52,8 @@ export function generateCombos(
         combos.push({
           picks: [a, b],
           combined_confidence: combined,
-          power_payout: powerPayout(2) ?? 0,
-          flex_payout: flexPayout(2) ?? 0,
+          power_payout: powerPayoutFrom(payouts, 2) ?? 0,
+          flex_payout: flexPayoutFrom(payouts, 2) ?? 0,
         });
       }
     }

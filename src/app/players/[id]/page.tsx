@@ -408,7 +408,7 @@ function PatternRow({
   return (
     <div className="flex items-center justify-between gap-3 px-4 py-3">
       <div className="flex items-center gap-3 min-w-0">
-        <span className="rounded-md bg-purple-500/15 text-purple-300 px-2 py-0.5 text-[10px] uppercase tracking-wider font-medium">
+        <span className="rounded-md bg-emerald-500/15 text-emerald-300 px-2 py-0.5 text-[10px] uppercase tracking-wider font-medium">
           {type.replaceAll("_", " ")}
         </span>
         {market ? (

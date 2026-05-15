@@ -26,7 +26,7 @@ export const shadowTokens = {
   // Branded glow shadows. Keep one source of truth for the rose accent.
   glowRose: "shadow-[0_0_24px_rgba(244,63,94,0.45)]",
   glowRoseSm: "shadow-[0_0_16px_rgba(244,63,94,0.35)]",
-  glowIndigo: "shadow-[0_0_30px_rgba(99,102,241,0.45)]",
+  glowEmerald: "shadow-[0_0_30px_rgba(16,185,129,0.45)]",
   none: "shadow-none",
 } as const;
 

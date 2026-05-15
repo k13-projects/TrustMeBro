@@ -21,7 +21,7 @@ export function ComboCard({
   teamById: Map<number, TeamLite>;
 }) {
   return (
-    <article className="glass glass-sheen rounded-2xl p-4 space-y-3">
+    <article className="group glass glass-sheen rounded-2xl p-4 space-y-3 transition-all duration-300 ease-out hover:-translate-y-0.5 hover:shadow-[0_24px_60px_-30px_rgba(16,185,129,0.5)] motion-reduce:transition-none motion-reduce:hover:translate-y-0">
       <header className="flex items-center justify-between gap-2">
         <span className="text-[10px] uppercase tracking-widest text-foreground/55">
           {combo.picks.length}-pick combo

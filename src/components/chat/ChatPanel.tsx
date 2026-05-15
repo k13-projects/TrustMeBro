@@ -27,6 +27,7 @@ type ServerEvent =
   | { type: "done" };
 
 const STORAGE_KEY = "tmb:chat:v1";
+const ARCHIVE_KEY = "tmb:chat:v1:archive";
 const FOLLOWUP_MARKER = "<<<followups>>>";
 
 const STARTER_POOL = [
@@ -71,18 +72,32 @@ export function ChatPanel({
   onClose: () => void;
 }) {
   const [messages, setMessages] = useState<Message[]>([]);
+  const [archived, setArchived] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const stickyBottomRef = useRef(true);
+  const prevOpenRef = useRef(open);
 
   useEffect(() => {
     try {
+      const storedArchive = sessionStorage.getItem(ARCHIVE_KEY);
+      if (storedArchive) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setArchived(JSON.parse(storedArchive));
+      }
       const stored = sessionStorage.getItem(STORAGE_KEY);
       if (stored) {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setMessages(JSON.parse(stored));
+        const parsed = JSON.parse(stored) as Message[];
+        // If we have leftover live messages on first mount, treat them as
+        // archived — a closed panel always reopens to a fresh empty state.
+        if (parsed.length > 0) {
+          // eslint-disable-next-line react-hooks/set-state-in-effect
+          setArchived((prev) => (prev.length > 0 ? prev : parsed));
+          sessionStorage.setItem(ARCHIVE_KEY, JSON.stringify(parsed));
+          sessionStorage.removeItem(STORAGE_KEY);
+        }
       }
     } catch {
       // session storage may be unavailable; ignore.
@@ -96,6 +111,27 @@ export function ChatPanel({
       // ignore quota / availability errors
     }
   }, [messages]);
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(ARCHIVE_KEY, JSON.stringify(archived));
+    } catch {
+      // ignore
+    }
+  }, [archived]);
+
+  // On close: snapshot the live conversation into the archive and clear the
+  // live thread. Next open gets a crisp empty state, with a one-click chip to
+  // restore the previous chat. Avoids the "did the bot reset itself?" feeling.
+  useEffect(() => {
+    const wasOpen = prevOpenRef.current;
+    prevOpenRef.current = open;
+    if (wasOpen && !open && messages.length > 0) {
+      setArchived(messages);
+      setMessages([]);
+      setInput("");
+    }
+  }, [open, messages]);
 
   useEffect(() => {
     const el = listRef.current;
@@ -254,11 +290,20 @@ export function ChatPanel({
 
   function clearHistory() {
     setMessages([]);
+    setArchived([]);
     try {
       sessionStorage.removeItem(STORAGE_KEY);
+      sessionStorage.removeItem(ARCHIVE_KEY);
     } catch {
       // ignore
     }
+  }
+
+  function restoreArchived() {
+    if (archived.length === 0) return;
+    setMessages(archived);
+    setArchived([]);
+    stickyBottomRef.current = true;
   }
 
   // Find the last assistant message so we only render follow-ups for that one.
@@ -281,7 +326,7 @@ export function ChatPanel({
       <aside
         role="dialog"
         aria-label="TrustMeBro chat"
-        className={`fixed top-0 right-0 z-40 h-full w-full sm:w-[440px] transition-transform duration-300 ${
+        className={`fixed top-0 right-0 z-40 h-full w-full sm:w-[440px] transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
           open ? "translate-x-0" : "translate-x-full"
         }`}
       >
@@ -289,8 +334,8 @@ export function ChatPanel({
           <header className="px-5 py-4 flex items-center justify-between border-b border-white/10">
             <div className="flex flex-col">
               <div className="flex items-center gap-2">
-                <SparkleGlyph className="size-4 text-fuchsia-300" />
-                <h2 className="text-base font-semibold tracking-tight bg-gradient-to-r from-white via-white to-fuchsia-200 bg-clip-text text-transparent">
+                <SparkleGlyph className="size-4 text-emerald-300" />
+                <h2 className="text-base font-semibold tracking-tight bg-gradient-to-r from-white via-white to-emerald-200 bg-clip-text text-transparent">
                   TrustMeBro Analyst
                 </h2>
               </div>
@@ -326,18 +371,23 @@ export function ChatPanel({
             className="flex-1 overflow-y-auto px-4 py-4 space-y-3"
           >
             {messages.length === 0 ? (
-              <EmptyState onPick={(q) => send(q)} />
+              <EmptyState
+                onPick={(q) => send(q)}
+                archivedCount={archived.length}
+                onRestore={restoreArchived}
+              />
             ) : (
-              messages.map((m) => (
-                <MessageRow
-                  key={m.id}
-                  message={m}
-                  isLastAssistant={m.id === lastAssistantId}
-                  onFollowupClick={(q) => {
-                    stickyBottomRef.current = true;
-                    send(q);
-                  }}
-                />
+              messages.map((m, i) => (
+                <div key={m.id} className="fade-up" style={{ animationDelay: `${Math.min(i, 6) * 20}ms` }}>
+                  <MessageRow
+                    message={m}
+                    isLastAssistant={m.id === lastAssistantId}
+                    onFollowupClick={(q) => {
+                      stickyBottomRef.current = true;
+                      send(q);
+                    }}
+                  />
+                </div>
               ))
             )}
             {busy ? <TypingIndicator /> : null}
@@ -364,13 +414,13 @@ export function ChatPanel({
               }}
               rows={1}
               placeholder="Ask about today's picks, players, sources…"
-              className="flex-1 resize-none bg-white/5 ring-1 ring-white/10 focus:ring-fuchsia-400/40 rounded-xl px-3.5 py-2.5 text-sm placeholder:text-foreground/35 focus:outline-none focus:bg-white/[0.07] transition-all overflow-y-auto"
+              className="flex-1 resize-none bg-white/5 ring-1 ring-white/10 focus:ring-emerald-400/40 rounded-xl px-3.5 py-2.5 text-sm placeholder:text-foreground/35 focus:outline-none focus:bg-white/[0.07] transition-all duration-200 overflow-y-auto"
             />
             <button
               type="submit"
               disabled={busy || !input.trim()}
               aria-label="Send"
-              className="size-10 inline-flex items-center justify-center rounded-xl text-white bg-gradient-to-br from-indigo-400 via-fuchsia-500 to-rose-500 gradient-shift shadow-[0_0_24px_-4px_rgba(244,63,94,0.55)] disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-[0_0_30px_-2px_rgba(244,63,94,0.7)] transition-shadow"
+              className="group size-10 inline-flex items-center justify-center rounded-xl text-white bg-gradient-to-br from-emerald-400 via-emerald-500 to-green-600 gradient-shift shadow-[0_0_24px_-4px_rgba(16,185,129,0.6)] disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-[0_0_30px_-2px_rgba(16,185,129,0.85)] hover:-translate-y-0.5 active:translate-y-0 active:scale-95 transition-all duration-200"
             >
               <SendIcon />
             </button>
@@ -404,7 +454,7 @@ function MessageRow({
         <div
           className={
             isUser
-              ? "max-w-[85%] rounded-2xl rounded-br-sm px-4 py-2.5 text-sm leading-relaxed bg-gradient-to-br from-indigo-500/35 to-fuchsia-500/35 ring-1 ring-white/10 text-foreground whitespace-pre-wrap"
+              ? "max-w-[85%] rounded-2xl rounded-br-sm px-4 py-2.5 text-sm leading-relaxed bg-gradient-to-br from-emerald-500/35 to-green-600/35 ring-1 ring-emerald-300/15 text-foreground whitespace-pre-wrap"
               : "max-w-[90%] rounded-2xl rounded-bl-sm px-4 py-3 text-sm leading-relaxed bg-white/[0.04] ring-1 ring-white/5 text-foreground/90"
           }
         >
@@ -432,9 +482,9 @@ function MessageRow({
               key={i}
               type="button"
               onClick={() => onFollowupClick(q)}
-              className="group inline-flex items-center gap-1.5 rounded-full bg-white/[0.04] hover:bg-white/[0.09] ring-1 ring-white/10 hover:ring-fuchsia-400/30 px-3 py-1.5 text-xs text-foreground/75 hover:text-foreground transition-all"
+              className="group inline-flex items-center gap-1.5 rounded-full bg-white/[0.04] hover:bg-white/[0.09] ring-1 ring-white/10 hover:ring-emerald-400/40 px-3 py-1.5 text-xs text-foreground/75 hover:text-foreground hover:-translate-y-0.5 transition-all duration-200"
             >
-              <span className="text-fuchsia-300/70 group-hover:text-fuchsia-300">↳</span>
+              <span className="text-emerald-300/80 group-hover:text-emerald-200 transition-colors">↳</span>
               <span>{q}</span>
             </button>
           ))}
@@ -462,7 +512,7 @@ function MarkdownBody({ source }: { source: string }) {
             </ol>
           ),
           li: ({ children }) => (
-            <li className="pl-4 relative before:content-['•'] before:absolute before:left-0 before:top-0 before:text-fuchsia-300/70 [li_&]:before:content-['◦']">
+            <li className="pl-4 relative before:content-['•'] before:absolute before:left-0 before:top-0 before:text-emerald-300/80 [li_&]:before:content-['◦']">
               {children}
             </li>
           ),
@@ -482,7 +532,7 @@ function MarkdownBody({ source }: { source: string }) {
               href={href}
               target="_blank"
               rel="noreferrer noopener"
-              className="text-fuchsia-300 underline underline-offset-2 hover:text-fuchsia-200"
+              className="text-emerald-300 underline underline-offset-2 hover:text-emerald-200 transition-colors"
             >
               {children}
             </a>
@@ -527,13 +577,13 @@ function TypingIndicator() {
     <div className="flex justify-start">
       <div className="rounded-2xl rounded-bl-sm px-4 py-3 bg-white/[0.04] ring-1 ring-white/5 text-foreground/60 text-sm">
         <span className="inline-flex gap-1">
-          <span className="size-1.5 rounded-full bg-fuchsia-300/70 animate-bounce" />
+          <span className="size-1.5 rounded-full bg-emerald-300/80 animate-bounce" />
           <span
-            className="size-1.5 rounded-full bg-fuchsia-300/70 animate-bounce"
+            className="size-1.5 rounded-full bg-emerald-300/80 animate-bounce"
             style={{ animationDelay: "120ms" }}
           />
           <span
-            className="size-1.5 rounded-full bg-fuchsia-300/70 animate-bounce"
+            className="size-1.5 rounded-full bg-emerald-300/80 animate-bounce"
             style={{ animationDelay: "240ms" }}
           />
         </span>
@@ -542,23 +592,47 @@ function TypingIndicator() {
   );
 }
 
-function EmptyState({ onPick }: { onPick: (q: string) => void }) {
+function EmptyState({
+  onPick,
+  archivedCount,
+  onRestore,
+}: {
+  onPick: (q: string) => void;
+  archivedCount: number;
+  onRestore: () => void;
+}) {
   // useMemo so shuffles happen once per panel mount, not on every render.
   const starters = useMemo(() => pickStarters(), []);
   return (
-    <div className="space-y-4 py-4">
+    <div className="space-y-4 py-4 fade-up">
       <div className="flex flex-col items-start gap-2">
-        <div className="inline-flex items-center gap-2 rounded-full bg-white/[0.04] ring-1 ring-white/10 px-2.5 py-1 text-[10px] uppercase tracking-[0.2em] text-fuchsia-200/80">
+        <div className="inline-flex items-center gap-2 rounded-full bg-white/[0.04] ring-1 ring-white/10 px-2.5 py-1 text-[10px] uppercase tracking-[0.2em] text-emerald-200/85">
           <SparkleGlyph className="size-3" />
           <span>AI Analyst</span>
         </div>
-        <h3 className="text-lg font-semibold tracking-tight bg-gradient-to-r from-white to-fuchsia-200 bg-clip-text text-transparent">
+        <h3 className="text-lg font-semibold tracking-tight bg-gradient-to-r from-white to-emerald-200 bg-clip-text text-transparent">
           What do you want to know tonight?
         </h3>
         <p className="text-sm text-foreground/60 leading-relaxed">
           Ask about today&apos;s picks, a player&apos;s recent form, or how the
           engine decides.
         </p>
+        {archivedCount > 0 ? (
+          <button
+            type="button"
+            onClick={onRestore}
+            className="group mt-1 inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 hover:bg-emerald-500/20 ring-1 ring-emerald-400/30 hover:ring-emerald-400/60 px-3 py-1.5 text-xs text-emerald-100 hover:text-white transition-all duration-200 hover:-translate-y-0.5"
+            aria-label={`Restore previous conversation with ${archivedCount} messages`}
+          >
+            <RestoreGlyph />
+            <span>
+              Continue previous chat
+              <span className="text-emerald-300/70 ml-1.5 font-mono tabular-nums">
+                {archivedCount}
+              </span>
+            </span>
+          </button>
+        ) : null}
       </div>
       <div className="grid gap-2">
         {starters.map((q, i) => (
@@ -566,19 +640,38 @@ function EmptyState({ onPick }: { onPick: (q: string) => void }) {
             key={q}
             type="button"
             onClick={() => onPick(q)}
-            className="group text-left text-sm rounded-xl px-3.5 py-3 bg-white/[0.035] hover:bg-white/[0.07] ring-1 ring-white/10 hover:ring-fuchsia-400/30 text-foreground/85 transition-all hover:-translate-y-0.5 flex items-start gap-3"
+            style={{ animationDelay: `${80 + i * 60}ms` }}
+            className="fade-up group text-left text-sm rounded-xl px-3.5 py-3 bg-white/[0.035] hover:bg-white/[0.07] ring-1 ring-white/10 hover:ring-emerald-400/40 text-foreground/85 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_-12px_rgba(16,185,129,0.45)] flex items-start gap-3"
           >
-            <span className="mt-0.5 size-6 inline-flex items-center justify-center rounded-md bg-gradient-to-br from-indigo-500/30 to-fuchsia-500/30 ring-1 ring-white/10 text-fuchsia-200">
+            <span className="mt-0.5 size-6 inline-flex items-center justify-center rounded-md bg-gradient-to-br from-emerald-500/30 to-green-600/30 ring-1 ring-emerald-300/20 text-emerald-200 group-hover:scale-110 group-hover:rotate-6 transition-transform duration-300">
               {starterIcon(i)}
             </span>
             <span className="flex-1">{q}</span>
-            <span className="text-foreground/30 group-hover:text-fuchsia-300 transition-colors">
+            <span className="text-foreground/30 group-hover:text-emerald-300 group-hover:translate-x-0.5 transition-all duration-200">
               →
             </span>
           </button>
         ))}
       </div>
     </div>
+  );
+}
+
+function RestoreGlyph() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="size-3.5"
+      aria-hidden
+    >
+      <path d="M3 12a9 9 0 1 0 3-6.7" />
+      <path d="M3 4v5h5" />
+    </svg>
   );
 }
 

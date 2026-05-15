@@ -23,15 +23,18 @@ export function ChatLauncher() {
         onClick={() => setOpen((o) => !o)}
         className={
           open
-            ? "fixed bottom-6 right-6 z-40 size-12 rounded-full bg-white/10 border border-white/15 backdrop-blur-xl flex items-center justify-center text-foreground/90 hover:bg-white/15 transition-all active:scale-95"
-            : "group fixed bottom-6 right-6 z-40 inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-indigo-500 via-fuchsia-500 to-rose-500 gradient-shift shadow-[0_10px_40px_-8px_rgba(217,70,239,0.55)] hover:shadow-[0_14px_50px_-6px_rgba(217,70,239,0.75)] transition-all hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98]"
+            ? "fixed bottom-6 right-6 z-40 size-12 rounded-full bg-white/10 border border-white/15 backdrop-blur-xl flex items-center justify-center text-foreground/90 hover:bg-white/15 transition-all duration-200 active:scale-95 hover:rotate-90"
+            : "group fixed bottom-6 right-6 z-40 inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-emerald-500 via-emerald-400 to-green-500 gradient-shift shadow-[0_10px_40px_-8px_rgba(16,185,129,0.55)] hover:shadow-[0_14px_50px_-6px_rgba(16,185,129,0.8)] transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98]"
         }
       >
         {open ? (
           <CloseIcon />
         ) : (
           <>
-            <Sparkle className="size-4 shimmer" />
+            <span className="relative inline-flex">
+              <Sparkle className="size-4 shimmer" />
+              <span aria-hidden className="absolute -right-1 -top-1 size-1.5 rounded-full bg-emerald-200 soft-pulse" />
+            </span>
             <span className="tracking-tight">Ask AI</span>
           </>
         )}
