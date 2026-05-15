@@ -274,7 +274,6 @@ export default async function PlayerDetailPage({ params }: PageProps) {
           stats={stats}
           teamById={teamById}
           ownTeamId={team?.id ?? null}
-          opponentForGame={opponentForGame}
         />
       ) : null}
     </div>
@@ -459,13 +458,11 @@ function GameLogCard({
   stats,
   teamById,
   ownTeamId,
-  opponentForGame,
 }: {
   history: PlayerGameStatLine[];
   stats: StatRow[];
   teamById: Map<number, TeamLite>;
   ownTeamId: number | null;
-  opponentForGame: (s: StatRow) => number;
 }) {
   return (
     <section className="space-y-3">
@@ -473,7 +470,7 @@ function GameLogCard({
         Last {history.length} games
       </h2>
       <div className="glass rounded-2xl overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="hidden sm:block overflow-x-auto">
           <table className="w-full text-xs">
             <thead className="sticky top-0 bg-black/40 backdrop-blur">
               <tr className="text-left text-foreground/55">
@@ -490,83 +487,51 @@ function GameLogCard({
             </thead>
             <tbody className="divide-y divide-white/5">
               {stats.map((s, i) => {
-                const h = history[i];
-                const oppId = opponentForGame(s);
-                const opp = teamById.get(oppId);
-                const ownScore =
-                  ownTeamId !== null && s.games
-                    ? ownTeamId === s.games.home_team_id
-                      ? s.games.home_team_score
-                      : s.games.visitor_team_score
-                    : null;
-                const oppScore =
-                  ownTeamId !== null && s.games
-                    ? ownTeamId === s.games.home_team_id
-                      ? s.games.visitor_team_score
-                      : s.games.home_team_score
-                    : null;
-                const won =
-                  ownScore !== null && oppScore !== null && ownScore > oppScore;
-                const lost =
-                  ownScore !== null && oppScore !== null && ownScore < oppScore;
+                const row = buildGameLogRow(s, history[i], teamById, ownTeamId);
                 return (
                   <tr
                     key={s.game_id}
                     className="hover:bg-white/3 font-mono tabular-nums"
                   >
-                    <td className="px-3 py-2 text-foreground/85">
-                      {h.game_date.slice(5)}
-                    </td>
+                    <td className="px-3 py-2 text-foreground/85">{row.date}</td>
                     <td className="px-2 py-2 text-foreground/65">
                       <span className="flex items-center gap-1.5">
-                        <span>{s.is_home ? "vs" : "@"}</span>
-                        {opp ? (
+                        <span>{row.locationGlyph}</span>
+                        {row.oppId ? (
                           <Link
-                            href={`/teams/${oppId}`}
+                            href={`/teams/${row.oppId}`}
                             className="hover:underline"
                           >
-                            {opp.abbreviation}
+                            {row.oppAbbr}
                           </Link>
                         ) : null}
                       </span>
                     </td>
                     <td className="px-2 py-2">
-                      {won ? (
-                        <span className="rounded bg-emerald-400/15 text-emerald-300 px-1.5 py-0.5 text-[10px]">
-                          W
-                        </span>
-                      ) : lost ? (
-                        <span className="rounded bg-rose-400/15 text-rose-300 px-1.5 py-0.5 text-[10px]">
-                          L
-                        </span>
-                      ) : (
-                        <span className="text-foreground/40">·</span>
-                      )}
-                      {ownScore !== null && oppScore !== null ? (
+                      <ResultBadge result={row.result} />
+                      {row.scoreText ? (
                         <span className="ml-1 text-[10px] text-foreground/45">
-                          {ownScore}-{oppScore}
+                          {row.scoreText}
                         </span>
                       ) : null}
                     </td>
                     <td className="px-2 py-2 text-right text-foreground/85">
-                      {s.minutes !== null ? s.minutes.toFixed(0) : "—"}
+                      {row.minutes}
                     </td>
                     <td className="px-2 py-2 text-right text-foreground/85">
-                      {s.points ?? "—"}
+                      {row.points}
                     </td>
                     <td className="px-2 py-2 text-right text-foreground/85">
-                      {s.rebounds ?? "—"}
+                      {row.rebounds}
                     </td>
                     <td className="px-2 py-2 text-right text-foreground/85">
-                      {s.assists ?? "—"}
+                      {row.assists}
                     </td>
                     <td className="px-2 py-2 text-right text-foreground/85">
-                      {s.fg3m ?? "—"}
+                      {row.threes}
                     </td>
                     <td className="px-2 py-2 text-right text-foreground/65">
-                      {s.fg_pct !== null
-                        ? `${(s.fg_pct * 100).toFixed(0)}%`
-                        : "—"}
+                      {row.fgPct}
                     </td>
                   </tr>
                 );
@@ -574,8 +539,173 @@ function GameLogCard({
             </tbody>
           </table>
         </div>
+
+        <ul className="sm:hidden divide-y divide-white/5">
+          {stats.map((s, i) => {
+            const row = buildGameLogRow(s, history[i], teamById, ownTeamId);
+            return (
+              <li key={s.game_id} className="p-3 space-y-2">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 text-xs text-foreground/85 font-mono tabular-nums">
+                    <span>{row.date}</span>
+                    <span className="text-foreground/45">·</span>
+                    <span className="text-foreground/65">
+                      {row.locationGlyph}{" "}
+                      {row.oppId ? (
+                        <Link
+                          href={`/teams/${row.oppId}`}
+                          className="hover:underline"
+                        >
+                          {row.oppAbbr}
+                        </Link>
+                      ) : null}
+                    </span>
+                    {row.scoreText ? (
+                      <span className="text-foreground/45 text-[10px]">
+                        {row.scoreText}
+                      </span>
+                    ) : null}
+                  </div>
+                  <ResultBadge result={row.result} />
+                </div>
+                <div className="grid grid-cols-5 gap-1.5 font-mono tabular-nums">
+                  <MiniStat label="MIN" value={row.minutes} />
+                  <MiniStat label="PTS" value={row.points} emphasis />
+                  <MiniStat label="REB" value={row.rebounds} />
+                  <MiniStat label="AST" value={row.assists} />
+                  <MiniStat label="3PM" value={row.threes} />
+                </div>
+                <div className="text-[10px] text-foreground/45 font-mono tabular-nums">
+                  FG {row.fgPct}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
       </div>
     </section>
+  );
+}
+
+type GameLogRow = {
+  date: string;
+  oppId: number | null;
+  oppAbbr: string;
+  locationGlyph: "vs" | "@";
+  result: "W" | "L" | null;
+  scoreText: string | null;
+  minutes: string;
+  points: string;
+  rebounds: string;
+  assists: string;
+  threes: string;
+  fgPct: string;
+};
+
+function buildGameLogRow(
+  s: {
+    game_id: number;
+    minutes: number | null;
+    points: number | null;
+    rebounds: number | null;
+    assists: number | null;
+    fg3m: number | null;
+    fg_pct: number | null;
+    is_home: boolean;
+    games: {
+      home_team_id: number;
+      visitor_team_id: number;
+      home_team_score: number;
+      visitor_team_score: number;
+    } | null;
+  },
+  h: { game_date: string },
+  teamById: Map<number, TeamLite>,
+  ownTeamId: number | null,
+): GameLogRow {
+  const oppId = s.games
+    ? s.is_home
+      ? s.games.visitor_team_id
+      : s.games.home_team_id
+    : null;
+  const opp = oppId ? teamById.get(oppId) : null;
+  const ownScore =
+    ownTeamId !== null && s.games
+      ? ownTeamId === s.games.home_team_id
+        ? s.games.home_team_score
+        : s.games.visitor_team_score
+      : null;
+  const oppScore =
+    ownTeamId !== null && s.games
+      ? ownTeamId === s.games.home_team_id
+        ? s.games.visitor_team_score
+        : s.games.home_team_score
+      : null;
+  const result: "W" | "L" | null =
+    ownScore !== null && oppScore !== null
+      ? ownScore > oppScore
+        ? "W"
+        : ownScore < oppScore
+          ? "L"
+          : null
+      : null;
+  return {
+    date: h.game_date.slice(5),
+    oppId: oppId ?? null,
+    oppAbbr: opp?.abbreviation ?? "",
+    locationGlyph: s.is_home ? "vs" : "@",
+    result,
+    scoreText:
+      ownScore !== null && oppScore !== null
+        ? `${ownScore}-${oppScore}`
+        : null,
+    minutes: s.minutes !== null ? s.minutes.toFixed(0) : "—",
+    points: s.points !== null ? String(s.points) : "—",
+    rebounds: s.rebounds !== null ? String(s.rebounds) : "—",
+    assists: s.assists !== null ? String(s.assists) : "—",
+    threes: s.fg3m !== null ? String(s.fg3m) : "—",
+    fgPct: s.fg_pct !== null ? `${(s.fg_pct * 100).toFixed(0)}%` : "—",
+  };
+}
+
+function ResultBadge({ result }: { result: "W" | "L" | null }) {
+  if (result === "W") {
+    return (
+      <span className="rounded bg-emerald-400/15 text-emerald-300 px-1.5 py-0.5 text-[10px]">
+        W
+      </span>
+    );
+  }
+  if (result === "L") {
+    return (
+      <span className="rounded bg-rose-400/15 text-rose-300 px-1.5 py-0.5 text-[10px]">
+        L
+      </span>
+    );
+  }
+  return <span className="text-foreground/40">·</span>;
+}
+
+function MiniStat({
+  label,
+  value,
+  emphasis,
+}: {
+  label: string;
+  value: string;
+  emphasis?: boolean;
+}) {
+  return (
+    <div className="rounded-lg bg-white/5 border border-white/8 px-2 py-1.5 text-center">
+      <div className="text-[9px] uppercase tracking-widest text-foreground/45">
+        {label}
+      </div>
+      <div
+        className={emphasis ? "text-base font-semibold" : "text-sm text-foreground/85"}
+      >
+        {value}
+      </div>
+    </div>
   );
 }
 
