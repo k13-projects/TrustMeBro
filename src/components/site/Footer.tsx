@@ -47,7 +47,7 @@ export function Footer() {
             height={120}
             className="rounded-2xl logo-float motion-reduce:animate-none"
           />
-          <p className="font-display text-2xl leading-[0.95] tracking-wide uppercase italic">
+          <p className="font-display text-2xl leading-[0.95] tracking-wide uppercase">
             In Data
             <br />
             <span className="text-primary">We Trust</span>

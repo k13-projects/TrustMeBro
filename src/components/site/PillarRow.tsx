@@ -36,7 +36,7 @@ export function PillarRow() {
               className="text-primary shrink-0"
             />
             <div>
-              <div className="font-display italic uppercase text-[15px] tracking-wide leading-none">
+              <div className="font-display uppercase text-[15px] tracking-wide leading-none">
                 {title}
               </div>
               <div className="text-xs text-muted-foreground mt-1">{note}</div>

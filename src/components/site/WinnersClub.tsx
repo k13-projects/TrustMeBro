@@ -2,9 +2,15 @@
 
 import { motion } from "motion/react";
 import { Check, Clock, MessageCircle, Send, X } from "lucide-react";
-import { BrushText } from "@/components/site/BrushText";
 import { GoldButton } from "@/components/site/GoldButton";
 import type { BotdResult, EngineStats } from "@/lib/scoring/stats";
+
+const GOLD_GRADIENT_STYLE = {
+  background: "linear-gradient(180deg, #FFE066 0%, #FFB800 100%)",
+  WebkitBackgroundClip: "text",
+  backgroundClip: "text",
+  WebkitTextFillColor: "transparent",
+} as const;
 
 const MARKET_LABEL: Record<string, string> = {
   points: "PTS",
@@ -26,10 +32,11 @@ export function WinnersClub({ stats }: { stats: EngineStats }) {
           <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
             Recent
           </p>
-          <h2 className="font-display italic uppercase text-[clamp(2.6rem,6vw,4.5rem)] leading-[0.9]">
-            <BrushText>Bet of the</BrushText>
-            <br />
-            <span className="text-foreground/95">Day</span>
+          <h2 className="font-display uppercase text-[clamp(2.4rem,5.4vw,4rem)] leading-[0.95] tracking-tight">
+            <span className="block text-foreground">Bet of the</span>
+            <span className="block" style={GOLD_GRADIENT_STYLE}>
+              Day
+            </span>
           </h2>
           <p className="text-foreground/70 max-w-sm">
             Highest-conviction pick we put out each day. Settled the morning

@@ -52,10 +52,10 @@ export function Navbar({ identity }: { identity: IdentityLite }) {
             />
           </MagneticLink>
           <span className="hidden lg:flex flex-col leading-[0.9]">
-            <span className="font-display italic uppercase text-xl tracking-wide">
+            <span className="font-display uppercase text-xl tracking-wide">
               Trust Me
             </span>
-            <span className="font-display italic uppercase text-xl tracking-wide text-primary">
+            <span className="font-display uppercase text-xl tracking-wide text-primary">
               Bro
             </span>
           </span>

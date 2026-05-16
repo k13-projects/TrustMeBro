@@ -87,10 +87,10 @@ export function PickCard({
           <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground truncate">
             {matchup}
           </p>
-          <p className="font-display italic uppercase text-[22px] leading-[1] tracking-tight text-foreground">
+          <p className="font-display uppercase text-[22px] leading-[1] tracking-tight text-foreground">
             {prediction.player.first_name} {prediction.player.last_name}
           </p>
-          <p className="font-display italic uppercase text-[18px] leading-[1] text-primary">
+          <p className="font-display uppercase text-[18px] leading-[1] text-primary">
             {side}{" "}
             <span className="font-numeric not-italic tabular-nums">
               {prediction.line}

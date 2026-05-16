@@ -2,10 +2,16 @@
 
 import { Check } from "lucide-react";
 import { motion } from "motion/react";
-import { BrushText } from "@/components/site/BrushText";
 import { GoldButton } from "@/components/site/GoldButton";
 import { HandArrow } from "@/components/site/HandArrow";
 import { cn } from "@/lib/utils";
+
+const GOLD_GRADIENT_STYLE = {
+  background: "linear-gradient(180deg, #FFE066 0%, #FFB800 100%)",
+  WebkitBackgroundClip: "text",
+  backgroundClip: "text",
+  WebkitTextFillColor: "transparent",
+} as const;
 
 const TIERS = [
   {
@@ -48,10 +54,11 @@ export function PricingTiers() {
         <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
           Pricing
         </p>
-        <h2 className="font-display italic uppercase leading-[0.9] text-[clamp(2.6rem,6vw,4.5rem)] text-foreground/95">
-          Unlock The
-          <br />
-          <BrushText className="text-[1.06em]">Edge</BrushText>
+        <h2 className="font-display uppercase leading-[0.95] tracking-tight text-[clamp(2.4rem,5.4vw,4rem)] text-foreground/95">
+          <span className="block">Unlock The</span>
+          <span className="block" style={GOLD_GRADIENT_STYLE}>
+            Edge
+          </span>
         </h2>
         <p className="text-foreground/70 max-w-sm">
           Stop guessing. Start winning.
@@ -82,7 +89,7 @@ export function PricingTiers() {
               </span>
             )}
             <div className="flex items-baseline gap-2">
-              <p className="font-display italic uppercase text-2xl tracking-wide">
+              <p className="font-display uppercase text-2xl tracking-wide">
                 {tier.name}
               </p>
             </div>

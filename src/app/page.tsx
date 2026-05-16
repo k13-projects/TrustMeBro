@@ -20,7 +20,6 @@ import { ReasoningPanel } from "@/components/ReasoningPanel";
 import { TeamBadge } from "@/components/TeamBadge";
 import type { PredictionRow, TeamLite } from "@/components/types";
 
-import { BrushText } from "@/components/site/BrushText";
 import { Hero } from "@/components/site/Hero";
 import { PickCard } from "@/components/site/PickCard";
 import { PillarRow } from "@/components/site/PillarRow";
@@ -167,7 +166,18 @@ export default async function HomePage({ searchParams }: PageProps) {
           eyebrow="NBA · Today"
           title={
             <>
-              Today&apos;s Top <BrushText className="text-[1.06em]">Picks</BrushText>
+              Today&apos;s Top{" "}
+              <span
+                style={{
+                  background:
+                    "linear-gradient(180deg, #FFE066 0%, #FFB800 100%)",
+                  WebkitBackgroundClip: "text",
+                  backgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                }}
+              >
+                Picks
+              </span>
             </>
           }
           trailing={

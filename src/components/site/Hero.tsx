@@ -159,13 +159,13 @@ export function Hero({ stats }: { stats: EngineStats }) {
             Data. Analysis. Winners.
           </motion.p>
 
-          {/* One typeface, one rhythm. Anton italic across all three words.
-              Colour does the brand work: "TRUST ME" white, "BRO" warm-gold.
-              Dropped BrushText — mixing Anton + Permanent Marker mid-word
-              read as three fonts colliding, which the renovation review
-              flagged. */}
+          {/* One typeface, one rhythm. Anton uppercase (no synthetic italic,
+              no brush mid-word) across all three words. Colour does the brand
+              work: "TRUST ME" white, "BRO" warm-gold. leading-[0.95] keeps
+              the two-line stack tight without the descenders of line 1
+              crashing into the ascenders of line 2 the way 0.88 did. */}
           <motion.h1
-            className="font-display italic uppercase leading-[0.88] tracking-[-0.025em] text-[clamp(3.4rem,9vw,6.8rem)]"
+            className="font-display uppercase leading-[0.95] tracking-tight text-[clamp(3.4rem,9vw,6.8rem)]"
           >
             <span
               className="hero-word block text-foreground"
@@ -184,7 +184,7 @@ export function Hero({ stats }: { stats: EngineStats }) {
                 WebkitTextFillColor: "transparent",
               }}
             >
-              BRO.
+              BRO
             </span>
           </motion.h1>
 

@@ -21,7 +21,7 @@ export function SectionHeading({ eyebrow, title, trailing, className }: Props) {
             {eyebrow}
           </p>
         ) : null}
-        <h2 className="mt-1 font-display italic uppercase text-[clamp(2rem,4.4vw,3.4rem)] leading-[0.95] tracking-[-0.01em] text-foreground">
+        <h2 className="mt-1 font-display uppercase text-[clamp(2rem,4.4vw,3.4rem)] leading-[0.95] tracking-[-0.01em] text-foreground">
           {title}
         </h2>
       </div>
