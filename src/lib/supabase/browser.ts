@@ -13,6 +13,17 @@ export function createSupabaseBrowserClient() {
       "Supabase env vars are missing. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in .env.local",
     );
   }
-  _client = createBrowserClient(url, anonKey);
+  // detectSessionInUrl: false — by default the client auto-exchanges any
+  // ?code=... it sees on construction (PKCE auto-detection in
+  // @supabase/auth-js _initialize). That collided with our explicit
+  // exchangeCodeForSession() in /auth/callback: the auto-call consumed the
+  // PKCE verifier first, then our call failed with "PKCE code verifier not
+  // found in storage". Disabling the auto-detect leaves the verifier intact
+  // for the explicit call and gives us a single, debuggable code path.
+  _client = createBrowserClient(url, anonKey, {
+    auth: {
+      detectSessionInUrl: false,
+    },
+  });
   return _client;
 }
