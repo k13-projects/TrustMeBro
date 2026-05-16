@@ -78,6 +78,12 @@ export type SignalImpact = {
 export type Reasoning = {
   checks: ConfidenceCheck[];
   signals: SignalImpact[];
+  odds?: {
+    bookmaker: string;
+    price_decimal: number;
+    price_american: number;
+    book_count: number;
+  };
 };
 
 export type Prediction = {
@@ -105,4 +111,10 @@ export type PredictionInput = {
   market: PropMarket;
   line: number;
   signals?: SignalImpact[];
+  best_odds?: {
+    bookmaker: string;
+    price_decimal: number;
+    price_american: number;
+    book_count: number;
+  };
 };
