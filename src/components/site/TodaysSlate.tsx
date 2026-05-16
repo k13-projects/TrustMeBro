@@ -109,10 +109,7 @@ function GameCard({
   const live = status?.toLowerCase().includes("live") || /q[1-4]/i.test(status ?? "");
 
   return (
-    <Link
-      href={`/games/${gameId}`}
-      className="card-tmb group flex flex-col overflow-hidden hover:-translate-y-0.5 transition-transform"
-    >
+    <article className="card-tmb group flex flex-col overflow-hidden hover:-translate-y-0.5 transition-transform">
       <div
         className="relative px-4 pt-4 pb-3"
         style={{
@@ -125,7 +122,12 @@ function GameCard({
           <TeamSide team={home} side="home" />
         </div>
         <div className="mt-2 flex items-center justify-between text-[10px] uppercase tracking-[0.22em] text-foreground/55">
-          <span>{tipoff ?? "TBD"}</span>
+          <Link
+            href={`/games/${gameId}`}
+            className="hover:text-foreground/85 transition-colors"
+          >
+            {tipoff ?? "TBD"} · matchup details →
+          </Link>
           {live ? (
             <span className="inline-flex items-center gap-1 text-positive">
               <span className="size-1.5 rounded-full bg-positive soft-pulse" />
@@ -145,9 +147,10 @@ function GameCard({
           </p>
         ) : (
           picks.map((p) => (
-            <div
+            <Link
               key={p.id}
-              className="flex items-center justify-between gap-2 text-xs"
+              href={`/players/${p.player_id}`}
+              className="flex items-center justify-between gap-2 text-xs hover:bg-white/5 -mx-1 px-1 py-0.5 rounded transition-colors"
             >
               <span className="truncate text-foreground/85">
                 {p.player.first_name.charAt(0)}.{" "}
@@ -159,11 +162,11 @@ function GameCard({
               <span className="font-mono tabular-nums text-primary font-semibold">
                 {Math.round(p.confidence)}%
               </span>
-            </div>
+            </Link>
           ))
         )}
       </div>
-    </Link>
+    </article>
   );
 }
 
@@ -184,7 +187,10 @@ function TeamSide({
     );
   }
   return (
-    <div className="flex items-center gap-2 min-w-0">
+    <Link
+      href={`/teams/${team.id}`}
+      className="flex items-center gap-2 min-w-0 hover:opacity-80 transition-opacity"
+    >
       <TeamBadge team={team} size={36} />
       <div className="flex flex-col min-w-0">
         <span className="font-display text-sm uppercase truncate">
@@ -194,7 +200,7 @@ function TeamSide({
           {team.full_name}
         </span>
       </div>
-    </div>
+    </Link>
   );
 }
 

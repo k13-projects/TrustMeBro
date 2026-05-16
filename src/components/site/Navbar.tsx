@@ -9,6 +9,7 @@ import { IdentityBadge } from "@/components/auth/IdentityBadge";
 const NAV_ITEMS = [
   { href: "/", label: "Home", exact: true },
   { href: "/#picks", label: "Picks" },
+  { href: "/teams", label: "Teams" },
   { href: "/score", label: "Results" },
   { href: "/history", label: "History" },
   { href: "/engine", label: "Engine" },
