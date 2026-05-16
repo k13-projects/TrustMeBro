@@ -1,67 +1,20 @@
-import { forwardRef, useId } from "react";
-import { cx, focusRingInset } from "@/lib/design/tokens";
+import * as React from "react"
+import { Input as InputPrimitive } from "@base-ui/react/input"
 
-type InputProps = Omit<
-  React.InputHTMLAttributes<HTMLInputElement>,
-  "className"
-> & {
-  label?: React.ReactNode;
-  hint?: React.ReactNode;
-  error?: string | null;
-  className?: string;
-};
+import { cn } from "@/lib/utils"
 
-export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
-  { id, label, hint, error, required, ...rest },
-  ref,
-) {
-  const reactId = useId();
-  const inputId = id ?? `input-${reactId}`;
-  const hintId = hint ? `${inputId}-hint` : undefined;
-  const errorId = error ? `${inputId}-error` : undefined;
-  const describedBy = [hintId, errorId].filter(Boolean).join(" ") || undefined;
-
+function Input({ className, type, ...props }: React.ComponentProps<"input">) {
   return (
-    <div>
-      {label ? (
-        <label
-          htmlFor={inputId}
-          className="block text-[11px] uppercase tracking-widest text-foreground/55"
-        >
-          {label}
-          {required ? <span aria-hidden className="text-rose-300"> *</span> : null}
-        </label>
-      ) : null}
-      <input
-        ref={ref}
-        id={inputId}
-        required={required}
-        aria-invalid={error ? true : undefined}
-        aria-describedby={describedBy}
-        className={cx(
-          "mt-1 w-full rounded-xl bg-white/5 px-3 py-2 text-sm outline-none transition-colors",
-          "border",
-          error
-            ? "border-rose-400/50 focus:border-rose-300"
-            : "border-white/10 focus:border-white/25",
-          focusRingInset,
-        )}
-        {...rest}
-      />
-      {hint && !error ? (
-        <p id={hintId} className="mt-1 text-[11px] text-foreground/50">
-          {hint}
-        </p>
-      ) : null}
-      {error ? (
-        <p
-          id={errorId}
-          role="alert"
-          className="mt-1 text-[12px] text-rose-300"
-        >
-          {error}
-        </p>
-      ) : null}
-    </div>
-  );
-});
+    <InputPrimitive
+      type={type}
+      data-slot="input"
+      className={cn(
+        "h-8 w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-1 text-base transition-colors outline-none file:inline-flex file:h-6 file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 md:text-sm dark:bg-input/30 dark:disabled:bg-input/80 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+export { Input }
