@@ -23,7 +23,6 @@ import type { PredictionRow, TeamLite } from "@/components/types";
 import { BrushText } from "@/components/site/BrushText";
 import { Hero } from "@/components/site/Hero";
 import { PickCard } from "@/components/site/PickCard";
-import { StatStrip } from "@/components/site/StatStrip";
 import { PillarRow } from "@/components/site/PillarRow";
 import { WinnersClub } from "@/components/site/WinnersClub";
 import { PricingTiers } from "@/components/site/PricingTiers";
@@ -159,7 +158,6 @@ export default async function HomePage({ searchParams }: PageProps) {
   return (
     <div className="fade-up">
       <Hero stats={engineStats} />
-      <StatStrip stats={engineStats} />
 
       <section
         id="picks"

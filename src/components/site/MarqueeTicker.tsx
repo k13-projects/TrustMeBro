@@ -1,68 +1,84 @@
 "use client";
 
-import { Flame, Sparkles, TrendingUp, Trophy, Zap } from "lucide-react";
+import { Check, Clock, Flame, Sparkles, Trophy, X } from "lucide-react";
 import type { EngineStats } from "@/lib/scoring/stats";
 
 type Item = { Icon: typeof Trophy; text: string };
 
+const MARKET_LABEL: Record<string, string> = {
+  points: "PTS",
+  rebounds: "REB",
+  assists: "AST",
+  threes_made: "3PM",
+  minutes: "MIN",
+  pra: "PRA",
+  steals: "STL",
+  blocks: "BLK",
+};
+
+// Activity feed, not a stat mirror. The hero stat panel already shows
+// WIN RATE / SCORE / STREAK / PENDING as static tiles — repeating them in
+// a scrolling marquee was the "same number in three places" problem the
+// design review flagged. These items lean on *events* (latest BotD,
+// tracking start, slate cadence) so the marquee complements rather than
+// duplicates the hero.
 function buildItems(stats: EngineStats): Item[] {
   const items: Item[] = [];
-  const hasSettled = stats.total_settled > 0;
-  const hasPicks = stats.total_picks > 0;
 
-  if (hasSettled && stats.win_rate !== null) {
+  // Latest BotD with outcome — the most editorially interesting line.
+  const latest = stats.recent_botds[0];
+  if (latest) {
+    const market = MARKET_LABEL[latest.market] ?? latest.market.toUpperCase();
+    const pick = latest.pick.toUpperCase();
+    const name = `${latest.player_first_name} ${latest.player_last_name}`.trim().toUpperCase();
+    const statusIcon =
+      latest.status === "won"
+        ? Check
+        : latest.status === "lost"
+          ? X
+          : Clock;
+    const statusTag =
+      latest.status === "won"
+        ? "WON"
+        : latest.status === "lost"
+          ? "LOST"
+          : latest.status === "void"
+            ? "VOID"
+            : "TONIGHT";
     items.push({
-      Icon: Trophy,
-      text: `WIN RATE ${(stats.win_rate * 100).toFixed(0)}% (${stats.wins}-${stats.losses})`,
-    });
-  } else {
-    items.push({ Icon: Trophy, text: "WIN RATE — TRACKING JUST STARTED" });
-  }
-
-  if (hasSettled) {
-    const sign = stats.score >= 0 ? "+" : "";
-    items.push({
-      Icon: TrendingUp,
-      text: `ENGINE SCORE ${sign}${stats.score.toFixed(1)} UNITS · +1.0/-0.5 LEDGER`,
-    });
-  }
-
-  if (stats.current_streak.length > 0) {
-    const label = stats.current_streak.kind === "win" ? "WIN" : "LOSS";
-    items.push({
-      Icon: Flame,
-      text: `${stats.current_streak.length} ${label} STREAK ACTIVE`,
-    });
-  }
-
-  if (hasSettled && stats.net_units_7d !== 0) {
-    const sign = stats.net_units_7d > 0 ? "+" : "";
-    items.push({
-      Icon: Zap,
-      text: `${sign}${stats.net_units_7d.toFixed(1)} UNITS LAST 7 DAYS`,
+      Icon: statusIcon,
+      text: `BET OF THE DAY · ${name} ${pick} ${latest.line} ${market} · ${statusTag}`,
     });
   }
 
-  if (hasPicks) {
+  if (stats.pending > 0) {
     items.push({
       Icon: Sparkles,
-      text: `${stats.total_picks} TOTAL PICKS · ${stats.pending} PENDING`,
-    });
-  } else {
-    items.push({
-      Icon: Sparkles,
-      text: "DATA-DRIVEN PICKS DAILY · REAL ODDS, REAL EV",
+      text: `${stats.pending} PICK${stats.pending === 1 ? "" : "S"} BEING TRACKED TONIGHT`,
     });
   }
 
   if (stats.first_pick_date) {
     items.push({
       Icon: Flame,
-      text: `TRACKING SINCE ${stats.first_pick_date}`,
+      text: `TRACKING SINCE ${stats.first_pick_date} · NO RETRO EDITS`,
     });
   }
 
-  items.push({ Icon: Trophy, text: "NBA · MORE SPORTS COMING" });
+  items.push({
+    Icon: Trophy,
+    text: "+1.0 PER WIN · −0.5 PER LOSS · SETTLED DAILY @ 9 UTC",
+  });
+
+  items.push({
+    Icon: Sparkles,
+    text: "REAL BOOKMAKER ODDS · REAL EXPECTED VALUE",
+  });
+
+  items.push({
+    Icon: Trophy,
+    text: "NBA TODAY · MORE SPORTS COMING",
+  });
 
   return items;
 }

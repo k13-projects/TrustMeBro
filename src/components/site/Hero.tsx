@@ -9,7 +9,6 @@ import {
   type MotionValue,
 } from "motion/react";
 import { BarChart3, Clock, Flame, TrendingUp, Trophy } from "lucide-react";
-import { BrushText } from "@/components/site/BrushText";
 import { CountUp } from "@/components/site/CountUp";
 import { GoldButton } from "@/components/site/GoldButton";
 import { MagneticLink } from "@/components/site/MagneticLink";
@@ -77,14 +76,10 @@ function buildStatTiles(stats: EngineStats): StatTile[] {
         : "";
   const streakNote =
     stats.current_streak.kind === "win"
-      ? stats.current_streak.length === 1
-        ? "win in a row"
-        : "wins in a row"
+      ? "in a row"
       : stats.current_streak.kind === "loss"
-        ? stats.current_streak.length === 1
-          ? "loss in a row"
-          : "losses in a row"
-        : "Awaiting first result";
+        ? "in a row"
+        : "awaiting result";
   tiles.push({
     Icon: Flame,
     label: "Streak",
@@ -108,7 +103,7 @@ function buildStatTiles(stats: EngineStats): StatTile[] {
       Icon: Clock,
       label: "Pending",
       value: stats.pending,
-      note: stats.pending === 1 ? "pick to settle" : "picks to settle",
+      note: "to settle tonight",
       tone: "neutral",
     });
   } else {
@@ -164,45 +159,38 @@ export function Hero({ stats }: { stats: EngineStats }) {
             Data. Analysis. Winners.
           </motion.p>
 
+          {/* One typeface, one rhythm. Anton italic across all three words.
+              Colour does the brand work: "TRUST ME" white, "BRO" warm-gold.
+              Dropped BrushText — mixing Anton + Permanent Marker mid-word
+              read as three fonts colliding, which the renovation review
+              flagged. */}
           <motion.h1
-            className="font-display italic uppercase leading-[0.85] tracking-[-0.02em] text-[clamp(3.2rem,9.2vw,7rem)]"
+            className="font-display italic uppercase leading-[0.88] tracking-[-0.025em] text-[clamp(3.4rem,9vw,6.8rem)]"
           >
             <span
-              className="hero-word block"
+              className="hero-word block text-foreground"
               style={{ animationDelay: "0ms" }}
             >
-              TRUST
+              TRUST ME
             </span>
             <span
               className="hero-word block"
-              style={{ animationDelay: "110ms" }}
+              style={{
+                animationDelay: "110ms",
+                background:
+                  "linear-gradient(180deg, #FFE066 0%, #FFB800 100%)",
+                WebkitBackgroundClip: "text",
+                backgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+              }}
             >
-              <span
-                className="mr-2"
-                style={{
-                  // Brighten the bottom stop so thin letter strokes (e.g. the
-                  // middle bar of the "E") stay visible against the dark
-                  // background — the old stop dropped to #E89A00 which read
-                  // as "t" instead of "E" at hero scale.
-                  background:
-                    "linear-gradient(180deg, #FFE066 0%, #FFB800 100%)",
-                  WebkitBackgroundClip: "text",
-                  backgroundClip: "text",
-                  WebkitTextFillColor: "transparent",
-                }}
-              >
-                ME
-              </span>
-              <BrushText className="text-[1.05em]">BRO</BrushText>
+              BRO.
             </span>
           </motion.h1>
 
-          <p className="max-w-lg text-base text-foreground/75">
-            <span className="font-semibold text-foreground">
-              We don&apos;t guess. We analyze.
-            </span>{" "}
-            Real bookmaker odds, real expected value, real ledger — every pick
-            graded the morning after.
+          <p className="max-w-md text-base text-foreground/70">
+            Real bookmaker odds. Real expected value. Every pick graded the
+            morning after, win or lose.
           </p>
 
           <div className="flex items-center gap-3 flex-wrap">
@@ -258,13 +246,13 @@ function BackgroundFx({ blurOpacity }: { blurOpacity: MotionValue<number> }) {
       <motion.div
         aria-hidden
         style={{ opacity: blurOpacity }}
-        className="absolute top-10 right-[8%] size-[440px] -z-10"
+        className="absolute top-16 right-[10%] size-[320px] -z-10"
       >
         <div
           className="size-full blur-3xl"
           style={{
             background:
-              "radial-gradient(45% 45% at 50% 50%, rgba(255,184,0,0.38), transparent 70%)",
+              "radial-gradient(45% 45% at 50% 50%, rgba(255,184,0,0.22), transparent 70%)",
           }}
         />
       </motion.div>
@@ -293,24 +281,26 @@ function MascotStage({
       initial={{ opacity: 0, scale: 0.9, rotate: -3 }}
       animate={{ opacity: 1, scale: 1, rotate: 0 }}
       transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
-      className="relative mx-auto max-w-md lg:max-w-none aspect-square"
+      className="relative mx-auto w-full max-w-[22rem] sm:max-w-md lg:max-w-[28rem] aspect-square"
     >
+      {/* Subtle conic backdrop — same gold tone but lower opacity so the
+          sticker (now transparent-background) carries the visual weight. */}
       <motion.div
         aria-hidden
         animate={{ rotate: 360 }}
-        transition={{ duration: 60, ease: "linear", repeat: Infinity }}
-        className="absolute inset-[8%] rounded-full"
+        transition={{ duration: 90, ease: "linear", repeat: Infinity }}
+        className="absolute inset-[10%] rounded-full"
         style={{
           background:
-            "conic-gradient(from 0deg, transparent 0%, rgba(255,184,0,0.18) 25%, transparent 50%, rgba(255,184,0,0.10) 75%, transparent 100%)",
+            "conic-gradient(from 0deg, transparent 0%, rgba(255,184,0,0.10) 25%, transparent 50%, rgba(255,184,0,0.06) 75%, transparent 100%)",
         }}
       />
       <div
         aria-hidden
-        className="absolute inset-[12%] rounded-full blur-3xl"
+        className="absolute inset-[18%] rounded-full blur-3xl"
         style={{
           background:
-            "radial-gradient(40% 40% at 50% 50%, rgba(255,184,0,0.55), transparent 70%)",
+            "radial-gradient(38% 38% at 50% 50%, rgba(255,184,0,0.32), transparent 72%)",
         }}
       />
       <div className="mascot-bob absolute inset-0 grid place-items-center">
@@ -321,7 +311,7 @@ function MascotStage({
           height={620}
           priority
           unoptimized
-          className="select-none drop-shadow-[0_30px_80px_rgba(255,184,0,0.55)]"
+          className="select-none drop-shadow-[0_24px_50px_rgba(255,184,0,0.35)]"
         />
       </div>
       <Coin angle={20} distance="46%" delay={0} />
