@@ -4,9 +4,9 @@ import { isoDateOffset, isValidIsoDate, todayIsoDate } from "@/lib/date";
 import { teamColors } from "@/lib/sports/nba/branding";
 import { generateCombos } from "@/lib/analysis/combos";
 import { loadPayoutMap } from "@/lib/analysis/payouts";
+import { pickFeaturedPlayers } from "@/lib/analysis/featured-players";
 import type { Prediction } from "@/lib/analysis/types";
 import { AddToCouponButton } from "@/components/cart/AddToCouponButton";
-import { ComboCard } from "@/components/ComboCard";
 import { ConfidenceRing } from "@/components/ConfidenceRing";
 import { DatePill } from "@/components/DatePill";
 import { JerseyChip } from "@/components/JerseyChip";
@@ -20,13 +20,17 @@ import { ReasoningPanel } from "@/components/ReasoningPanel";
 import { TeamBadge } from "@/components/TeamBadge";
 import type { PredictionRow, TeamLite } from "@/components/types";
 
+import { InsightChip, type InsightHint } from "@/components/InsightChip";
 import { Hero } from "@/components/site/Hero";
+import { MoneyCombos } from "@/components/site/MoneyCombos";
 import { PickCard } from "@/components/site/PickCard";
 import { PillarRow } from "@/components/site/PillarRow";
-import { WinnersClub } from "@/components/site/WinnersClub";
-import { PricingTiers } from "@/components/site/PricingTiers";
 import { SectionHeading } from "@/components/site/SectionHeading";
 import { StatComparisonViz } from "@/components/site/StatComparisonViz";
+import { TodaysSlate } from "@/components/site/TodaysSlate";
+import { TrendingPlayers } from "@/components/site/TrendingPlayers";
+import { WinnersClub } from "@/components/site/WinnersClub";
+import { PricingTiers } from "@/components/site/PricingTiers";
 import { getEngineStats } from "@/lib/scoring/stats";
 
 export const revalidate = 30;
@@ -59,12 +63,21 @@ export default async function HomePage({ searchParams }: PageProps) {
 
   const supabase = await createSupabaseServerClient();
   const engineStats = await getEngineStats();
+  const featuredPlayers = await pickFeaturedPlayers(date, 6);
 
-  const { data: games } = await supabase
+  const { data: gamesRaw } = await supabase
     .from("games")
-    .select("id, home_team_id, visitor_team_id, status")
+    .select("id, date, datetime, status, home_team_id, visitor_team_id")
     .eq("date", date);
-  const gameIds = (games ?? []).map((g) => g.id);
+  const games = (gamesRaw ?? []).map((g) => ({
+    id: g.id,
+    date: g.date,
+    datetime: g.datetime,
+    status: g.status,
+    home_team_id: g.home_team_id,
+    visitor_team_id: g.visitor_team_id,
+  }));
+  const gameIds = games.map((g) => g.id);
 
   let predictions: PredictionRow[] = [];
   if (gameIds.length > 0) {
@@ -79,18 +92,24 @@ export default async function HomePage({ searchParams }: PageProps) {
     predictions = (data ?? []) as unknown as PredictionRow[];
   }
 
-  const teamIds = Array.from(
-    new Set(
-      predictions
-        .map((p) => p.player.team_id)
-        .filter((id): id is number => id !== null),
-    ),
-  );
-  const { data: teams } = teamIds.length
+  // Team IDs we need to hydrate: featured players' teams + every team that
+  // appears on a game card or a prediction. One round-trip covers them all.
+  const teamIds = new Set<number>();
+  for (const g of games) {
+    teamIds.add(g.home_team_id);
+    teamIds.add(g.visitor_team_id);
+  }
+  for (const p of predictions) {
+    if (p.player.team_id != null) teamIds.add(p.player.team_id);
+  }
+  for (const f of featuredPlayers) {
+    if (f.team_id != null) teamIds.add(f.team_id);
+  }
+  const { data: teams } = teamIds.size
     ? await supabase
         .from("teams")
         .select("id, abbreviation, full_name")
-        .in("id", teamIds)
+        .in("id", [...teamIds])
     : { data: [] };
   const teamById = new Map(
     ((teams ?? []) as TeamLite[]).map((t) => [t.id, t] as const),
@@ -116,21 +135,30 @@ export default async function HomePage({ searchParams }: PageProps) {
   const playerIdsWithPicks = Array.from(
     new Set(predictions.map((p) => p.player_id)),
   );
+  const patternHints = new Map<string, InsightHint[]>();
   const patternKeys = new Set<string>();
   if (playerIdsWithPicks.length > 0) {
     const { data: patternRows } = await supabase
       .from("patterns")
-      .select("player_id, market")
+      .select("player_id, market, pattern_type, description")
       .in("player_id", playerIdsWithPicks);
     for (const row of (patternRows ?? []) as Array<{
       player_id: number;
       market: string | null;
+      pattern_type: string;
+      description: string;
     }>) {
-      patternKeys.add(`${row.player_id}:${row.market ?? ""}`);
+      const key = `${row.player_id}:${row.market ?? ""}`;
+      patternKeys.add(key);
+      const list = patternHints.get(key) ?? [];
+      list.push({ pattern_type: row.pattern_type, description: row.description });
+      patternHints.set(key, list);
     }
   }
   const hasPatternFor = (p: PredictionRow) =>
     patternKeys.has(`${p.player_id}:${p.market}`);
+  const hintsFor = (p: PredictionRow): InsightHint[] =>
+    patternHints.get(`${p.player_id}:${p.market}`) ?? [];
 
   const botd = predictions.find((p) => p.is_bet_of_the_day) ?? null;
   const allOthers = botd
@@ -146,10 +174,21 @@ export default async function HomePage({ searchParams }: PageProps) {
   const filtersActive = marketFilter !== null || minConfidenceFilter > 0;
 
   const payouts = await loadPayoutMap();
-  const combos = generateCombos(
-    predictions as unknown as Prediction[],
-    { minConfidence: 80, size: 2, max: 5, payouts },
-  ).map((c) => ({
+  const twoPick = generateCombos(predictions as unknown as Prediction[], {
+    minConfidence: 75,
+    size: 2,
+    max: 4,
+    payouts,
+  }).map((c) => ({
+    ...c,
+    picks: c.picks as unknown as PredictionRow[],
+  }));
+  const threePick = generateCombos(predictions as unknown as Prediction[], {
+    minConfidence: 75,
+    size: 3,
+    max: 2,
+    payouts,
+  }).map((c) => ({
     ...c,
     picks: c.picks as unknown as PredictionRow[],
   }));
@@ -158,9 +197,33 @@ export default async function HomePage({ searchParams }: PageProps) {
     <div className="fade-up">
       <Hero stats={engineStats} />
 
+      <TodaysSlate
+        games={games}
+        predictions={predictions}
+        teamById={teamById}
+        date={date}
+      />
+
+      {botd ? (
+        <section className="mx-auto max-w-7xl px-4 sm:px-6 pt-2 pb-6">
+          <BetOfTheDayCard
+            prediction={botd}
+            team={teamById.get(botd.player.team_id ?? -1) ?? null}
+            played={playedSet.has(botd.id)}
+            isSignedIn={isSignedIn}
+            hints={hintsFor(botd)}
+          />
+        </section>
+      ) : null}
+
+      <MoneyCombos tier="double" combos={twoPick} teamById={teamById} />
+      <MoneyCombos tier="triple" combos={threePick} teamById={teamById} />
+
+      <TrendingPlayers players={featuredPlayers} />
+
       <section
         id="picks"
-        className="mx-auto max-w-7xl px-4 sm:px-6 py-16 space-y-8 scroll-mt-24"
+        className="mx-auto max-w-7xl px-4 sm:px-6 py-12 space-y-6 scroll-mt-24"
       >
         <SectionHeading
           eyebrow="NBA · Today"
@@ -199,106 +262,60 @@ export default async function HomePage({ searchParams }: PageProps) {
           <EmptyState date={date} hasGames={gameIds.length > 0} />
         ) : (
           <>
-            {botd ? (
-              <BetOfTheDayCard
-                prediction={botd}
-                team={teamById.get(botd.player.team_id ?? -1) ?? null}
-                played={playedSet.has(botd.id)}
-                isSignedIn={isSignedIn}
-              />
-            ) : null}
-
-            {combos.length > 0 ? (
-              <section className="space-y-3">
-                <div className="flex items-center justify-between gap-2">
-                  <h3 className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-                    Suggested Combos
-                  </h3>
-                  <span className="text-[10px] uppercase tracking-widest text-muted-foreground">
-                    PrizePicks-ready
-                  </span>
-                </div>
-                <div className="grid gap-3 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-                  {combos.map((combo) => (
-                    <ComboCard
-                      key={combo.picks.map((p) => p.id).join("|")}
-                      combo={combo}
-                      teamById={teamById}
-                    />
-                  ))}
-                </div>
-              </section>
-            ) : null}
-
             <PicksFilterBar
               totalCount={allOthers.length}
               filteredCount={filteredOthers.length}
             />
 
-            <section className="space-y-4">
-              <div className="flex items-center justify-between gap-2 flex-wrap">
-                <h3 className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-                  {filtersActive ? "Filtered Picks" : "Sharper Picks"}
-                </h3>
-                {filteredOthers.length > 3 ? (
-                  <Link
-                    href={`/?date=${date}&all=1`}
-                    className="text-xs font-medium uppercase tracking-[0.18em] text-primary hover:text-[var(--primary-hover)]"
-                  >
-                    View All ({filteredOthers.length}) →
-                  </Link>
-                ) : null}
+            {filteredOthers.length === 0 ? (
+              <div className="card-tmb p-6 text-sm text-muted-foreground text-center">
+                No picks match your filters. Try widening the market or lowering
+                the confidence threshold.
               </div>
-              {filteredOthers.length === 0 ? (
-                <div className="card-tmb p-6 text-sm text-muted-foreground text-center">
-                  No picks match your filters. Try widening the market or lowering
-                  the confidence threshold.
-                </div>
-              ) : null}
-              <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                {filteredOthers.slice(0, 3).map((p, i) => (
-                  <PickCard
-                    key={p.id}
-                    prediction={p}
-                    team={teamById.get(p.player.team_id ?? -1) ?? null}
-                    free={i === 0 && !isSignedIn}
-                    locked={!(i === 0 && !isSignedIn)}
-                    odds={"-110"}
-                    gameTimeLabel={undefined}
-                  />
-                ))}
-              </div>
-              {filteredOthers.length > 3 ? (
-                <details className="card-tmb rounded-2xl overflow-hidden">
-                  <summary className="cursor-pointer select-none px-5 py-3.5 text-xs uppercase tracking-[0.18em] text-muted-foreground hover:text-foreground/85 list-none flex items-center justify-between">
-                    <span>
-                      Show the full slate
-                      <span className="text-foreground/60 ml-2">
-                        ({filteredOthers.length - 3} more)
-                      </span>
+            ) : null}
+            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              {filteredOthers.slice(0, 6).map((p, i) => (
+                <PickCard
+                  key={p.id}
+                  prediction={p}
+                  team={teamById.get(p.player.team_id ?? -1) ?? null}
+                  free={i === 0 && !isSignedIn}
+                  locked={!(i === 0 && !isSignedIn)}
+                  odds={"-110"}
+                  gameTimeLabel={undefined}
+                />
+              ))}
+            </div>
+            {filteredOthers.length > 6 ? (
+              <details className="card-tmb rounded-2xl overflow-hidden">
+                <summary className="cursor-pointer select-none px-5 py-3.5 text-xs uppercase tracking-[0.18em] text-muted-foreground hover:text-foreground/85 list-none flex items-center justify-between">
+                  <span>
+                    Show the full slate
+                    <span className="text-foreground/60 ml-2">
+                      ({filteredOthers.length - 6} more)
                     </span>
-                    <span aria-hidden className="text-primary">+</span>
-                  </summary>
-                  <div className="border-t border-border/60 p-4 grid gap-3">
-                    {filteredOthers.slice(3).map((p) => (
-                      <PickRow
-                        key={p.id}
-                        prediction={p}
-                        team={teamById.get(p.player.team_id ?? -1) ?? null}
-                        hasPattern={hasPatternFor(p)}
-                        trailing={
-                          <PlayButton
-                            predictionId={p.id}
-                            initialPlayed={playedSet.has(p.id)}
-                            isSignedIn={isSignedIn}
-                          />
-                        }
-                      />
-                    ))}
-                  </div>
-                </details>
-              ) : null}
-            </section>
+                  </span>
+                  <span aria-hidden className="text-primary">+</span>
+                </summary>
+                <div className="border-t border-border/60 p-4 grid gap-3">
+                  {filteredOthers.slice(6).map((p) => (
+                    <PickRow
+                      key={p.id}
+                      prediction={p}
+                      team={teamById.get(p.player.team_id ?? -1) ?? null}
+                      hasPattern={hasPatternFor(p)}
+                      trailing={
+                        <PlayButton
+                          predictionId={p.id}
+                          initialPlayed={playedSet.has(p.id)}
+                          isSignedIn={isSignedIn}
+                        />
+                      }
+                    />
+                  ))}
+                </div>
+              </details>
+            ) : null}
           </>
         )}
       </section>
@@ -315,11 +332,13 @@ function BetOfTheDayCard({
   team,
   played,
   isSignedIn,
+  hints,
 }: {
   prediction: PredictionRow;
   team: TeamLite | null;
   played: boolean;
   isSignedIn: boolean;
+  hints: InsightHint[];
 }) {
   const colors = teamColors(team?.abbreviation);
   const market = marketLabel(prediction.market);
@@ -339,11 +358,12 @@ function BetOfTheDayCard({
         className="absolute top-4 right-4 size-24 rounded-full bg-primary/15 blur-2xl pointer-events-none"
       />
       <div className="relative p-6 sm:p-8 space-y-6">
-        <h2 className="flex items-center gap-2">
+        <h2 className="flex items-center gap-2 flex-wrap">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/20 border border-primary/40 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-primary">
             <span aria-hidden className="text-sm leading-none">★</span>
             Bet of the Day
           </span>
+          {hints.length > 0 ? <InsightChip hints={hints} /> : null}
         </h2>
 
         <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr] items-start">
@@ -354,7 +374,8 @@ function BetOfTheDayCard({
                 firstName={prediction.player.first_name}
                 lastName={prediction.player.last_name}
                 abbreviation={team?.abbreviation ?? ""}
-                size={108}
+                size={120}
+                variant="sticker"
               />
               <div className="flex-1 min-w-[200px] space-y-3">
                 <div className="space-y-1.5">
@@ -370,9 +391,14 @@ function BetOfTheDayCard({
                       </span>
                     ) : null}
                   </div>
-                  <h3 className="text-2xl sm:text-3xl font-semibold tracking-tight">
-                    {name}
-                  </h3>
+                  <Link
+                    href={`/players/${prediction.player.id}`}
+                    className="block hover:underline underline-offset-4"
+                  >
+                    <h3 className="text-2xl sm:text-3xl font-semibold tracking-tight">
+                      {name}
+                    </h3>
+                  </Link>
                 </div>
                 <div className="flex items-baseline gap-3 flex-wrap">
                   <PickSideTag side={prediction.pick} />
