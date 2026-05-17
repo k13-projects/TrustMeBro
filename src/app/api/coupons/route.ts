@@ -82,10 +82,9 @@ export async function POST(req: Request) {
   if (preds.some((p) => p.status !== "pending")) {
     return NextResponse.json({ error: "prediction_already_settled" }, { status: 400 });
   }
-  const gameIds = new Set(preds.map((p) => p.game_id));
-  if (gameIds.size !== preds.length) {
-    return NextResponse.json({ error: "same_game_picks" }, { status: 400 });
-  }
+  // Same-game picks are allowed (same-game parlays). The frontend cart no
+  // longer blocks adding multiple picks from one game; the backend matches
+  // so save-coupon doesn't reject what the UI just let the user assemble.
 
   // Guests don't have a Supabase session, so RLS would reject any insert
   // gated on auth.uid(). Service role bypasses RLS; the identity in the
