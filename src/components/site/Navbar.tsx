@@ -27,7 +27,7 @@ export function Navbar({ identity }: { identity: IdentityLite }) {
     <header className="sticky top-0 z-30">
       <div
         aria-hidden
-        className="absolute inset-0 backdrop-blur-2xl bg-background/65 border-b border-border/70 -z-10"
+        className="absolute inset-0 bg-background/92 supports-backdrop-filter:bg-background/75 supports-backdrop-filter:backdrop-blur-md border-b border-border/70 -z-10"
       />
       <div
         aria-hidden

@@ -80,11 +80,21 @@ const MAX_CARDS_BY_LEGS: Record<number, number> = {
 };
 
 const AVATAR_SIZE_BY_LEGS: Record<number, number> = {
-  2: 64,
-  3: 60,
-  4: 52,
-  5: 48,
-  6: 44,
+  2: 96,
+  3: 96,
+  4: 88,
+  5: 128,
+  6: 104,
+};
+
+// Floor for the avatar row — picked to roughly match the largest avatar per
+// leg count so the card doesn't feel hollow when one tier has fewer rows.
+const AVATAR_ROW_MIN_H_BY_LEGS: Record<number, string> = {
+  2: "min-h-[7rem]",
+  3: "min-h-[7rem]",
+  4: "min-h-[6.5rem]",
+  5: "min-h-[9rem]",
+  6: "min-h-[7.5rem]",
 };
 
 export function MoneyCombos({
@@ -104,7 +114,8 @@ export function MoneyCombos({
     : "";
   const grid = GRID_BY_LEGS[tier.legs] ?? GRID_BY_LEGS[2];
   const maxCards = MAX_CARDS_BY_LEGS[tier.legs] ?? 2;
-  const avatarSize = AVATAR_SIZE_BY_LEGS[tier.legs] ?? 56;
+  const avatarSize = AVATAR_SIZE_BY_LEGS[tier.legs] ?? 96;
+  const avatarRowMinH = AVATAR_ROW_MIN_H_BY_LEGS[tier.legs] ?? "min-h-[7rem]";
   const payoutLabel = formatMultiplier(tier.multiplier);
   const winAmount = stake * tier.multiplier;
 
@@ -158,6 +169,7 @@ export function MoneyCombos({
               ringClass={ringClass}
               rank={i + 1}
               avatarSize={avatarSize}
+              avatarRowMinH={avatarRowMinH}
             />
           ))}
         </div>
@@ -178,6 +190,7 @@ function ComboCardLarge({
   ringClass,
   rank,
   avatarSize,
+  avatarRowMinH,
 }: {
   combo: MoneyCombo;
   tier: ComboTier;
@@ -186,6 +199,7 @@ function ComboCardLarge({
   ringClass: string;
   rank: number;
   avatarSize: number;
+  avatarRowMinH: string;
 }) {
   const picks = combo.picks;
   const payoutAmount = stake * tier.multiplier;
@@ -215,7 +229,9 @@ function ComboCardLarge({
         </span>
       </header>
 
-      <div className="flex items-end justify-center gap-3 sm:gap-4 min-h-[5rem] flex-wrap">
+      <div
+        className={`flex items-end justify-center gap-4 sm:gap-5 ${avatarRowMinH} flex-wrap`}
+      >
         {picks.map((p) => {
           const team = teamById.get(p.player.team_id ?? -1) ?? null;
           return (
