@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import { nbaProvider } from "@/lib/sports/nba";
 import { isoDateOffset, isValidIsoDate, todayIsoDate } from "@/lib/date";
 import { teamColors, teamLogoUrl } from "@/lib/sports/nba/branding";
@@ -74,40 +75,56 @@ function GameCard({ game }: { game: Game }) {
   const home = teamColors(game.home_team.abbreviation);
   const away = teamColors(game.visitor_team.abbreviation);
 
+  const matchupLabel = `${game.visitor_team.full_name} at ${game.home_team.full_name} — open matchup`;
+
   return (
-    <article className="relative overflow-hidden rounded-2xl glass glass-sheen grain">
-      <div
-        aria-hidden
-        className="absolute inset-0 opacity-50 pointer-events-none"
-        style={{
-          background: `linear-gradient(90deg, ${away.primary}44 0%, transparent 45%, transparent 55%, ${home.primary}44 100%)`,
-        }}
-      />
-      <div className="relative p-5 space-y-4">
-        <div className="flex items-center justify-between text-[11px] uppercase tracking-widest text-foreground/55">
-          <span>{game.status || "Scheduled"}</span>
-          {game.postseason ? (
-            <span className="rounded-full bg-amber-400/15 text-amber-300 px-2 py-0.5 border border-amber-400/30 text-[10px]">
-              Playoffs
+    <Link
+      href={`/games/${game.id}`}
+      aria-label={matchupLabel}
+      className="group relative block overflow-hidden rounded-2xl glass glass-sheen grain transition hover:-translate-y-0.5 hover:ring-1 hover:ring-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/70"
+    >
+      <article>
+        <div
+          aria-hidden
+          className="absolute inset-0 opacity-50 pointer-events-none transition group-hover:opacity-70"
+          style={{
+            background: `linear-gradient(90deg, ${away.primary}44 0%, transparent 45%, transparent 55%, ${home.primary}44 100%)`,
+          }}
+        />
+        <div className="relative p-5 space-y-4">
+          <div className="flex items-center justify-between text-[11px] uppercase tracking-widest text-foreground/55">
+            <span>{game.status || "Scheduled"}</span>
+            <span className="flex items-center gap-2">
+              {game.postseason ? (
+                <span className="rounded-full bg-amber-400/15 text-amber-300 px-2 py-0.5 border border-amber-400/30 text-[10px]">
+                  Playoffs
+                </span>
+              ) : null}
+              <span
+                aria-hidden
+                className="text-foreground/40 transition group-hover:translate-x-0.5 group-hover:text-foreground/75"
+              >
+                →
+              </span>
             </span>
-          ) : null}
+          </div>
+          <TeamRow
+            team={game.visitor_team}
+            score={game.visitor_team_score}
+            winning={visitorWins}
+            finalized={isFinal}
+          />
+          <div className="border-t border-white/8" />
+          <TeamRow
+            team={game.home_team}
+            score={game.home_team_score}
+            winning={homeWins}
+            finalized={isFinal}
+            home
+          />
         </div>
-        <TeamRow
-          team={game.visitor_team}
-          score={game.visitor_team_score}
-          winning={visitorWins}
-          finalized={isFinal}
-        />
-        <div className="border-t border-white/8" />
-        <TeamRow
-          team={game.home_team}
-          score={game.home_team_score}
-          winning={homeWins}
-          finalized={isFinal}
-          home
-        />
-      </div>
-    </article>
+      </article>
+    </Link>
   );
 }
 
