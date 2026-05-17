@@ -213,6 +213,11 @@ function statFromAthlete(
   teamRef: EspnTeamRef,
 ): Stat | null {
   if (ath.didNotPlay) return null;
+  // Defensive: ESPN occasionally returns an athlete block with no id (rare,
+  // looks like roster cleanup artefacts). Without an id we can't upsert to
+  // the players table — skip the row rather than blow up the whole sync.
+  const playerId = Number(ath.athlete?.id);
+  if (!Number.isFinite(playerId) || playerId <= 0) return null;
   const stats = ath.stats;
   if (!stats || stats.length === 0) return null;
 
@@ -371,7 +376,25 @@ export class EspnProvider implements NbaProvider {
         { event: String(gid) },
         { revalidate: 60 },
       );
-      const game = (await this.getGame(gid)) ?? null;
+      // Build Game inline from the summary header instead of doing a second
+      // round-trip via getGame() — the old path hit the same `/summary`
+      // endpoint twice, doubling fetches and (more importantly) silently
+      // failing whenever the second call cached an empty/error response,
+      // which dropped the entire game's box score on the floor.
+      const h = summary.header;
+      if (!h) continue;
+      // header.date is often null; the per-competition date is reliable.
+      const compDate =
+        (h.competitions?.[0] as { date?: string } | undefined)?.date ?? null;
+      const eventDate = h.date ?? compDate;
+      if (!eventDate) continue;
+      const game = gameFromEvent({
+        id: h.id,
+        date: eventDate,
+        status: { type: { description: "", completed: false, state: "" } },
+        season: h.season ?? { year: 0, type: 0 },
+        competitions: h.competitions ?? [],
+      } as EspnEvent);
       if (!game) continue;
 
       for (const block of summary.boxscore?.players ?? []) {
