@@ -111,5 +111,14 @@ export async function settleCoupons(): Promise<SettleCouponsResult> {
     settled++;
   }
 
+  // Refresh the public W/L aggregate that powers /bros profiles. Cheap because
+  // bro_stats only aggregates is_public coupons. Concurrent refresh tolerates
+  // an empty matview, so we can call this even when nothing changed.
+  const { error: refreshErr } = await supabase.rpc("refresh_bro_stats");
+  if (refreshErr) {
+    // Don't fail settlement on a stats refresh hiccup — log and move on.
+    console.warn(`refresh_bro_stats failed: ${refreshErr.message}`);
+  }
+
   return { considered: coupons.length, settled, won, lost, void: voided };
 }

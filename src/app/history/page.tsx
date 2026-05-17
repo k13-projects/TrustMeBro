@@ -7,6 +7,7 @@ import { PickSideTag } from "@/components/PickSideTag";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
 import { TeamBadge } from "@/components/TeamBadge";
 import type { TeamLite } from "@/components/types";
+import { CouponShareToggle } from "@/components/bros/CouponShareToggle";
 
 export const revalidate = 30;
 
@@ -106,7 +107,7 @@ export default async function HistoryPage({ searchParams }: PageProps) {
       .from("user_coupons")
       .select(
         `id, mode, pick_count, stake, payout_multiplier, potential_payout,
-         status, result_payout, settled_at, created_at,
+         status, result_payout, settled_at, created_at, is_public, shared_at,
          picks:user_coupon_picks(pick_order, prediction:predictions(id, game_id, market, line, pick,
            player:players(id, first_name, last_name, team_id)))`,
       )
@@ -269,7 +270,12 @@ export default async function HistoryPage({ searchParams }: PageProps) {
           {coupons.length === 0 ? null : (
             <section className="space-y-3">
               {coupons.map((c) => (
-                <CouponRowCard key={c.id} coupon={c} teamById={teamById} />
+                <CouponRowCard
+                  key={c.id}
+                  coupon={c}
+                  teamById={teamById}
+                  canShare={requester.kind === "auth"}
+                />
               ))}
             </section>
           )}
@@ -306,6 +312,8 @@ type CouponRow = {
   result_payout: number | string | null;
   settled_at: string | null;
   created_at: string;
+  is_public: boolean;
+  shared_at: string | null;
   picks: Array<{
     pick_order: number;
     prediction: CouponPickPrediction | CouponPickPrediction[] | null;
@@ -353,9 +361,11 @@ function TabLink({
 function CouponRowCard({
   coupon,
   teamById,
+  canShare,
 }: {
   coupon: NormalizedCoupon;
   teamById: Map<number, TeamLite>;
+  canShare: boolean;
 }) {
   const outcomeTones = {
     pending: "bg-white/5 text-foreground/55 border-white/10",
@@ -417,7 +427,7 @@ function CouponRowCard({
       </ul>
 
       {resultPayout !== null ? (
-        <footer className="text-xs text-foreground/65 font-mono tabular-nums border-t border-white/8 pt-2 flex items-center justify-between">
+        <div className="text-xs text-foreground/65 font-mono tabular-nums border-t border-white/8 pt-2 flex items-center justify-between">
           <span className="uppercase tracking-widest text-[10px] text-foreground/45">
             Settled
           </span>
@@ -435,8 +445,15 @@ function CouponRowCard({
               ${resultPayout.toFixed(2)}
             </span>
           </span>
-        </footer>
+        </div>
       ) : null}
+      <footer className="pt-2 border-t border-white/8 flex items-center justify-between gap-2">
+        <CouponShareToggle
+          couponId={coupon.id}
+          isPublic={coupon.is_public}
+          canShare={canShare}
+        />
+      </footer>
     </article>
   );
 }
