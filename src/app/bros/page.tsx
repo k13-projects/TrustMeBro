@@ -138,7 +138,7 @@ function EmptyState({ tab, isAuth }: { tab: FeedTab; isAuth: boolean }) {
   if (tab === "following") {
     return (
       <div className="glass-strong rounded-3xl p-8 text-center space-y-3">
-        <p className="text-lg font-semibold">You aren't following any bros yet.</p>
+        <p className="text-lg font-semibold">You aren&apos;t following any bros yet.</p>
         <p className="text-sm text-foreground/55 max-w-prose mx-auto">
           Tap the <span className="text-foreground/85">+</span> next to any bro
           on the left to start a follow list, or switch back to{" "}

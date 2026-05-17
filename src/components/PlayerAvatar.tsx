@@ -44,8 +44,8 @@ export function PlayerAvatar({
             alt={`${firstName} ${lastName}`}
             width={size * 2}
             height={size * 2}
+            sizes={`${size * 2}px`}
             className="sticker-headshot relative size-full object-contain object-bottom"
-            unoptimized
           />
         ) : (
           <span
@@ -82,8 +82,8 @@ export function PlayerAvatar({
           alt={`${firstName} ${lastName}`}
           width={size * 2}
           height={size * 2}
+          sizes={`${size * 2}px`}
           className="absolute inset-0 size-full object-cover object-top scale-110"
-          unoptimized
         />
       ) : (
         <span

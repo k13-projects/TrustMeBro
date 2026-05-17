@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { HANDLE_REGEX, HANDLE_MIN, HANDLE_MAX } from "@/lib/bros/handle";
 
@@ -26,57 +26,53 @@ export function OnboardingForm({
   const [bio, setBio] = useState("");
   const [submitting, startSubmit] = useTransition();
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [availability, setAvailability] = useState<Availability>({
-    state: "idle",
-  });
-  const debounceRef = useRef<number | null>(null);
+  // Async result is keyed by the handle it was fetched for, so a stale fetch
+  // resolving after the user has typed more never overwrites the live state.
+  const [lastCheck, setLastCheck] = useState<{
+    handle: string;
+    result: "available" | "taken";
+  } | null>(null);
+
+  // Sync validation is pure derivation from `handle` — useMemo keeps it out
+  // of an effect, which kept tripping react-hooks/set-state-in-effect with
+  // cascading renders. The async availability check below only runs when
+  // sync validation passes.
+  const syncInvalid = useMemo<{ reason: string } | null>(() => {
+    const value = handle.trim().toLowerCase();
+    if (value.length < HANDLE_MIN) return { reason: `min ${HANDLE_MIN} chars` };
+    if (value.length > HANDLE_MAX) return { reason: `max ${HANDLE_MAX} chars` };
+    if (!HANDLE_REGEX.test(value)) return { reason: "letters, numbers, underscore only" };
+    return null;
+  }, [handle]);
+
+  const normalizedHandle = handle.trim().toLowerCase();
+  const availability: Availability = syncInvalid
+    ? { state: "invalid", reason: syncInvalid.reason }
+    : lastCheck?.handle === normalizedHandle
+      ? lastCheck.result === "available"
+        ? { state: "available" }
+        : { state: "taken" }
+      : { state: "checking" };
 
   useEffect(() => {
-    if (debounceRef.current) {
-      window.clearTimeout(debounceRef.current);
-    }
-    const value = handle.trim().toLowerCase();
-    if (value.length < HANDLE_MIN) {
-      setAvailability({
-        state: "invalid",
-        reason: `min ${HANDLE_MIN} chars`,
-      });
-      return;
-    }
-    if (value.length > HANDLE_MAX) {
-      setAvailability({
-        state: "invalid",
-        reason: `max ${HANDLE_MAX} chars`,
-      });
-      return;
-    }
-    if (!HANDLE_REGEX.test(value)) {
-      setAvailability({
-        state: "invalid",
-        reason: "letters, numbers, underscore only",
-      });
-      return;
-    }
-    setAvailability({ state: "checking" });
-    debounceRef.current = window.setTimeout(async () => {
+    if (syncInvalid) return;
+    if (lastCheck?.handle === normalizedHandle) return;
+    const timer = window.setTimeout(async () => {
       try {
         const res = await fetch(
-          `/api/profile/check-handle?handle=${encodeURIComponent(value)}`,
+          `/api/profile/check-handle?handle=${encodeURIComponent(normalizedHandle)}`,
         );
         const body = await res.json();
-        if (body?.available) {
-          setAvailability({ state: "available" });
-        } else {
-          setAvailability({ state: "taken" });
-        }
+        setLastCheck({
+          handle: normalizedHandle,
+          result: body?.available ? "available" : "taken",
+        });
       } catch {
-        setAvailability({ state: "idle" });
+        // Network blip — leave UI in "checking" so the next keystroke retries.
       }
     }, 300);
-    return () => {
-      if (debounceRef.current) window.clearTimeout(debounceRef.current);
-    };
-  }, [handle]);
+    return () => window.clearTimeout(timer);
+  }, [normalizedHandle, syncInvalid, lastCheck]);
 
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();

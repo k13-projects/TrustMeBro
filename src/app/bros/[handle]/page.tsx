@@ -100,7 +100,7 @@ export default async function BroProfilePage({ params }: PageProps) {
           <div className="glass rounded-2xl p-6 text-center text-sm text-foreground/55">
             {isSelf ? (
               <>
-                You haven't shared any coupons yet.{" "}
+                You haven&apos;t shared any coupons yet.{" "}
                 <Link
                   href="/history?tab=coupons"
                   className="text-primary hover:text-primary-hover underline-offset-4 hover:underline"
@@ -109,7 +109,7 @@ export default async function BroProfilePage({ params }: PageProps) {
                 </Link>
               </>
             ) : (
-              <>@{profile.handle} hasn't shared any coupons yet.</>
+              <>@{profile.handle} hasn&apos;t shared any coupons yet.</>
             )}
           </div>
         ) : (
