@@ -56,6 +56,10 @@ export function teamLogoUrl(abbreviation: string | null | undefined): string | n
 
 export function playerHeadshotUrl(playerId: number | null | undefined): string | null {
   if (!playerId) return null;
+  // Our `players.id` is the ESPN athlete ID (the active provider is
+  // espnProvider — see src/lib/sports/nba/index.ts). ESPN CDN serves real
+  // headshots against those IDs (verified). NBA.com CDN returns a generic
+  // silhouette for ESPN IDs, so don't switch.
   return `https://a.espncdn.com/i/headshots/nba/players/full/${playerId}.png`;
 }
 

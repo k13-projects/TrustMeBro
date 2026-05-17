@@ -10,7 +10,7 @@ import type { Prediction, PredictionInput } from "./types";
  * scorer then sanity-checks that pick against every other window.
  */
 export function buildPrediction(input: PredictionInput): Prediction {
-  const { game, player, team, opponent, history, market, line, signals } =
+  const { game, player, team, opponent, history, market, line, signals, best_odds } =
     input;
 
   const features = computeFeatures({
@@ -50,6 +50,20 @@ export function buildPrediction(input: PredictionInput): Prediction {
     }
   }
 
+  // Kelly-style EV in units of stake: (P(win) * decimal_odds) - 1.
+  // Positive ⇒ +EV bet at the available price. Only meaningful when we have a
+  // real bookmaker quote — synthetic lines would produce noise.
+  let expected_value: number | null = null;
+  if (best_odds) {
+    reasoning.odds = {
+      bookmaker: best_odds.bookmaker,
+      price_decimal: best_odds.price_decimal,
+      price_american: best_odds.price_american,
+      book_count: best_odds.book_count,
+    };
+    expected_value = (confidence / 100) * best_odds.price_decimal - 1;
+  }
+
   return {
     game_id: game.id,
     player_id: player.id,
@@ -58,7 +72,7 @@ export function buildPrediction(input: PredictionInput): Prediction {
     pick,
     projection: scored.projection,
     confidence,
-    expected_value: null,
+    expected_value,
     reasoning,
     is_bet_of_the_day: false,
     status: "pending",

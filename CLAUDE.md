@@ -149,12 +149,15 @@ src/
 
 ## Prediction Engine Contract
 
-Until real bookmaker odds wire in, the engine constructs lines synthetically as
-`line = floor(L10_mean) + 0.5`. By construction the L10 mean is always above
-that line, which biases the slate toward **over**. Confidence is computed
-relative to that synthetic line, so a high-confidence pick today is *not* a
-value bet — it's a high-conviction projection. "Confidence ≠ EV" until
-`/api/cron/track-odds` ships with `ODDS_API_KEY`.
+The engine emits a pick only when real bookmaker odds exist for the
+(game, player, market). `/api/cron/track-odds` pulls player-prop snapshots
+from The Odds API into `odds_snapshots`; `/api/cron/generate-predictions`
+reads the latest snapshot per group, uses the modal line across books as
+the consensus, picks the best price on the chosen side, and computes
+`expected_value = (confidence/100) * decimal_odds - 1`. No `ODDS_API_KEY`
+(or no odds for the day) ⇒ zero picks. The old `floor(L10_mean) + 0.5`
+synthetic line has been retired — confidence is now a probability against
+the price you'd actually bet.
 
 A `Prediction` must include:
 ```ts
@@ -206,7 +209,7 @@ type Reasoning = {
   - Two games ago → `text-cyan-500` (was purple — purple is banned outside of team colors; see [src/components/StatColor.ts](src/components/StatColor.ts))
   - Last 5 individual bars → neutral with delta arrows
   - Last 10 average → `text-emerald-500`
-- **Palette rule (2026-05-14):** `purple` / `fuchsia` / `violet` / `indigo` are **banned** in app chrome and components. They may only appear when rendering a team's actual brand color. The accent palette is Robinhood-style: emerald/green for primary action, rose for negatives, white-on-dark for text.
+- **Palette rule (2026-05-15, supersedes prior emerald-primary rule):** `purple` / `fuchsia` / `violet` / `indigo` are **banned** in app chrome and components. They may only appear when rendering a team's actual brand color. The accent palette is **TrustMeBro gold** (`#FFB800`, exposed as `--primary`) for primary action / CTAs / brand chrome — driven by the renovation mockups in `public/Design/`. **Emerald is reserved for positive-delta indicators only** (win streaks, ROI ↑, last-10 average — data-viz semantics). Rose for negatives. White-on-dark for body text. Full renovation context: [.claude/UI_RENOVATION.md](.claude/UI_RENOVATION.md).
 - Pattern alert badge appears when last-game value is more than 1.5 standard deviations from L10 average.
 - Compact display: prefer sparkline + scalar over multi-row tables when possible.
 
@@ -235,7 +238,7 @@ See `.env.example`. Required keys:
 - `SUPABASE_SERVICE_ROLE_KEY` — server-only, never `NEXT_PUBLIC_*`
 
 Add as needed (and update `.env.example`):
-- `ODDS_API_KEY` — bookmaker odds provider (TBD; consider The Odds API)
+- `ODDS_API_KEY` — The Odds API (https://the-odds-api.com). Load-bearing: `/api/cron/track-odds` needs it to pull player-prop snapshots, and `/api/cron/generate-predictions` produces zero picks without it (real odds gated). Free tier = 500 req/mo and player props cost 10x — expect to upgrade to ~$30/mo for steady-state.
 - `CRON_SECRET` — to protect `/api/cron/*` endpoints from unauthorized invocation
 
 ## Cron Schedule (Vercel)

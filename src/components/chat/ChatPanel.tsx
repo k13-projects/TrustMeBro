@@ -625,8 +625,14 @@ function EmptyState({
   archivedCount: number;
   onRestore: () => void;
 }) {
-  // useMemo so shuffles happen once per panel mount, not on every render.
-  const starters = useMemo(() => pickStarters(), []);
+  // SSR must render the same content as the first client render to avoid
+  // hydration mismatch — shuffle only on the client after mount.
+  const [starters, setStarters] = useState<string[]>(() =>
+    STARTER_POOL.slice(0, 3),
+  );
+  useEffect(() => {
+    setStarters(pickStarters());
+  }, []);
   return (
     <div className="space-y-4 py-4 fade-up">
       <div className="flex flex-col items-start gap-2">

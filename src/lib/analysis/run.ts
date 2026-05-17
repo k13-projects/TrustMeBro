@@ -11,6 +11,8 @@ import type {
   SignalImpact,
 } from "./types";
 import type { Game, Player, Team } from "@/lib/sports/types";
+import { loadLatestOddsForGames, oddsKey } from "@/lib/signals/odds/repo";
+import type { OddsPlayerMarket } from "@/lib/signals/odds";
 
 const MARKETS: PropMarket[] = [
   "points",
@@ -19,6 +21,16 @@ const MARKETS: PropMarket[] = [
   "threes_made",
   "pra",
 ];
+
+// Subset of MARKETS the odds provider actually quotes. Markets outside this
+// set (e.g. PRA) will be skipped when "real odds required" is in force,
+// because there's nothing to look up against.
+const ODDS_BACKED_MARKETS = new Set<PropMarket>([
+  "points",
+  "rebounds",
+  "assists",
+  "threes_made",
+]);
 
 const HISTORY_DEPTH = 30;
 const MIN_HISTORY = 5;
@@ -49,6 +61,12 @@ export async function generateForDate(date: string) {
     teamIds.add(g.home_team_id);
     teamIds.add(g.visitor_team_id);
   }
+
+  // Pre-load every odds snapshot for today's games in one query. Predictions
+  // are gated on real odds existing for the (game, player, market) — no
+  // bookmaker line, no pick. This makes "confidence" mean something at the
+  // price you'd actually bet, instead of against a synthesised line.
+  const oddsByKey = await loadLatestOddsForGames(games.map((g) => g.id));
 
   const { data: teams, error: teamsErr } = await supabase
     .from("teams")
@@ -183,7 +201,24 @@ export async function generateForDate(date: string) {
           if (values.length < 3) continue;
           const l10mean = values.reduce((s, v) => s + v, 0) / values.length;
           if (l10mean < 0.5) continue;
-          const line = Math.floor(l10mean) + 0.5;
+
+          // Real odds required to emit a pick — no fallback synthetic line.
+          // Markets the books don't offer (e.g. PRA) are skipped here.
+          if (!ODDS_BACKED_MARKETS.has(market)) continue;
+          const sides = oddsByKey.get(
+            oddsKey(g.id, player.id, market as OddsPlayerMarket),
+          );
+          if (!sides || (!sides.over && !sides.under)) continue;
+          const line = (sides.over?.line ?? sides.under?.line) as number;
+
+          const last5Values = values.slice(0, 5);
+          const last5Mean =
+            last5Values.reduce((s, v) => s + v, 0) / last5Values.length;
+          const provisionalSide: "over" | "under" =
+            last5Mean >= line ? "over" : "under";
+          const best_odds =
+            provisionalSide === "over" ? sides.over : sides.under;
+          if (!best_odds) continue;
 
           // Detect patterns for this market and surface them as signals to
           // the confidence scorer. Pattern impact aligns with the implied
@@ -234,6 +269,7 @@ export async function generateForDate(date: string) {
             market,
             line,
             signals: patternSignals,
+            best_odds,
           });
           newPredictions.push(prediction);
           patternsByMarket.push(...patterns.map((p) => ({ player_id: player.id, market, pattern: p })));

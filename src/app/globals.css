@@ -1,24 +1,160 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ============================================================
+   TrustMeBro renovation — dark canvas + Lakers gold + streetwear.
+   Tokens locked from stakeholder mockups in /public/Design/.
+   See CLAUDE.md "Palette rule (2026-05-15)" + .claude/UI_RENOVATION.md.
+   ============================================================ */
 
 :root {
-  --background: #050508;
-  --foreground: #f4f4f7;
   --glass-tint: 255 255 255;
+
+  --background: #0a0a0c;
+  --surface: #15151a;
+  --surface-2: #1d1d24;
+  --foreground: #f7f7fa;
+  --muted: #8b8b94;
+
+  --primary: #FFB800;
+  --primary-foreground: #0a0a0c;
+  --primary-hover: #FFC929;
+
+  --accent-fire: #FF6B35;
+  --positive: #10b981;
+  --negative: #ef4444;
+
+  /* shadcn-compatible token surface (dark by default). */
+  --card: var(--surface);
+  --card-foreground: var(--foreground);
+  --popover: var(--surface);
+  --popover-foreground: var(--foreground);
+  --secondary: rgba(255, 255, 255, 0.06);
+  --secondary-foreground: var(--foreground);
+  --accent: rgba(255, 184, 0, 0.12);
+  --accent-foreground: var(--primary);
+  --destructive: var(--negative);
+  --border: rgba(255, 255, 255, 0.08);
+  --input: rgba(255, 255, 255, 0.12);
+  --ring: var(--primary);
+  --muted-foreground: var(--muted);
+
+  /* Chart palette — yellow + analytical secondaries (no purple/violet). */
+  --chart-1: var(--primary);
+  --chart-2: var(--positive);
+  --chart-3: #38bdf8;
+  --chart-4: var(--accent-fire);
+  --chart-5: #f4f4f7;
+
+  --radius: 0.625rem;
+
+  --sidebar: var(--surface);
+  --sidebar-foreground: var(--foreground);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: rgba(255, 184, 0, 0.10);
+  --sidebar-accent-foreground: var(--primary);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--primary);
+}
+
+/* Keep .dark identical so any shadcn block that checks dark variants still works. */
+.dark {
+  --background: #0a0a0c;
+  --foreground: #f7f7fa;
+  --card: var(--surface);
+  --card-foreground: var(--foreground);
+  --popover: var(--surface);
+  --popover-foreground: var(--foreground);
+  --primary: #FFB800;
+  --primary-foreground: #0a0a0c;
+  --secondary: rgba(255, 255, 255, 0.06);
+  --secondary-foreground: var(--foreground);
+  --muted: rgba(255, 255, 255, 0.06);
+  --muted-foreground: #8b8b94;
+  --accent: rgba(255, 184, 0, 0.12);
+  --accent-foreground: var(--primary);
+  --destructive: #ef4444;
+  --border: rgba(255, 255, 255, 0.08);
+  --input: rgba(255, 255, 255, 0.12);
+  --ring: var(--primary);
+  --chart-1: #FFB800;
+  --chart-2: #10b981;
+  --chart-3: #38bdf8;
+  --chart-4: #FF6B35;
+  --chart-5: #f4f4f7;
+  --sidebar: var(--surface);
+  --sidebar-foreground: var(--foreground);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: rgba(255, 184, 0, 0.10);
+  --sidebar-accent-foreground: var(--primary);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--primary);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-fire: var(--accent-fire);
+  --color-positive: var(--positive);
+  --color-negative: var(--negative);
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-anton);
+  --font-numeric: var(--font-archivo-black);
+  --font-accent: var(--font-permanent-marker);
+  --font-brush-stroke: var(--font-brush);
+  --font-heading: var(--font-anton);
+
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
 }
 
 html,
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-sans), -apple-system, BlinkMacSystemFont, "Segoe UI",
-    sans-serif;
+  font-family: var(--font-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
@@ -28,9 +164,9 @@ body {
   min-height: 100dvh;
   background-color: var(--background);
   background-image:
-    radial-gradient(60rem 50rem at 12% -10%, rgba(16, 185, 129, 0.22), transparent 60%),
-    radial-gradient(50rem 40rem at 95% 5%, rgba(34, 197, 94, 0.16), transparent 60%),
-    radial-gradient(70rem 60rem at 50% 110%, rgba(0, 200, 5, 0.18), transparent 60%);
+    radial-gradient(60rem 50rem at 10% -10%, rgba(255, 184, 0, 0.10), transparent 60%),
+    radial-gradient(46rem 38rem at 96% 6%, rgba(255, 107, 53, 0.08), transparent 62%),
+    radial-gradient(72rem 60rem at 50% 110%, rgba(255, 184, 0, 0.08), transparent 60%);
   background-attachment: fixed;
 }
 
@@ -40,16 +176,17 @@ body::before {
   inset: 0;
   pointer-events: none;
   background-image:
-    radial-gradient(1px 1px at 25% 30%, rgba(255, 255, 255, 0.18) 1px, transparent 0),
-    radial-gradient(1px 1px at 80% 65%, rgba(255, 255, 255, 0.12) 1px, transparent 0),
-    radial-gradient(1px 1px at 60% 15%, rgba(255, 255, 255, 0.1) 1px, transparent 0);
+    radial-gradient(1px 1px at 25% 30%, rgba(255, 255, 255, 0.14) 1px, transparent 0),
+    radial-gradient(1px 1px at 80% 65%, rgba(255, 255, 255, 0.10) 1px, transparent 0),
+    radial-gradient(1px 1px at 60% 15%, rgba(255, 184, 0, 0.10) 1px, transparent 0);
   background-size: 220px 220px, 320px 320px, 480px 480px;
   opacity: 0.5;
   mix-blend-mode: screen;
   z-index: 0;
 }
 
-/* Glass surface utilities — composable on any element. */
+/* ====================== Surface utilities ====================== */
+
 @utility glass {
   position: relative;
   background-color: rgb(var(--glass-tint) / 0.04);
@@ -72,9 +209,6 @@ body::before {
     0 30px 80px -25px rgba(0, 0, 0, 0.65);
 }
 
-/* Chat panel surface — dense enough that body text reads against any page
-   underneath. Uses the page background tone with high opacity instead of
-   the translucent white tint of `glass` / `glass-strong`. */
 @utility glass-chat {
   position: relative;
   background-color: rgb(8 10 18 / 0.86);
@@ -86,9 +220,6 @@ body::before {
     0 40px 120px -30px rgba(0, 0, 0, 0.75);
 }
 
-/* Coupon side drawer — fully opaque. The drawer hosts a stake input + payout
-   number that get hard to read when the page bleeds through; this surface
-   stops the page entirely and uses no backdrop-filter so it doesn't ghost. */
 @utility glass-coupon {
   position: relative;
   background-color: #0b0f17;
@@ -97,6 +228,99 @@ body::before {
     inset 0 1px 0 0 rgb(var(--glass-tint) / 0.08),
     -24px 0 60px -20px rgba(0, 0, 0, 0.75);
 }
+
+/* Dark elevated card with subtle gradient border — the mockup pick-card look. */
+@utility card-tmb {
+  position: relative;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.008)),
+    var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 1.5rem;
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.04),
+    0 24px 60px -28px rgba(0, 0, 0, 0.7);
+  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1),
+              border-color 220ms ease,
+              box-shadow 220ms ease;
+}
+@utility card-tmb-hover {
+  transform: translateY(-4px);
+  border-color: rgba(255, 184, 0, 0.35);
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.06),
+    0 32px 80px -28px rgba(0, 0, 0, 0.8),
+    0 0 28px -8px rgba(255, 184, 0, 0.4);
+}
+
+/* Pick card — the vertical mockup-style card with stronger top-light. */
+@utility card-pick {
+  position: relative;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.01) 45%, rgba(0, 0, 0, 0.15)),
+    var(--surface);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 1.5rem;
+  overflow: hidden;
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.06),
+    0 30px 80px -32px rgba(0, 0, 0, 0.75);
+  transition: transform 250ms cubic-bezier(0.22, 1, 0.36, 1),
+              border-color 250ms ease,
+              box-shadow 250ms ease;
+}
+.card-pick:hover {
+  transform: translateY(-6px);
+  border-color: rgba(255, 184, 0, 0.5);
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.1),
+    0 40px 90px -28px rgba(0, 0, 0, 0.85),
+    0 0 36px -10px rgba(255, 184, 0, 0.55);
+}
+
+/* Brush text — chunky display for accent words like BRO / WINNERS / EDGE. */
+@utility brush-text {
+  font-family: var(--font-brush-stroke), "Anton", system-ui, sans-serif;
+  font-style: italic;
+  letter-spacing: 0.005em;
+  color: var(--primary);
+  text-shadow:
+    0 1px 0 rgba(0, 0, 0, 0.18),
+    0 0 22px rgba(255, 184, 0, 0.28);
+  transform: rotate(-1.5deg);
+  display: inline-block;
+  background: linear-gradient(180deg, #FFD54B 0%, #FFB800 55%, #E89A00 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  padding: 0 0.05em;
+}
+
+/* Section divider — fading hairline that flows two sections together. */
+@utility section-fade {
+  position: relative;
+}
+.section-fade::before,
+.section-fade::after {
+  content: "";
+  position: absolute;
+  left: 10%;
+  right: 10%;
+  height: 1px;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 184, 0, 0.18) 20%,
+    rgba(255, 184, 0, 0.22) 50%,
+    rgba(255, 184, 0, 0.18) 80%,
+    transparent 100%
+  );
+}
+.section-fade::before { top: 0; }
+.section-fade::after { bottom: 0; }
+
+/* ====================== Animations ====================== */
 
 @keyframes shimmer {
   0%, 100% { opacity: 0.85; transform: scale(1); }
@@ -122,30 +346,141 @@ body::before {
   will-change: transform;
 }
 
+@keyframes mascot-bob {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-8px); }
+}
+.mascot-bob {
+  animation: mascot-bob 4.2s ease-in-out infinite;
+  will-change: transform;
+}
+
 @keyframes fade-up {
   from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-.fade-up {
-  animation: fade-up 0.4s ease-out both;
-}
+.fade-up { animation: fade-up 0.4s ease-out both; }
 
 @keyframes panel-pop {
   from { opacity: 0; transform: translateY(6px) scale(0.985); }
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }
-.panel-pop {
-  animation: panel-pop 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
+.panel-pop { animation: panel-pop 0.32s cubic-bezier(0.22, 1, 0.36, 1) both; }
 
-/* Soft pulse for the brand "live" glow — used on the chat launcher dot. */
 @keyframes soft-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.55); }
-  70%      { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 184, 0, 0.55); }
+  70%      { box-shadow: 0 0 0 12px rgba(255, 184, 0, 0); }
 }
 .soft-pulse { animation: soft-pulse 2.4s ease-out infinite; }
 
-/* Nav link — animated active pill + hover sweep. */
+@keyframes hero-word-rise {
+  from { opacity: 0; transform: translateY(28px) rotate(-2deg); }
+  to   { opacity: 1; transform: translateY(0) rotate(0deg); }
+}
+.hero-word {
+  display: block;
+  animation: hero-word-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Sticker outline for cutout-style player headshots. Stacks drop-shadows
+   so the white outline + gold ring follow the transparent PNG silhouette
+   without needing per-image alpha cleanup. */
+.sticker-headshot {
+  filter:
+    drop-shadow(0 1px 0 #FFFFFF) drop-shadow(0 -1px 0 #FFFFFF)
+    drop-shadow(1px 0 0 #FFFFFF) drop-shadow(-1px 0 0 #FFFFFF)
+    drop-shadow(0 2px 0 #FFB800) drop-shadow(0 -2px 0 #FFB800)
+    drop-shadow(2px 0 0 #FFB800) drop-shadow(-2px 0 0 #FFB800)
+    drop-shadow(0 12px 18px rgba(0, 0, 0, 0.55));
+  transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.sticker-headshot:hover {
+  transform: translateY(-4px) rotate(-2deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .sticker-headshot,
+  .sticker-headshot:hover {
+    transition: none;
+    transform: none;
+  }
+}
+
+@keyframes brush-draw {
+  from { clip-path: inset(0 100% 0 0); }
+  to   { clip-path: inset(0 0 0 0); }
+}
+.brush-draw {
+  animation: brush-draw 1s cubic-bezier(0.65, 0, 0.35, 1) 0.5s both;
+}
+
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+.marquee {
+  animation: marquee 28s linear infinite;
+  will-change: transform;
+}
+
+@keyframes gold-sweep {
+  from { background-position: -200% 0; }
+  to   { background-position: 200% 0; }
+}
+.gold-sweep {
+  background: linear-gradient(
+    100deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.35) 50%,
+    transparent 70%
+  );
+  background-size: 200% 100%;
+  animation: gold-sweep 1.6s ease-out;
+}
+
+@keyframes pulse-gold {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 184, 0, 0.45); }
+  50%      { box-shadow: 0 0 24px 6px rgba(255, 184, 0, 0.18); }
+}
+.pulse-gold { animation: pulse-gold 2.8s ease-in-out infinite; }
+
+@keyframes lock-wiggle {
+  0%, 100% { transform: rotate(0); }
+  20%      { transform: rotate(-12deg); }
+  40%      { transform: rotate(10deg); }
+  60%      { transform: rotate(-6deg); }
+  80%      { transform: rotate(4deg); }
+}
+.group:hover .lock-wiggle { animation: lock-wiggle 0.6s ease-in-out; }
+
+/* ====================== Nav link — yellow underline draw ====================== */
+
+.nav-link {
+  position: relative;
+  display: inline-block;
+  padding: 0.5rem 0.25rem;
+  color: rgba(247, 247, 250, 0.7);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  transition: color 200ms ease;
+}
+.nav-link:hover { color: var(--foreground); }
+.nav-link::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 2px;
+  width: 100%;
+  background: var(--primary);
+  transform-origin: left;
+  transform: scaleX(0);
+  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.nav-link:hover::after { transform: scaleX(1); }
+.nav-link[aria-current="page"] { color: var(--primary); }
+.nav-link[aria-current="page"]::after { transform: scaleX(1); }
+
+/* Legacy nav-pill kept for backward compat — now uses yellow accent. */
 .nav-pill {
   position: relative;
   transition: color 0.2s ease, transform 0.2s ease;
@@ -173,21 +508,12 @@ body::before {
   height: 2px;
   border-radius: 2px;
   transform: translateX(-50%);
-  background: linear-gradient(90deg, #10b981, #22c55e);
-  box-shadow: 0 0 14px rgba(16, 185, 129, 0.6);
+  background: var(--primary);
+  box-shadow: 0 0 14px rgba(255, 184, 0, 0.6);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .shimmer,
-  .gradient-shift,
-  .logo-float,
-  .fade-up,
-  .panel-pop,
-  .soft-pulse { animation: none; }
-  .nav-pill { transition: none; }
-}
+/* ====================== Sheen + grain overlays ====================== */
 
-/* Top sheen that gives glass surfaces the Apple-style highlight. */
 .glass-sheen::after {
   content: "";
   position: absolute;
@@ -203,7 +529,6 @@ body::before {
   mix-blend-mode: overlay;
 }
 
-/* Noise overlay for grain — keeps surfaces from looking too synthetic. */
 .grain::before {
   content: "";
   position: absolute;
@@ -213,4 +538,58 @@ body::before {
   opacity: 0.06;
   mix-blend-mode: overlay;
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.7'/></svg>");
+}
+
+/* ====================== Brush-stroke underline (for "BRO" wordmark) ====================== */
+
+.brush-underline {
+  position: relative;
+  display: inline-block;
+}
+.brush-underline::after {
+  content: "";
+  position: absolute;
+  left: -4%;
+  right: -4%;
+  bottom: -0.08em;
+  height: 0.22em;
+  background:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 24' preserveAspectRatio='none'><path d='M2 14 Q40 4 90 12 T196 8' stroke='%23FFB800' stroke-width='8' fill='none' stroke-linecap='round'/></svg>") no-repeat center/100% 100%;
+  pointer-events: none;
+  clip-path: inset(0 100% 0 0);
+  animation: brush-draw 1s cubic-bezier(0.65, 0, 0.35, 1) 0.6s both;
+}
+
+/* ====================== Reduced motion ====================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .shimmer,
+  .gradient-shift,
+  .logo-float,
+  .mascot-bob,
+  .fade-up,
+  .panel-pop,
+  .soft-pulse,
+  .hero-word,
+  .brush-draw,
+  .marquee,
+  .gold-sweep,
+  .pulse-gold,
+  .lock-wiggle,
+  .brush-underline::after { animation: none; }
+  .nav-pill,
+  .nav-link,
+  .nav-link::after { transition: none; }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
 }
