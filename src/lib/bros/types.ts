@@ -14,6 +14,7 @@ export type BroDirectoryEntry = {
   is_online: boolean;
   wins: number;
   losses: number;
+  score: number;
   is_following: boolean;
   is_self: boolean;
 };
@@ -26,6 +27,10 @@ export type BroStatRow = {
   voids: number;
   pending: number;
   net_units: number | string;
+  // Leg-aware score (migration 0014). A bro's net hit/miss count across
+  // every shared coupon: hits add when the parlay fully won, misses
+  // subtract when it lost. See lib/scoring/coupons.ts for the math.
+  score: number | string;
   last_win_at: string | null;
   last_shared_at: string | null;
 };

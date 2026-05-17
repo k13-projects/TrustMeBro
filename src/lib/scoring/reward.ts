@@ -3,8 +3,11 @@ import "server-only";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import type { BetStatus } from "@/lib/analysis/types";
 
+// Symmetric ledger — see migration 0014. A lost pick costs exactly what a
+// win earns. Easier to read at a glance ("we're +3" means three more hits
+// than misses, no half-units to math).
 const WIN_DELTA = 1.0;
-const LOSS_DELTA = -0.5;
+const LOSS_DELTA = -1.0;
 
 export function rewardDelta(outcome: BetStatus): number {
   if (outcome === "won") return WIN_DELTA;
@@ -13,7 +16,7 @@ export function rewardDelta(outcome: BetStatus): number {
 }
 
 /**
- * Apply the +1.0 / -0.5 reward to system_score and append a history row.
+ * Apply the +1.0 / -1.0 reward to system_score and append a history row.
  * Called by `/api/cron/settle-bets` after a prediction is settled.
  *
  * Runs the score update and history insert inside a single Postgres

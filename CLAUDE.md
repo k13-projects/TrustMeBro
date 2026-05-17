@@ -4,7 +4,7 @@
 # TrustMeBro — Project Conventions
 
 ## Mission
-NBA istatistik analizi yapan, **her maç için en fazla süre alacağı düşünülen oyuncular** üzerinden güven puanlı bet önerileri üreten, kullanıcının ikiye katlama (2×) hedefini destekleyen bir web uygulaması. Sistem kendi kararlarını öğrenir: kazandığı bet için **+1.0**, kaybettiği bet için **−0.5** puan alır.
+NBA istatistik analizi yapan, **her maç için en fazla süre alacağı düşünülen oyuncular** üzerinden güven puanlı bet önerileri üreten, kullanıcının ikiye katlama (2×) hedefini destekleyen bir web uygulaması. Sistem kendi kararlarını öğrenir: kazandığı bet için **+1.0**, kaybettiği bet için **−1.0** puan alır (symmetric ledger; ayrıca bro coupon ledger için per-leg score).
 
 ## Scope — MVP
 
@@ -27,6 +27,7 @@ Karar log'u — değiştirilirse buraya tarih + sebep ekle:
 - **2026-05-14**: Günlük min. 10 pick, güvene göre sıralı. Tepede **Günün Bahsi** (yıldızlı, en yüksek güven).
 - **2026-05-14**: Kombo bahis — iki yüksek güvenli pick'i birleştirme özelliği.
 - **2026-05-14**: Ödül/Ceza: +1.0 / −0.5. Artıda kalmak hayati. Test fazı — sistem pozitif kalabilecek mi?
+- **2026-05-16**: Symmetric scoring — engine picks lost = **-1.0** (was -0.5). "Düz hesap" — `score = wins − losses`. Coupons get a separate leg-aware ledger (`bro_stats.score`): all legs hit → `+legs_won`, any leg missed → `-legs_lost`, all void → `0`. See migration 0014 + `src/lib/scoring/coupons.ts`.
 - **2026-05-14**: Off-court inputs (magazin, sosyal medya, yakın çevre) tahmine girdi olmalı, sadece sayısal data değil.
 - **2026-05-14**: Live odds takibi — en yüksek oranı bul (value bet).
 - **2026-05-14**: Kaynak hiyerarşisi: **official NBA API/site > balldontlie > Google fallback**. "İnternette ara" güvenilir değil; kaynağı pinle.
@@ -194,12 +195,24 @@ type Reasoning = {
 
 ## Reward/Penalty Mechanism
 
-- Stored in `system_score` table — single row + history.
-- Settled by `/api/cron/settle-bets` after games finalize.
+Two separate ledgers, both surfaced on `/score`:
+
+**Engine picks** (`system_score` + `system_score_history`)
+- Settled by `/api/cron/settle-bets` after games finalize via the `apply_reward` RPC.
 - **Won**: `score += 1.0`
-- **Lost**: `score -= 0.5`
+- **Lost**: `score -= 1.0` (was -0.5; flipped 2026-05-16 — see migration 0014)
 - **Void / Push**: no change.
-- Score history kept for analysis. Surface on `/score` with all-time chart.
+
+**Coupon ledger** (`bro_stats` matview, public coupons only — see [src/lib/scoring/coupons.ts](src/lib/scoring/coupons.ts))
+- Per-bro leg-aware score, refreshed at end of `settle-coupons.ts`:
+  - **All legs hit** → `+legs_won` (2-pick won = +2, 3-pick won = +3)
+  - **Any leg missed** → `-legs_lost` (2-pick 1H/1M = -1, 2-pick 0H/2M = -2)
+  - **All void** → `0`
+- Sum across a bro's shared coupons is their Bro Board ranking. `/score`
+  shows both ledgers side-by-side and breaks coupons down by leg count
+  (2×, 3×, 4×, 5×, 6×). Engine + coupon ledgers are deliberately separate
+  so engine performance isn't muddled with how aggressive bros build their
+  parlays.
 
 ## Dashboard Conventions
 
