@@ -8,15 +8,29 @@ import { AnimatePresence, motion } from "motion/react";
 type Item = { href: string; label: string; exact?: boolean };
 
 // Next.js `usePathname()` doesn't include the hash, so items like
-// `/#picks` never matched. We track `window.location.hash` separately and
-// fold it into the active check.
+// `/#picks` never matched. We track `window.location.hash` separately.
+//
+// Why so many listeners: Next.js's client navigation to a same-route hash
+// (clicking `<Link href="/#picks" />` while already on `/`) updates the URL
+// via History.replaceState/pushState but doesn't reliably fire a
+// `hashchange` event in every code path. Listening on click (capture phase)
+// plus `popstate` covers back/forward and direct anchor clicks alike. The
+// requestAnimationFrame defer makes sure the URL has actually been updated
+// by the time we read it.
 function useUrlHash() {
   const [hash, setHash] = useState("");
   useEffect(() => {
     const sync = () => setHash(window.location.hash);
+    const syncSoon = () => requestAnimationFrame(sync);
     sync();
     window.addEventListener("hashchange", sync);
-    return () => window.removeEventListener("hashchange", sync);
+    window.addEventListener("popstate", sync);
+    document.addEventListener("click", syncSoon, true);
+    return () => {
+      window.removeEventListener("hashchange", sync);
+      window.removeEventListener("popstate", sync);
+      document.removeEventListener("click", syncSoon, true);
+    };
   }, []);
   return hash;
 }

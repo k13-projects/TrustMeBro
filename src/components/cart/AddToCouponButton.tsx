@@ -57,7 +57,7 @@ export function AddToCouponButton({
       className={cx(
         "inline-flex items-center justify-center gap-1 rounded-full border font-medium transition-colors",
         variant === "card"
-          ? "h-11 w-full px-4 text-xs uppercase tracking-[0.14em] whitespace-nowrap"
+          ? "h-11 flex-1 min-w-0 px-3 text-[11px] uppercase tracking-[0.1em] whitespace-nowrap"
           : "px-2.5 py-1 text-[11px]",
         inCart
           ? "border-amber-400/30 bg-amber-400/15 text-amber-300 hover:bg-amber-400/20"
