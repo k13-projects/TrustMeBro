@@ -223,7 +223,7 @@ export async function loadBroStats(
   const { data, error } = await supabase
     .from("bro_stats")
     .select(
-      "user_id, settled, wins, losses, voids, pending, net_units, last_win_at, last_shared_at",
+      "user_id, settled, wins, losses, voids, pending, net_units, score, last_win_at, last_shared_at",
     )
     .eq("user_id", userId)
     .maybeSingle();
@@ -295,7 +295,7 @@ export async function listBros(opts: {
   const [statsRes, followsRes] = await Promise.all([
     supabase
       .from("bro_stats")
-      .select("user_id, wins, losses")
+      .select("user_id, wins, losses, score")
       .in("user_id", userIds),
     opts.viewerUserId
       ? supabase
@@ -306,15 +306,20 @@ export async function listBros(opts: {
       : Promise.resolve({ data: [] as { followee_id: string }[] }),
   ]);
 
-  const statsByUser = new Map<string, { wins: number; losses: number }>();
+  const statsByUser = new Map<
+    string,
+    { wins: number; losses: number; score: number }
+  >();
   for (const s of (statsRes.data ?? []) as Array<{
     user_id: string;
     wins: number | string;
     losses: number | string;
+    score: number | string;
   }>) {
     statsByUser.set(s.user_id, {
       wins: Number(s.wins ?? 0),
       losses: Number(s.losses ?? 0),
+      score: Number(s.score ?? 0),
     });
   }
   const followingIds = new Set<string>(
@@ -324,7 +329,11 @@ export async function listBros(opts: {
   );
 
   return rows.map((row) => {
-    const stat = statsByUser.get(row.user_id) ?? { wins: 0, losses: 0 };
+    const stat = statsByUser.get(row.user_id) ?? {
+      wins: 0,
+      losses: 0,
+      score: 0,
+    };
     return {
       profile: {
         user_id: row.user_id,
@@ -337,6 +346,7 @@ export async function listBros(opts: {
       is_online: isOnline(row.last_seen_at),
       wins: stat.wins,
       losses: stat.losses,
+      score: stat.score,
       is_following: followingIds.has(row.user_id),
       is_self: opts.viewerUserId === row.user_id,
     };

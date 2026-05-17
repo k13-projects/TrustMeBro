@@ -1,6 +1,11 @@
 import Link from "next/link";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ScoreChart, type ScorePoint } from "@/components/ScoreChart";
+import {
+  getCouponLedger,
+  type CouponLedger,
+  type CouponLedgerRow,
+} from "@/lib/scoring/coupons";
 
 export const revalidate = 30;
 
@@ -28,18 +33,23 @@ type HistoryRow = {
 export default async function ScorePage() {
   const supabase = await createSupabaseServerClient();
 
-  const [{ data: scoreRow }, { data: history }, { data: predictions }] =
-    await Promise.all([
-      supabase.from("system_score").select("*").eq("id", true).single(),
-      supabase
-        .from("system_score_history")
-        .select(
-          "delta, outcome, score_after, recorded_at, prediction_id, prediction:predictions(player_id)",
-        )
-        .order("recorded_at", { ascending: true })
-        .limit(500),
-      supabase.from("predictions").select("status"),
-    ]);
+  const [
+    { data: scoreRow },
+    { data: history },
+    { data: predictions },
+    couponLedger,
+  ] = await Promise.all([
+    supabase.from("system_score").select("*").eq("id", true).single(),
+    supabase
+      .from("system_score_history")
+      .select(
+        "delta, outcome, score_after, recorded_at, prediction_id, prediction:predictions(player_id)",
+      )
+      .order("recorded_at", { ascending: true })
+      .limit(500),
+    supabase.from("predictions").select("status"),
+    getCouponLedger({ recentLimit: 15 }),
+  ]);
 
   const score = Number((scoreRow as SystemScore | null)?.score ?? 0);
   const wins = (scoreRow as SystemScore | null)?.wins ?? 0;
@@ -63,56 +73,316 @@ export default async function ScorePage() {
   const recent = [...rows].reverse().slice(0, 20);
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-10 space-y-8">
+    <div className="mx-auto max-w-5xl px-4 py-10 space-y-12">
       <header>
         <p className="text-[11px] font-medium tracking-[0.22em] uppercase text-foreground/45">
           System Score
         </p>
         <h1 className="mt-2 text-3xl sm:text-4xl font-semibold tracking-tight">
-          Engine Ledger
+          The Ledger
         </h1>
-        <p className="text-sm text-foreground/55 mt-1">
-          Is the prediction engine keeping itself above zero? +1.0 per win,
-          −0.5 per loss, voids are no-ops. Reset 2026-05-14 — every settlement
-          below is real.{" "}
-          <Link href="/engine" className="underline underline-offset-2 hover:text-foreground">
-            See every pick the engine has graded →
-          </Link>
+        <p className="text-sm text-foreground/55 mt-1 max-w-prose">
+          Two separate scoreboards. The engine ledger tracks every prediction
+          the system grades — +1 per win, −1 per loss, voids are no-ops. The
+          coupon ledger tracks how the bros are doing on the parlays they
+          actually shared, broken down by leg count.
         </p>
       </header>
 
-      <HeroCard
-        score={score}
-        wins={wins}
-        losses={losses}
-        voids={voids}
-        pending={pending}
-        settled={wins + losses + voids}
-      />
+      <section className="space-y-5">
+        <SectionHeader
+          kicker="Engine ledger"
+          title="The engine's own picks"
+          subtitle={
+            <>
+              +1.0 per hit, −1.0 per miss. Reset 2026-05-14 — every
+              settlement below is real.{" "}
+              <Link
+                href="/engine"
+                className="underline underline-offset-2 hover:text-foreground"
+              >
+                See every pick →
+              </Link>
+            </>
+          }
+        />
 
-      {chartPoints.length > 1 ? (
-        <section className="glass glass-sheen rounded-2xl p-5 sm:p-6 space-y-3">
-          <h2 className="text-[11px] font-medium tracking-[0.22em] uppercase text-foreground/45">
-            Score over time
-          </h2>
-          <ScoreChart points={chartPoints} />
-        </section>
-      ) : null}
+        <HeroCard
+          score={score}
+          wins={wins}
+          losses={losses}
+          voids={voids}
+          pending={pending}
+          settled={wins + losses + voids}
+        />
 
-      {recent.length > 0 ? (
-        <section className="space-y-3">
-          <h2 className="text-[11px] font-medium tracking-[0.22em] uppercase text-foreground/45">
-            Recent settlements
-          </h2>
-          <div className="glass rounded-2xl divide-y divide-white/5 overflow-hidden">
-            {recent.map((r, i) => (
-              <SettlementRow key={`${r.recorded_at}-${i}`} row={r} />
-            ))}
+        {chartPoints.length > 1 ? (
+          <div className="glass glass-sheen rounded-2xl p-5 sm:p-6 space-y-3">
+            <h3 className="text-[11px] font-medium tracking-[0.22em] uppercase text-foreground/45">
+              Score over time
+            </h3>
+            <ScoreChart points={chartPoints} />
           </div>
-        </section>
-      ) : null}
+        ) : null}
+
+        {recent.length > 0 ? (
+          <div className="space-y-3">
+            <h3 className="text-[11px] font-medium tracking-[0.22em] uppercase text-foreground/45">
+              Recent settlements
+            </h3>
+            <div className="glass rounded-2xl divide-y divide-white/5 overflow-hidden">
+              {recent.map((r, i) => (
+                <SettlementRow key={`${r.recorded_at}-${i}`} row={r} />
+              ))}
+            </div>
+          </div>
+        ) : null}
+      </section>
+
+      <section className="space-y-5">
+        <SectionHeader
+          kicker="Coupon ledger"
+          title="What the bros are running"
+          subtitle={
+            <>
+              One score across every <em>shared</em> coupon on{" "}
+              <Link
+                href="/bros"
+                className="underline underline-offset-2 hover:text-foreground"
+              >
+                Bro Board
+              </Link>
+              . A clean parlay that hits all legs banks{" "}
+              <span className="text-foreground/85">+1 per leg</span>. A slip
+              that misses bleeds <span className="text-foreground/85">−1 per missed leg</span>.
+              Voids are no-ops.
+            </>
+          }
+        />
+        <CouponLedgerHero ledger={couponLedger} />
+        {couponLedger.per_pick_count.length > 0 ? (
+          <CouponBreakdownGrid breakdown={couponLedger.per_pick_count} />
+        ) : null}
+        {couponLedger.recent.length > 0 ? (
+          <CouponRecentList rows={couponLedger.recent} />
+        ) : null}
+      </section>
     </div>
   );
+}
+
+function SectionHeader({
+  kicker,
+  title,
+  subtitle,
+}: {
+  kicker: string;
+  title: string;
+  subtitle: React.ReactNode;
+}) {
+  return (
+    <header className="space-y-1">
+      <p className="text-[11px] font-medium tracking-[0.22em] uppercase text-foreground/45">
+        {kicker}
+      </p>
+      <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight">
+        {title}
+      </h2>
+      <p className="text-sm text-foreground/55 max-w-prose">{subtitle}</p>
+    </header>
+  );
+}
+
+function CouponLedgerHero({ ledger }: { ledger: CouponLedger }) {
+  const totalPredictions = ledger.total;
+  const tone =
+    ledger.score > 0
+      ? "text-emerald-300"
+      : ledger.score < 0
+        ? "text-rose-300"
+        : "text-foreground";
+  const sign = ledger.score > 0 ? "+" : ledger.score < 0 ? "" : "";
+  return (
+    <section className="relative overflow-hidden rounded-3xl glass-strong glass-sheen grain">
+      <div
+        aria-hidden
+        className="absolute -inset-px opacity-50 pointer-events-none"
+        style={{
+          background:
+            ledger.score >= 0
+              ? "radial-gradient(40rem 22rem at 88% 30%, rgba(255,184,0,0.32), transparent 60%)"
+              : "radial-gradient(40rem 22rem at 88% 30%, rgba(244,63,94,0.4), transparent 60%)",
+        }}
+      />
+      <div className="relative p-6 sm:p-10 space-y-6">
+        <div className="flex items-end justify-between gap-6 flex-wrap">
+          <div className="space-y-2">
+            <p className="text-[11px] font-medium tracking-[0.22em] uppercase text-foreground/55">
+              Coupon score
+            </p>
+            <div className={`text-6xl sm:text-7xl font-semibold tabular-nums ${tone}`}>
+              {sign}
+              {ledger.score.toFixed(0)}
+            </div>
+            <p className="text-xs text-foreground/55 font-mono">
+              {ledger.settled} of {totalPredictions} settled · per-leg ledger
+            </p>
+          </div>
+          <div className="flex gap-2 flex-wrap">
+            <StatPill label="Won" value={ledger.wins} tone="emerald" />
+            <StatPill label="Lost" value={ledger.losses} tone="rose" />
+            <StatPill label="Refund" value={ledger.voids} tone="neutral" />
+            <StatPill label="Pending" value={ledger.pending} tone="amber" />
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function CouponBreakdownGrid({
+  breakdown,
+}: {
+  breakdown: CouponLedger["per_pick_count"];
+}) {
+  return (
+    <div className="space-y-3">
+      <h3 className="text-[11px] font-medium tracking-[0.22em] uppercase text-foreground/45">
+        By leg count
+      </h3>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        {breakdown.map((b) => (
+          <BreakdownCard key={b.pick_count} bucket={b} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function BreakdownCard({
+  bucket,
+}: {
+  bucket: CouponLedger["per_pick_count"][number];
+}) {
+  const tone =
+    bucket.score > 0
+      ? "text-emerald-300"
+      : bucket.score < 0
+        ? "text-rose-300"
+        : "text-foreground/85";
+  const sign = bucket.score > 0 ? "+" : bucket.score < 0 ? "" : "";
+  return (
+    <div className="glass rounded-2xl p-4 space-y-2">
+      <div className="flex items-center justify-between text-[10px] uppercase tracking-widest text-foreground/55">
+        <span className="rounded-full bg-primary/15 text-primary border border-primary/30 px-2 py-0.5 font-medium">
+          {bucket.pick_count}× pick
+        </span>
+        <span className="font-mono tabular-nums text-foreground/45">
+          {bucket.total}
+        </span>
+      </div>
+      <div className={`text-3xl font-semibold font-mono tabular-nums ${tone}`}>
+        {sign}
+        {bucket.score.toFixed(0)}
+      </div>
+      <div className="text-[11px] font-mono tabular-nums text-foreground/60 flex gap-2">
+        <span className="text-emerald-300">{bucket.wins}W</span>
+        <span className="text-rose-300">{bucket.losses}L</span>
+        {bucket.voids > 0 ? (
+          <span className="text-foreground/45">{bucket.voids}V</span>
+        ) : null}
+        {bucket.pending > 0 ? (
+          <span className="text-amber-300">{bucket.pending}P</span>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function CouponRecentList({ rows }: { rows: CouponLedgerRow[] }) {
+  return (
+    <div className="space-y-3">
+      <h3 className="text-[11px] font-medium tracking-[0.22em] uppercase text-foreground/45">
+        Recent shared coupons
+      </h3>
+      <div className="glass rounded-2xl divide-y divide-white/5 overflow-hidden">
+        {rows.map((r) => (
+          <CouponLedgerRowView key={r.coupon_id} row={r} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function CouponLedgerRowView({ row }: { row: CouponLedgerRow }) {
+  const tones = {
+    pending: "bg-white/5 text-foreground/55",
+    won: "bg-emerald-400/15 text-emerald-300",
+    lost: "bg-rose-400/15 text-rose-300",
+    void: "bg-white/5 text-foreground/55",
+  } as const;
+  const scoreTone =
+    row.score > 0
+      ? "text-emerald-300"
+      : row.score < 0
+        ? "text-rose-300"
+        : "text-foreground/55";
+  const sign = row.score > 0 ? "+" : row.score < 0 ? "" : "";
+  const handle = row.user?.handle ?? null;
+  const display = row.user?.display_name ?? handle ?? "anon";
+  const when = row.shared_at ?? row.settled_at;
+
+  const inner = (
+    <div className="flex items-center justify-between gap-3 px-4 py-2.5 hover:bg-white/3 focus-visible:outline-none focus-visible:bg-white/5">
+      <span className="flex items-center gap-3 min-w-0">
+        <span
+          className={`shrink-0 rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${tones[row.status]}`}
+        >
+          {row.status === "void" ? "refund" : row.status}
+        </span>
+        <span className="shrink-0 rounded-full bg-primary/12 text-primary border border-primary/25 px-2 py-0.5 text-[10px] font-medium uppercase tracking-widest">
+          {row.pick_count}× {row.mode}
+        </span>
+        <span className="truncate text-sm font-medium">{display}</span>
+        {handle ? (
+          <span className="truncate text-[11px] text-foreground/45 font-mono">
+            @{handle}
+          </span>
+        ) : null}
+      </span>
+      <span className="flex items-center gap-3 text-xs font-mono tabular-nums shrink-0">
+        <span className="text-foreground/55">
+          <span className="text-emerald-300">{row.legs_won}</span>
+          /
+          <span className="text-rose-300">{row.legs_lost}</span>
+        </span>
+        <span className={`font-semibold text-sm ${scoreTone}`}>
+          {sign}
+          {row.score.toFixed(0)}
+        </span>
+        {when ? (
+          <time
+            dateTime={when}
+            className="hidden sm:inline text-foreground/45"
+          >
+            {new Date(when).toLocaleDateString(undefined, {
+              month: "short",
+              day: "numeric",
+            })}
+          </time>
+        ) : null}
+      </span>
+    </div>
+  );
+
+  if (handle) {
+    return (
+      <Link href={`/bros/${handle}`} className="block">
+        {inner}
+      </Link>
+    );
+  }
+  return inner;
 }
 
 function HeroCard({
@@ -161,7 +431,7 @@ function HeroCard({
               {score.toFixed(1)}
             </div>
             <p className="text-xs text-foreground/55 font-mono">
-              {settled} of {totalPredictions} settled · +1.0 / −0.5 ledger
+              {settled} of {totalPredictions} settled · +1.0 / −1.0 ledger
             </p>
           </div>
           <div className="flex gap-2 flex-wrap">

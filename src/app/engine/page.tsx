@@ -264,7 +264,7 @@ function PredictionRow({ row, team }: { row: Row; team: TeamLite | null }) {
     void: "bg-white/5 text-foreground/45 border-white/10",
   } as const;
   const delta =
-    row.status === "won" ? "+1.0" : row.status === "lost" ? "−0.5" : "0";
+    row.status === "won" ? "+1.0" : row.status === "lost" ? "−1.0" : "0";
   const deltaTone =
     row.status === "won"
       ? "text-emerald-300"

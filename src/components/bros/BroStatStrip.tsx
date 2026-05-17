@@ -9,6 +9,7 @@ export function BroStatStrip({ stats }: { stats: BroStatRow | null }) {
   const pending = stats?.pending ?? 0;
   const settled = stats?.settled ?? 0;
   const net = Number(stats?.net_units ?? 0);
+  const score = Number(stats?.score ?? 0);
   const winRate = settled > 0 ? Math.round((wins / settled) * 100) : null;
 
   const netTone =
@@ -18,8 +19,27 @@ export function BroStatStrip({ stats }: { stats: BroStatRow | null }) {
         ? "text-rose-300"
         : "text-foreground/65";
 
+  const scoreTone =
+    score > 0
+      ? "text-emerald-300"
+      : score < 0
+        ? "text-rose-300"
+        : "text-foreground/65";
+  const scoreSign = score > 0 ? "+" : score < 0 ? "" : "";
+
   return (
-    <section className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+    <section className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+      <Stat
+        label="Score"
+        value={
+          <span className={`font-mono tabular-nums ${scoreTone}`}>
+            {scoreSign}
+            {score.toFixed(0)}
+          </span>
+        }
+        sub="hits − misses across legs"
+        emphasised
+      />
       <Stat
         label="Record"
         value={`${wins}–${losses}${voids > 0 ? `–${voids}` : ""}`}
@@ -73,13 +93,21 @@ function Stat({
   label,
   value,
   sub,
+  emphasised,
 }: {
   label: string;
   value: React.ReactNode;
   sub: string;
+  emphasised?: boolean;
 }) {
   return (
-    <div className="glass rounded-2xl px-4 py-3 space-y-0.5">
+    <div
+      className={
+        emphasised
+          ? "glass rounded-2xl px-4 py-3 space-y-0.5 ring-1 ring-primary/25 col-span-2 sm:col-span-1"
+          : "glass rounded-2xl px-4 py-3 space-y-0.5"
+      }
+    >
       <div className="text-[10px] uppercase tracking-widest text-foreground/45">
         {label}
       </div>
