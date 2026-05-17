@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 const QuerySchema = z.object({
   date: z.string().optional(),
-  days: z.coerce.number().int().min(1).max(30).optional(),
+  days: z.coerce.number().int().min(1).max(365).optional(),
   upcoming: z.coerce.number().int().min(0).max(14).optional(),
 });
 

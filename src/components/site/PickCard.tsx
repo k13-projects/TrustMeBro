@@ -4,6 +4,7 @@ import { motion } from "motion/react";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
 import { marketLabel } from "@/components/MarketLabel";
 import type { PredictionRow, TeamLite } from "@/components/types";
+import { AddToCouponButton } from "@/components/cart/AddToCouponButton";
 import { GoldButton } from "@/components/site/GoldButton";
 import { cn } from "@/lib/utils";
 
@@ -11,34 +12,42 @@ type Props = {
   prediction: PredictionRow;
   team: TeamLite | null;
   opponentTeam?: TeamLite | null;
-  league?: string;
   gameTimeLabel?: string;
   odds?: string;
   href?: string;
   className?: string;
 };
 
-function pickHeadline(p: PredictionRow): { side: string; valueLabel: string } {
-  const side = p.pick === "over" ? "OVER" : "UNDER";
-  const label = marketLabel(p.market).toUpperCase();
-  return { side, valueLabel: `${side} ${p.line} ${label}` };
-}
-
 export function PickCard({
   prediction,
   team,
   opponentTeam = null,
-  league = "NBA",
   gameTimeLabel,
   odds,
   href,
   className,
 }: Props) {
-  const { side } = pickHeadline(prediction);
+  const side = prediction.pick === "over" ? "OVER" : "UNDER";
+  const market = marketLabel(prediction.market).toUpperCase();
   const matchup = opponentTeam
     ? `${team?.abbreviation ?? ""} vs ${opponentTeam.abbreviation}`
     : team?.full_name ?? "";
   const target = href ?? `/players/${prediction.player.id}`;
+
+  const cartPick = {
+    prediction_id: prediction.id,
+    game_id: prediction.game_id,
+    player_id: prediction.player_id,
+    player_first_name: prediction.player.first_name,
+    player_last_name: prediction.player.last_name,
+    team_id: prediction.player.team_id,
+    team_abbreviation: team?.abbreviation ?? null,
+    market: prediction.market,
+    line: prediction.line,
+    pick: prediction.pick,
+    confidence: prediction.confidence,
+    jersey_number: prediction.player.jersey_number,
+  };
 
   return (
     <motion.article
@@ -48,23 +57,15 @@ export function PickCard({
       transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
       className={cn("card-pick group flex flex-col", className)}
     >
-      <div className="flex items-center justify-between px-4 pt-4">
-        <span
-          className={cn(
-            "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em]",
-            "bg-primary/15 text-primary ring-1 ring-primary/30",
-          )}
-        >
-          {league}
-        </span>
-        {gameTimeLabel ? (
+      {gameTimeLabel ? (
+        <div className="flex items-center justify-end px-4 pt-4">
           <span className="text-[11px] text-muted-foreground tabular-nums">
             {gameTimeLabel}
           </span>
-        ) : null}
-      </div>
+        </div>
+      ) : null}
 
-      <div className="px-4 pt-3 pb-2 flex items-start gap-3">
+      <div className="px-4 pt-4 pb-2 flex items-start gap-3">
         <div className="shrink-0">
           <PlayerAvatar
             playerId={prediction.player.id}
@@ -85,7 +86,8 @@ export function PickCard({
             {side}{" "}
             <span className="font-numeric not-italic tabular-nums">
               {prediction.line}
-            </span>
+            </span>{" "}
+            <span className="text-foreground/70 text-[14px]">{market}</span>
           </p>
           {odds ? (
             <p className="text-[11px] text-muted-foreground">
@@ -97,9 +99,16 @@ export function PickCard({
 
       <div className="px-4 pb-4 mt-auto space-y-3">
         <ConfidenceBar value={prediction.confidence} />
-        <GoldButton href={target} size="md" className="w-full justify-center">
-          View Pick
-        </GoldButton>
+        <div className="flex items-center gap-2">
+          <GoldButton
+            href={target}
+            size="md"
+            className="flex-1 justify-center"
+          >
+            View Pick Details
+          </GoldButton>
+          <AddToCouponButton pick={cartPick} variant="card" />
+        </div>
       </div>
     </motion.article>
   );

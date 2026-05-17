@@ -2,7 +2,13 @@ import "server-only";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { TeamLite } from "@/components/types";
-import type { BroProfile, BroStatRow, SharedCoupon } from "./types";
+import type {
+  BroDirectoryEntry,
+  BroProfile,
+  BroStatRow,
+  SharedCoupon,
+} from "./types";
+import { isOnline } from "./presence";
 
 type CouponRow = {
   id: string;
@@ -262,6 +268,79 @@ export async function loadFollowState(
     .eq("followee_id", followeeId)
     .maybeSingle();
   return !!data;
+}
+
+export async function listBros(opts: {
+  viewerUserId?: string | null;
+  limit?: number;
+}): Promise<BroDirectoryEntry[]> {
+  const limit = opts.limit ?? 60;
+  const supabase = await createSupabaseServerClient();
+
+  const { data: profiles, error } = await supabase
+    .from("profiles")
+    .select(
+      "user_id, handle, display_name, bio, avatar_url, last_seen_at",
+    )
+    .order("last_seen_at", { ascending: false, nullsFirst: false })
+    .limit(limit);
+  if (error) throw new Error(`list bros: ${error.message}`);
+
+  type ProfileRow = BroProfile & { last_seen_at: string | null };
+  const rows = (profiles ?? []) as ProfileRow[];
+  if (rows.length === 0) return [];
+
+  const userIds = rows.map((r) => r.user_id);
+
+  const [statsRes, followsRes] = await Promise.all([
+    supabase
+      .from("bro_stats")
+      .select("user_id, wins, losses")
+      .in("user_id", userIds),
+    opts.viewerUserId
+      ? supabase
+          .from("follows")
+          .select("followee_id")
+          .eq("follower_id", opts.viewerUserId)
+          .in("followee_id", userIds)
+      : Promise.resolve({ data: [] as { followee_id: string }[] }),
+  ]);
+
+  const statsByUser = new Map<string, { wins: number; losses: number }>();
+  for (const s of (statsRes.data ?? []) as Array<{
+    user_id: string;
+    wins: number | string;
+    losses: number | string;
+  }>) {
+    statsByUser.set(s.user_id, {
+      wins: Number(s.wins ?? 0),
+      losses: Number(s.losses ?? 0),
+    });
+  }
+  const followingIds = new Set<string>(
+    ((followsRes.data ?? []) as Array<{ followee_id: string }>).map(
+      (f) => f.followee_id,
+    ),
+  );
+
+  return rows.map((row) => {
+    const stat = statsByUser.get(row.user_id) ?? { wins: 0, losses: 0 };
+    return {
+      profile: {
+        user_id: row.user_id,
+        handle: row.handle,
+        display_name: row.display_name,
+        bio: row.bio,
+        avatar_url: row.avatar_url,
+      },
+      last_seen_at: row.last_seen_at,
+      is_online: isOnline(row.last_seen_at),
+      wins: stat.wins,
+      losses: stat.losses,
+      is_following: followingIds.has(row.user_id),
+      is_self: opts.viewerUserId === row.user_id,
+    };
+  });
 }
 
 export async function loadFollowCounts(
