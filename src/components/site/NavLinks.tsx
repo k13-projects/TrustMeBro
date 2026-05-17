@@ -1,14 +1,29 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 
 type Item = { href: string; label: string; exact?: boolean };
 
+// Next.js `usePathname()` doesn't include the hash, so items like
+// `/#picks` never matched. We track `window.location.hash` separately and
+// fold it into the active check.
+function useUrlHash() {
+  const [hash, setHash] = useState("");
+  useEffect(() => {
+    const sync = () => setHash(window.location.hash);
+    sync();
+    window.addEventListener("hashchange", sync);
+    return () => window.removeEventListener("hashchange", sync);
+  }, []);
+  return hash;
+}
+
 export function NavLinks({ items }: { items: ReadonlyArray<Item> }) {
   const pathname = usePathname();
+  const urlHash = useUrlHash();
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -23,9 +38,16 @@ export function NavLinks({ items }: { items: ReadonlyArray<Item> }) {
         aria-label="Primary"
       >
         {items.map((item, i) => {
-          const isActive = item.exact
-            ? pathname === item.href
-            : item.href !== "/" && pathname.startsWith(item.href);
+          const [rawPath, fragment] = item.href.split("#");
+          const itemPath = rawPath || "/";
+          const itemHash = fragment ? `#${fragment}` : "";
+
+          const isActive = itemHash
+            ? pathname === itemPath && urlHash === itemHash
+            : item.exact
+              ? pathname === itemPath && !urlHash
+              : itemPath !== "/" && pathname.startsWith(itemPath);
+
           return (
             <div
               key={item.label}
