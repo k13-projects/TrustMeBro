@@ -12,6 +12,7 @@ import { BarChart3, Clock, Flame, TrendingUp, Trophy } from "lucide-react";
 import { CountUp } from "@/components/site/CountUp";
 import { GoldButton } from "@/components/site/GoldButton";
 import { MagneticLink } from "@/components/site/MagneticLink";
+import { PAYWALL_ENABLED } from "@/lib/feature-flags";
 import type { EngineStats } from "@/lib/scoring/stats";
 
 type StatTone = "positive" | "negative" | "neutral";
@@ -195,7 +196,11 @@ export function Hero({ stats }: { stats: EngineStats }) {
 
           <div className="flex items-center gap-3 flex-wrap">
             <MagneticLink strength={0.2}>
-              <GoldButton href="/#picks" withLock size="lg">
+              <GoldButton
+                href="/#picks"
+                withLock={PAYWALL_ENABLED}
+                size="lg"
+              >
                 Get Today&apos;s Picks
               </GoldButton>
             </MagneticLink>
