@@ -99,11 +99,11 @@ export function PickCard({
 
       <div className="px-4 pb-4 mt-auto space-y-3">
         <ConfidenceBar value={prediction.confidence} />
-        <div className="flex items-center gap-2">
+        <div className="space-y-2">
           <GoldButton
             href={target}
             size="md"
-            className="flex-1 justify-center"
+            className="w-full justify-center whitespace-nowrap"
           >
             View Pick Details
           </GoldButton>

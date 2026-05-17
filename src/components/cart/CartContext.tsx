@@ -104,12 +104,17 @@ export function CartProvider({ children }: { children: ReactNode }) {
     [picks],
   );
 
+  // Kept on the context surface so existing call sites compile, but the
+  // same-game restriction was removed — users can now build same-game
+  // parlays (SGPs). Returns false unconditionally; predictionId is only
+  // accepted to preserve the signature for any external caller.
   const sameGameConflict = useCallback(
-    (gameId: number, predictionId?: string) =>
-      picks.some(
-        (p) => p.game_id === gameId && p.prediction_id !== predictionId,
-      ),
-    [picks],
+    (_gameId: number, _predictionId?: string) => {
+      void _gameId;
+      void _predictionId;
+      return false;
+    },
+    [],
   );
 
   const add = useCallback(
@@ -119,9 +124,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
       }
       if (picks.length >= MAX_PICKS) {
         return { ok: false, reason: `Coupons cap at ${MAX_PICKS} picks.` };
-      }
-      if (picks.some((p) => p.game_id === pick.game_id)) {
-        return { ok: false, reason: "Only one pick per game in a coupon." };
       }
       setPicks((prev) => [...prev, pick]);
       return { ok: true };
