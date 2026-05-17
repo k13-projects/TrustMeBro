@@ -18,6 +18,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 import { getRequester } from "@/lib/identity";
 import { getEngineStats } from "@/lib/scoring/stats";
+import { touchProfilePresence } from "@/lib/bros/presence";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -69,6 +70,11 @@ export default async function RootLayout({
     getEngineStats(),
   ]);
   const isSignedIn = !!requester;
+
+  if (requester?.kind === "auth") {
+    // Rate-limited inside the helper — fine to call on every render.
+    await touchProfilePresence(requester.user_id);
+  }
 
   return (
     <html

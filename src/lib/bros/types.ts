@@ -8,6 +8,16 @@ export type BroProfile = {
   avatar_url: string | null;
 };
 
+export type BroDirectoryEntry = {
+  profile: BroProfile;
+  last_seen_at: string | null;
+  is_online: boolean;
+  wins: number;
+  losses: number;
+  is_following: boolean;
+  is_self: boolean;
+};
+
 export type BroStatRow = {
   user_id: string;
   settled: number;
