@@ -137,6 +137,11 @@ export default async function TeamDetailPage({ params }: PageProps) {
 
   const colors = teamColors(team.abbreviation);
 
+  // Show every rostered player. Players with recent stats sort first by
+  // average minutes (the engaged starters), then everyone else falls back
+  // alphabetically so the team page is the full directory — the user can
+  // always navigate to /players/[id] even for benchwarmers and rookies who
+  // haven't shown up in a synced box score yet.
   const rosterCards = players
     .map((p) => {
       const history = historyByPlayer.get(p.id) ?? [];
@@ -147,8 +152,10 @@ export default async function TeamDetailPage({ params }: PageProps) {
           : 0;
       return { player: p, history, recent, avgMinutes };
     })
-    .filter((r) => r.recent.length > 0)
-    .sort((a, b) => b.avgMinutes - a.avgMinutes);
+    .sort((a, b) => {
+      if (b.avgMinutes !== a.avgMinutes) return b.avgMinutes - a.avgMinutes;
+      return a.player.last_name.localeCompare(b.player.last_name);
+    });
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10 space-y-8">

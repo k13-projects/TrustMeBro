@@ -113,6 +113,106 @@ export type SyncResult = {
   stats_upserted: number;
 };
 
+export type SeedResult = {
+  teams_upserted: number;
+  players_upserted: number;
+  pages_fetched: number;
+};
+
+/**
+ * Seed the `teams` and `players` tables with the *entire* current league —
+ * not just teams that have a game on the dates we happen to sync. Required
+ * because `syncDates` only writes teams/players seen in box scores, so any
+ * team without a game in the sync window (e.g. an off-day) was missing from
+ * the DB and produced 404s on `/teams/[id]`.
+ *
+ * Idempotent: safe to call repeatedly. Upserts by id.
+ */
+export async function seedTeamsAndAllPlayers(): Promise<SeedResult> {
+  const provider = nbaProvider();
+  const supabase = supabaseAdmin();
+
+  const teams = await provider.listTeams();
+  if (teams.length > 0) {
+    const { error } = await supabase
+      .from("teams")
+      .upsert(teams.map(teamRow), { onConflict: "id" });
+    if (error) throw new Error(`seed teams upsert failed: ${error.message}`);
+  }
+
+  // ESPN's `/players` search endpoint isn't usable for a "list everyone"
+  // request (the provider's searchPlayers returns []). Hit the per-team
+  // roster endpoint instead — 30 calls, ~18 players each = ~540 players,
+  // covers the active league.
+  const allPlayers: Array<{ player: Player; team: Team }> = [];
+  let pages = 0;
+  for (const team of teams) {
+    try {
+      const res = await fetch(
+        `https://site.api.espn.com/apis/site/v2/sports/basketball/nba/teams/${team.id}/roster`,
+        {
+          headers: { "User-Agent": "TrustMeBro/0.1 (+contact: app)" },
+          // Roster moves once a day at most; cache aggressively.
+          next: { revalidate: 3600 },
+        },
+      );
+      pages += 1;
+      if (!res.ok) continue;
+      const data = (await res.json()) as { athletes?: EspnRosterAthlete[] };
+      for (const a of data.athletes ?? []) {
+        const id = Number(a.id);
+        if (!Number.isFinite(id)) continue;
+        allPlayers.push({
+          player: {
+            id,
+            first_name: a.firstName ?? "",
+            last_name: a.lastName ?? "",
+            position: a.position?.abbreviation ?? "",
+            height: a.displayHeight ?? null,
+            weight: a.displayWeight ?? null,
+            jersey_number: a.jersey ?? null,
+            college: a.college?.name ?? null,
+            country: a.birthPlace?.country ?? null,
+            draft_year: null,
+            draft_round: null,
+            draft_number: null,
+            team,
+          },
+          team,
+        });
+      }
+    } catch {
+      // Skip a team if ESPN momentarily 5xx's. Subsequent calls will fill.
+    }
+  }
+
+  const uniquePlayers = dedupeById(allPlayers.map((p) => p.player));
+  if (uniquePlayers.length > 0) {
+    const { error } = await supabase
+      .from("players")
+      .upsert(uniquePlayers.map(playerRow), { onConflict: "id" });
+    if (error) throw new Error(`seed players upsert failed: ${error.message}`);
+  }
+
+  return {
+    teams_upserted: teams.length,
+    players_upserted: uniquePlayers.length,
+    pages_fetched: pages,
+  };
+}
+
+type EspnRosterAthlete = {
+  id: string | number;
+  firstName?: string;
+  lastName?: string;
+  position?: { abbreviation?: string };
+  jersey?: string | null;
+  displayHeight?: string | null;
+  displayWeight?: string | null;
+  college?: { name?: string };
+  birthPlace?: { country?: string };
+};
+
 /**
  * Sync NBA games + per-player box scores for the given dates.
  *
