@@ -141,11 +141,10 @@ export function Hero({ stats }: { stats: EngineStats }) {
   const mascotY = useTransform(scrollYProgress, [0, 1], [0, -120]);
   const mascotScale = useTransform(scrollYProgress, [0, 1], [1, 1.04]);
   const textY = useTransform(scrollYProgress, [0, 1], [0, -40]);
-  const blurOpacity = useTransform(scrollYProgress, [0, 1], [0.5, 0.05]);
 
   return (
     <section ref={ref} className="relative overflow-hidden">
-      <BackgroundFx blurOpacity={blurOpacity} />
+      <BackgroundFx />
 
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 pt-12 pb-20 lg:pt-20 lg:pb-28 grid gap-10 lg:grid-cols-[1.1fr_0.9fr] items-center">
         <motion.div style={{ y: textY }} className="space-y-7">
@@ -231,7 +230,7 @@ export function Hero({ stats }: { stats: EngineStats }) {
   );
 }
 
-function BackgroundFx({ blurOpacity }: { blurOpacity: MotionValue<number> }) {
+function BackgroundFx() {
   return (
     <>
       <div
@@ -243,19 +242,14 @@ function BackgroundFx({ blurOpacity }: { blurOpacity: MotionValue<number> }) {
             "radial-gradient(44rem 28rem at 14% 72%, rgba(255, 107, 53, 0.10), transparent 65%)",
         }}
       />
-      <motion.div
+      <div
         aria-hidden
-        style={{ opacity: blurOpacity }}
-        className="absolute top-16 right-[10%] size-[320px] -z-10"
-      >
-        <div
-          className="size-full blur-3xl"
-          style={{
-            background:
-              "radial-gradient(45% 45% at 50% 50%, rgba(255,184,0,0.22), transparent 70%)",
-          }}
-        />
-      </motion.div>
+        className="absolute top-16 right-[10%] size-[320px] -z-10 opacity-30"
+        style={{
+          background:
+            "radial-gradient(45% 45% at 50% 50%, rgba(255,184,0,0.22), transparent 70%)",
+        }}
+      />
       <div
         aria-hidden
         className="pointer-events-none absolute inset-x-0 bottom-0 h-32 -z-10"
