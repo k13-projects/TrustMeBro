@@ -14,7 +14,7 @@ export function CouponDrawerLauncher() {
   if (!cart.hydrated || cart.isOpen) return null;
 
   const empty = cart.picks.length === 0;
-  const label = empty ? "Start a coupon" : "Coupon";
+  const label = "My Coupon";
   const ariaLabel = empty
     ? "Open coupon builder (empty)"
     : `Open coupon (${cart.picks.length} picks)`;

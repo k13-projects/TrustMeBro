@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ScoreChart, type ScorePoint } from "@/components/ScoreChart";
+import { marketLabel } from "@/components/MarketLabel";
 import {
   getCouponLedger,
   type CouponLedger,
@@ -18,16 +19,28 @@ type SystemScore = {
   updated_at: string;
 };
 
+type TeamShape = { id: number; abbreviation: string };
+type PlayerShape = {
+  id: number;
+  first_name: string;
+  last_name: string;
+  team: TeamShape | TeamShape[] | null;
+};
+type PredictionShape = {
+  player_id: number | null;
+  market: string | null;
+  line: number | string | null;
+  pick: "over" | "under" | null;
+  player: PlayerShape | PlayerShape[] | null;
+};
+
 type HistoryRow = {
   delta: number | string;
   outcome: "won" | "lost" | "void";
   score_after: number | string;
   recorded_at: string;
   prediction_id: string | null;
-  prediction:
-    | { player_id: number | null }
-    | Array<{ player_id: number | null }>
-    | null;
+  prediction: PredictionShape | PredictionShape[] | null;
 };
 
 export default async function ScorePage() {
@@ -43,7 +56,9 @@ export default async function ScorePage() {
     supabase
       .from("system_score_history")
       .select(
-        "delta, outcome, score_after, recorded_at, prediction_id, prediction:predictions(player_id)",
+        "delta, outcome, score_after, recorded_at, prediction_id, " +
+          "prediction:predictions(player_id, market, line, pick, " +
+          "player:players(id, first_name, last_name, team:teams(id, abbreviation)))",
       )
       .order("recorded_at", { ascending: true })
       .limit(500),
@@ -63,7 +78,7 @@ export default async function ScorePage() {
       (p: { status: string }) => p.status === "pending",
     ).length;
 
-  const rows = (history ?? []) as HistoryRow[];
+  const rows = (history ?? []) as unknown as HistoryRow[];
   const chartPoints: ScorePoint[] = rows.map((r) => ({
     scoreAfter: Number(r.score_after),
     delta: Number(r.delta),
@@ -477,17 +492,41 @@ function SettlementRow({ row }: { row: HistoryRow }) {
   } as const;
   const delta = Number(row.delta);
   const scoreAfter = Number(row.score_after);
+
   const predictionShape = Array.isArray(row.prediction)
     ? row.prediction[0] ?? null
     : row.prediction;
-  const playerId = predictionShape?.player_id ?? null;
+  const playerShape = predictionShape?.player
+    ? Array.isArray(predictionShape.player)
+      ? predictionShape.player[0] ?? null
+      : predictionShape.player
+    : null;
+  const teamShape = playerShape?.team
+    ? Array.isArray(playerShape.team)
+      ? playerShape.team[0] ?? null
+      : playerShape.team
+    : null;
+
+  const playerId = playerShape?.id ?? predictionShape?.player_id ?? null;
+  const playerName = playerShape
+    ? `${playerShape.first_name} ${playerShape.last_name}`
+    : null;
+  const teamAbbr = teamShape?.abbreviation ?? null;
+  const pickSide = predictionShape?.pick;
+  const line = predictionShape?.line != null ? Number(predictionShape.line) : null;
+  const market = predictionShape?.market ?? null;
+  const propLabel =
+    pickSide && line != null && market
+      ? `${pickSide === "over" ? "OVER" : "UNDER"} ${line} ${marketLabel(market).toUpperCase()}`
+      : null;
+
   const href = playerId ? `/players/${playerId}` : "/";
   return (
     <Link
       href={href}
       className="flex items-center justify-between gap-3 px-4 py-2.5 hover:bg-white/3 focus-visible:outline-none focus-visible:bg-white/5"
     >
-      <span className="flex items-center gap-3">
+      <span className="flex items-center gap-3 shrink-0">
         <span
           className={`rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${tones[row.outcome]}`}
         >
@@ -497,7 +536,35 @@ function SettlementRow({ row }: { row: HistoryRow }) {
           {delta > 0 ? `+${delta.toFixed(1)}` : delta.toFixed(1)}
         </span>
       </span>
-      <span className="flex items-center gap-3 text-xs text-foreground/55">
+
+      {playerName || propLabel ? (
+        <span className="hidden sm:flex items-center gap-2 min-w-0 flex-1 px-3">
+          {playerName ? (
+            <span className="flex items-center gap-1.5 min-w-0">
+              <span className="truncate text-sm font-medium text-foreground/90">
+                {playerName}
+              </span>
+              {teamAbbr ? (
+                <span className="shrink-0 rounded bg-white/5 border border-white/10 px-1.5 py-0.5 text-[10px] font-mono uppercase tracking-widest text-foreground/55">
+                  {teamAbbr}
+                </span>
+              ) : null}
+            </span>
+          ) : null}
+          {playerName && propLabel ? (
+            <span className="text-foreground/25 shrink-0">·</span>
+          ) : null}
+          {propLabel ? (
+            <span className="shrink-0 font-mono text-xs uppercase tracking-wide text-primary/90 tabular-nums">
+              {propLabel}
+            </span>
+          ) : null}
+        </span>
+      ) : (
+        <span className="hidden sm:block flex-1" aria-hidden />
+      )}
+
+      <span className="flex items-center gap-3 text-xs text-foreground/55 shrink-0">
         <span className="font-mono tabular-nums">
           → {scoreAfter.toFixed(1)}
         </span>

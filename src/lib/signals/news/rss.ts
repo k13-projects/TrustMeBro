@@ -147,11 +147,15 @@ export const NBA_FEEDS: RssFeed[] = [
   // ESPN's top-line NBA headlines feed. Carries writers' analysis pieces
   // (Lowe, Windhorst, Bontemps) as well as breaking news.
   { url: "https://www.espn.com/espn/rss/nba/news", outlet: "ESPN", source: "rss:espn" },
-  // Bleacher Report NBA tag feed.
+  // ClutchPoints — a major NBA-heavy outlet. Their public RSS is a mixed-sport
+  // master feed, but our tag-matching against the NBA roster automatically
+  // filters out items that don't mention a current player or team. Bleacher
+  // Report used to live in this slot but they pulled their public RSS in
+  // late 2025 (every /articles/feed URL now returns 404).
   {
-    url: "https://bleacherreport.com/articles/feed?tag_id=19",
-    outlet: "Bleacher Report",
-    source: "rss:bleacher",
+    url: "https://clutchpoints.com/feed/",
+    outlet: "ClutchPoints",
+    source: "rss:clutchpoints",
   },
   // Yahoo NBA. Pulls AP-syndicated and Yahoo-bylined columns.
   { url: "https://sports.yahoo.com/nba/rss", outlet: "Yahoo Sports", source: "rss:yahoo" },

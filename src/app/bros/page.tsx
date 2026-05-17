@@ -7,6 +7,7 @@ import {
 } from "@/lib/bros/loaders";
 import { ActiveBrosSidebar } from "@/components/bros/ActiveBrosSidebar";
 import { SharedCouponCard } from "@/components/bros/SharedCouponCard";
+import { SectionHeading } from "@/components/site/SectionHeading";
 
 export const revalidate = 60;
 
@@ -37,14 +38,28 @@ export default async function BroBoardPage({ searchParams }: PageProps) {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 space-y-8">
-      <header>
-        <p className="text-[11px] font-medium tracking-[0.22em] uppercase text-foreground/45">
-          The feed
-        </p>
-        <h1 className="mt-2 text-3xl sm:text-4xl font-semibold tracking-tight">
-          Bro Board
-        </h1>
-        <p className="text-sm text-foreground/55 mt-1 max-w-prose">
+      <header className="space-y-3">
+        <SectionHeading
+          eyebrow="NBA · The Feed"
+          title={
+            <>
+              <span
+                style={{
+                  background:
+                    "linear-gradient(180deg, #FFE066 0%, #FFB800 100%)",
+                  WebkitBackgroundClip: "text",
+                  backgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                }}
+              >
+                Bro
+              </span>{" "}
+              Board
+            </>
+          }
+          className="mb-0"
+        />
+        <p className="text-sm text-foreground/55 max-w-prose">
           Coupons your fellow bros actually played. Follow the ones cashing,
           ignore the ones cold. Receipts are real — every coupon settles when
           the games finalize.
