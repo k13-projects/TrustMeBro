@@ -32,12 +32,14 @@ export function ChatLauncher() {
     <>
       <button
         type="button"
-        aria-label={open ? "Close chat" : "Open chat"}
+        aria-label={open ? "Close chat" : "Open chat with Bro"}
         onClick={() => setOpen((o) => !o)}
         className={
           open
             ? `${visibility} ${position} size-12 rounded-full bg-white/10 border border-white/15 backdrop-blur-xl items-center justify-center text-foreground/90 hover:bg-white/15 transition-all duration-200 active:scale-95 hover:rotate-90`
-            : `group ${visibility} ${position} items-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-emerald-500 via-emerald-400 to-green-500 gradient-shift shadow-[0_10px_40px_-8px_rgba(16,185,129,0.55)] hover:shadow-[0_14px_50px_-6px_rgba(16,185,129,0.8)] transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98]`
+            // Mobile (default): icon-only circular FAB so it doesn't sit on
+            // top of card content. Desktop (sm+): full pill with label.
+            : `group ${visibility} ${position} items-center justify-center sm:gap-2 rounded-full size-11 sm:size-auto sm:px-4 sm:py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-emerald-500 via-emerald-400 to-green-500 gradient-shift shadow-[0_10px_40px_-8px_rgba(16,185,129,0.55)] hover:shadow-[0_14px_50px_-6px_rgba(16,185,129,0.8)] transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98]`
         }
       >
         {open ? (
@@ -48,7 +50,7 @@ export function ChatLauncher() {
               <Sparkle className="size-4 shimmer" />
               <span aria-hidden className="absolute -right-1 -top-1 size-1.5 rounded-full bg-emerald-200 soft-pulse" />
             </span>
-            <span className="tracking-tight">Ask AI</span>
+            <span className="tracking-tight hidden sm:inline">Ask Bro</span>
           </>
         )}
       </button>
