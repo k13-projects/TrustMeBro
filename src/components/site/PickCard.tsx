@@ -6,6 +6,7 @@ import { PlayerAvatar } from "@/components/PlayerAvatar";
 import { marketLabel } from "@/components/MarketLabel";
 import type { PredictionRow, TeamLite } from "@/components/types";
 import { GoldButton } from "@/components/site/GoldButton";
+import { PAYWALL_ENABLED } from "@/lib/feature-flags";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -57,13 +58,17 @@ export function PickCard({
         <span
           className={cn(
             "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em]",
-            free
+            PAYWALL_ENABLED && free
               ? "bg-positive/15 text-positive ring-1 ring-positive/30"
               : "bg-primary/15 text-primary ring-1 ring-primary/30"
           )}
         >
-          {free ? "Free Pick" : "VIP Pick"}
-          <span className="opacity-70">·</span>
+          {PAYWALL_ENABLED ? (
+            <>
+              {free ? "Free Pick" : "VIP Pick"}
+              <span className="opacity-70">·</span>
+            </>
+          ) : null}
           {league}
         </span>
         {gameTimeLabel ? (
