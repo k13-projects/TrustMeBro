@@ -57,6 +57,9 @@ export default async function GameDetailPage({ params }: PageProps) {
   // finalized games this season — the current game counts if it's final.
   const context = await loadGameContext(supabase, game);
 
+  // Every finalized prior meeting between these two teams, newest first.
+  const headToHead = await loadHeadToHead(supabase, game);
+
   const { data: predictionsRaw } = await supabase
     .from("predictions")
     .select(
@@ -107,6 +110,14 @@ export default async function GameDetailPage({ params }: PageProps) {
         away={away}
         context={context}
       />
+
+      {headToHead.length > 0 ? (
+        <HeadToHeadCard
+          home={home}
+          away={away}
+          meetings={headToHead}
+        />
+      ) : null}
 
       {botd ? (
         <BotDStrip
@@ -508,5 +519,160 @@ function TeamPicksColumn({
         </div>
       )}
     </section>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Head-to-head (previous meetings between these two teams)
+// ---------------------------------------------------------------------------
+
+type H2HMeeting = {
+  id: number;
+  date: string;
+  status: string;
+  postseason: boolean;
+  home_team_id: number;
+  visitor_team_id: number;
+  home_team_score: number;
+  visitor_team_score: number;
+};
+
+async function loadHeadToHead(
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
+  game: GameRow,
+): Promise<H2HMeeting[]> {
+  const a = game.home_team_id;
+  const b = game.visitor_team_id;
+  const { data } = await supabase
+    .from("games")
+    .select(
+      "id, date, status, postseason, home_team_id, visitor_team_id, home_team_score, visitor_team_score",
+    )
+    .or(
+      `and(home_team_id.eq.${a},visitor_team_id.eq.${b}),and(home_team_id.eq.${b},visitor_team_id.eq.${a})`,
+    )
+    .neq("id", game.id)
+    .order("date", { ascending: false })
+    .limit(12);
+  const rows = (data ?? []) as H2HMeeting[];
+  // Only finalized meetings count — pre-game / postponed / live without a
+  // final score would just be noise here.
+  return rows.filter((g) => g.status?.toLowerCase().includes("final"));
+}
+
+function HeadToHeadCard({
+  home,
+  away,
+  meetings,
+}: {
+  home: TeamLite | null;
+  away: TeamLite | null;
+  meetings: H2HMeeting[];
+}) {
+  // Tally W-L from each team's perspective across the meetings shown.
+  let homeWins = 0;
+  let awayWins = 0;
+  for (const m of meetings) {
+    const homeIsHome = m.home_team_id === home?.id;
+    const homeScore = homeIsHome ? m.home_team_score : m.visitor_team_score;
+    const awayScore = homeIsHome ? m.visitor_team_score : m.home_team_score;
+    if (homeScore > awayScore) homeWins++;
+    else if (awayScore > homeScore) awayWins++;
+  }
+
+  return (
+    <section className="glass glass-sheen rounded-2xl overflow-hidden">
+      <header className="flex items-center justify-between gap-3 px-5 py-3 border-b border-white/8 flex-wrap">
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] uppercase tracking-[0.22em] text-foreground/45">
+            Head-to-head
+          </span>
+          <span className="text-[10px] uppercase tracking-[0.18em] text-foreground/35">
+            · last {meetings.length} meeting{meetings.length === 1 ? "" : "s"}
+          </span>
+        </div>
+        <div className="flex items-center gap-2 text-[11px] font-mono tabular-nums text-foreground/70">
+          <span className="rounded-md bg-white/5 border border-white/10 px-2 py-0.5">
+            {away?.abbreviation ?? "AWAY"}{" "}
+            <span className="text-foreground/85 font-semibold">{awayWins}</span>
+          </span>
+          <span className="text-foreground/30">·</span>
+          <span className="rounded-md bg-white/5 border border-white/10 px-2 py-0.5">
+            {home?.abbreviation ?? "HOME"}{" "}
+            <span className="text-foreground/85 font-semibold">{homeWins}</span>
+          </span>
+        </div>
+      </header>
+      <ul className="divide-y divide-white/5">
+        {meetings.map((m) => (
+          <H2HRow
+            key={m.id}
+            meeting={m}
+            home={home}
+            away={away}
+          />
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function H2HRow({
+  meeting,
+  home,
+  away,
+}: {
+  meeting: H2HMeeting;
+  home: TeamLite | null;
+  away: TeamLite | null;
+}) {
+  // Reorient scores so the row always reads "away team · home team", matching
+  // how the current game's hero is laid out (consistent reading order).
+  const wasHomeForUs = meeting.home_team_id === home?.id;
+  const homeScore = wasHomeForUs
+    ? meeting.home_team_score
+    : meeting.visitor_team_score;
+  const awayScore = wasHomeForUs
+    ? meeting.visitor_team_score
+    : meeting.home_team_score;
+  const homeWon = homeScore > awayScore;
+  const awayWon = awayScore > homeScore;
+  const dateLabel = new Date(meeting.date).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+  return (
+    <li>
+      <Link
+        href={`/games/${meeting.id}`}
+        className="grid grid-cols-[auto_1fr_auto] items-center gap-3 px-5 py-2.5 text-sm hover:bg-white/[0.04] focus-visible:outline-none focus-visible:bg-white/[0.06]"
+      >
+        <span className="text-[11px] tabular-nums text-foreground/55 font-mono w-[5.5rem]">
+          {dateLabel}
+        </span>
+        <span className="flex items-center justify-center gap-3">
+          <span
+            className={`font-mono tabular-nums text-sm ${awayWon ? "text-foreground font-semibold" : "text-foreground/50"}`}
+          >
+            {away?.abbreviation ?? "AWAY"} {awayScore}
+          </span>
+          <span className="text-foreground/30 text-xs">@</span>
+          <span
+            className={`font-mono tabular-nums text-sm ${homeWon ? "text-foreground font-semibold" : "text-foreground/50"}`}
+          >
+            {home?.abbreviation ?? "HOME"} {homeScore}
+          </span>
+        </span>
+        <span className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-foreground/40">
+          {meeting.postseason ? (
+            <span className="rounded bg-amber-400/15 text-amber-300/85 border border-amber-400/30 px-1.5 py-0.5">
+              Playoffs
+            </span>
+          ) : null}
+          <span aria-hidden>›</span>
+        </span>
+      </Link>
+    </li>
   );
 }

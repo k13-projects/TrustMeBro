@@ -30,8 +30,12 @@ export type EngineStats = {
 
 export type BotdResult = {
   prediction_id: string;
+  player_id: number | null;
   player_first_name: string;
   player_last_name: string;
+  team_id: number | null;
+  team_abbreviation: string | null;
+  team_full_name: string | null;
   market: string;
   pick: string;
   line: number;
@@ -96,7 +100,8 @@ async function _getEngineStats(): Promise<EngineStats> {
     supabase
       .from("predictions")
       .select(
-        "id, market, line, pick, confidence, status, result_value, settled_at, generated_at, is_bet_of_the_day, player:players!inner(first_name, last_name)",
+        "id, market, line, pick, confidence, status, result_value, settled_at, generated_at, is_bet_of_the_day, " +
+          "player:players!inner(id, first_name, last_name, team:teams(id, abbreviation, full_name))",
       )
       .eq("is_bet_of_the_day", true)
       .order("generated_at", { ascending: false })
@@ -139,12 +144,52 @@ async function _getEngineStats(): Promise<EngineStats> {
     ? Math.max(0, Math.floor((Date.now() - new Date(first_pick_date).getTime()) / (24 * 3600 * 1000)))
     : 0;
 
-  const recent_botds: BotdResult[] = (recentBotds ?? []).map((r) => {
+  type RawBotd = {
+    id: string;
+    market: string;
+    pick: string;
+    line: number | string;
+    confidence: number | string;
+    status: string;
+    result_value: number | string | null;
+    settled_at: string | null;
+    generated_at: string;
+    player:
+      | {
+          id: number;
+          first_name: string;
+          last_name: string;
+          team:
+            | { id: number; abbreviation: string; full_name: string }
+            | Array<{ id: number; abbreviation: string; full_name: string }>
+            | null;
+        }
+      | Array<{
+          id: number;
+          first_name: string;
+          last_name: string;
+          team:
+            | { id: number; abbreviation: string; full_name: string }
+            | Array<{ id: number; abbreviation: string; full_name: string }>
+            | null;
+        }>
+      | null;
+  };
+  const recent_botds: BotdResult[] = ((recentBotds ?? []) as unknown as RawBotd[]).map((r) => {
     const player = Array.isArray(r.player) ? r.player[0] : r.player;
+    const team = player?.team
+      ? Array.isArray(player.team)
+        ? player.team[0] ?? null
+        : player.team
+      : null;
     return {
       prediction_id: r.id,
+      player_id: player?.id ?? null,
       player_first_name: player?.first_name ?? "",
       player_last_name: player?.last_name ?? "",
+      team_id: team?.id ?? null,
+      team_abbreviation: team?.abbreviation ?? null,
+      team_full_name: team?.full_name ?? null,
       market: r.market,
       pick: r.pick,
       line: Number(r.line),

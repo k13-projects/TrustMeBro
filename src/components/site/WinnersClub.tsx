@@ -1,8 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { motion } from "motion/react";
 import { Check, Clock, MessageCircle, Send, X } from "lucide-react";
 import { GoldButton } from "@/components/site/GoldButton";
+import { PlayerAvatar } from "@/components/PlayerAvatar";
+import { TeamBadge } from "@/components/TeamBadge";
 import type { BotdResult, EngineStats } from "@/lib/scoring/stats";
 
 const GOLD_GRADIENT_STYLE = {
@@ -42,7 +45,7 @@ export function WinnersClub({ stats }: { stats: EngineStats }) {
             Highest-conviction pick we put out each day. Settled the morning
             after, no edits. Win{" "}
             <span className="text-positive font-semibold">+1.0</span>, loss{" "}
-            <span className="text-negative font-semibold">−0.5</span>.
+            <span className="text-negative font-semibold">−1.0</span>.
           </p>
           <div className="flex flex-wrap gap-2 pt-1">
             <GoldButton href="https://discord.com" size="md">
@@ -101,28 +104,59 @@ function BotdCard({ botd }: { botd: BotdResult }) {
     : new Date(botd.generated_at).toLocaleDateString();
   const tone =
     botd.status === "won"
-      ? "ring-positive/40 bg-positive/10"
+      ? "ring-positive/40 bg-positive/10 shadow-[0_0_40px_-12px_rgba(16,185,129,0.35)]"
       : botd.status === "lost"
-        ? "ring-negative/40 bg-negative/10"
+        ? "ring-negative/40 bg-negative/10 shadow-[0_0_40px_-12px_rgba(244,63,94,0.35)]"
         : botd.status === "void"
           ? "ring-border/60 bg-background/40"
-          : "ring-primary/30 bg-primary/5";
-  return (
-    <figure className={`card-tmb p-5 space-y-3 ring-1 ${tone}`}>
+          : "ring-primary/30 bg-primary/5 shadow-[0_0_40px_-12px_rgba(255,184,0,0.35)]";
+  const side = botd.pick === "over" ? "OVER" : "UNDER";
+  const team = botd.team_id && botd.team_abbreviation
+    ? {
+        id: botd.team_id,
+        abbreviation: botd.team_abbreviation,
+        full_name: botd.team_full_name ?? botd.team_abbreviation,
+      }
+    : null;
+
+  const card = (
+    <figure
+      className={`card-tmb relative overflow-hidden p-4 space-y-3 ring-1 transition-transform hover:-translate-y-0.5 ${tone}`}
+    >
       <div className="flex items-center justify-between">
         <StatusBadge status={botd.status} />
-        <span className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+        <span className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground tabular-nums">
           {settledDate}
         </span>
       </div>
-      <div>
-        <p className="text-sm font-semibold text-foreground">{name}</p>
-        <p className="text-xs text-muted-foreground">
-          <span className="uppercase tracking-wider font-mono">{botd.pick}</span>{" "}
-          <span className="font-numeric tabular-nums">{botd.line}</span>{" "}
-          <span>{market}</span>
-        </p>
+
+      <div className="flex items-start gap-3">
+        {botd.player_id ? (
+          <PlayerAvatar
+            playerId={botd.player_id}
+            firstName={botd.player_first_name}
+            lastName={botd.player_last_name}
+            abbreviation={botd.team_abbreviation ?? ""}
+            size={48}
+          />
+        ) : null}
+        <div className="min-w-0 flex-1 space-y-1">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <p className="text-sm font-semibold text-foreground truncate">
+              {name}
+            </p>
+            {team ? <TeamBadge team={team} size={16} /> : null}
+          </div>
+          <p className="font-display uppercase text-[15px] leading-none text-primary">
+            {side}{" "}
+            <span className="font-numeric not-italic tabular-nums">
+              {botd.line}
+            </span>{" "}
+            <span className="text-foreground/65 text-[12px]">{market}</span>
+          </p>
+        </div>
       </div>
+
       <div className="flex items-center justify-between pt-2 border-t border-border/60">
         <span className="text-[11px] text-muted-foreground">
           Confidence
@@ -141,6 +175,15 @@ function BotdCard({ botd }: { botd: BotdResult }) {
       </div>
     </figure>
   );
+
+  if (botd.player_id) {
+    return (
+      <Link href={`/players/${botd.player_id}`} className="block">
+        {card}
+      </Link>
+    );
+  }
+  return card;
 }
 
 function StatusBadge({ status }: { status: BotdResult["status"] }) {

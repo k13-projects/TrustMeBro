@@ -20,15 +20,19 @@ export function flexPayout(picks: number, map: PayoutMap = fallbackPayoutMap()):
  * Generate top combos from the slate.
  *
  * Rules:
- *  - Independence: picks must come from different games (we don't model
- *    same-game correlation yet).
  *  - One pick per player (rules out same-player "points OVER 20" + "rebounds
  *    OVER 5" twins that would otherwise dominate the top combos).
- *  - Confidence floor (default 80) keeps speculative picks out.
+ *  - Confidence floor (default 60) keeps the most speculative picks out
+ *    without strangling small slates.
+ *
+ * Same-game picks are allowed — we used to require different games but on
+ * single-game slates that left the combo sections empty. The combined-
+ * confidence math is naive-independence (product of probabilities); for
+ * same-game picks that's slightly optimistic since the picks are correlated.
  *
  * Combined confidence is naive-independence: product of pick probabilities.
- * Slightly conservative because picks in the same slate aren't strictly
- * independent (gametime / pace effects propagate across players).
+ * Slightly conservative across different games; slightly optimistic within
+ * the same game.
  *
  * Caps:
  *  - Per-size cap of 1000 candidates explored — protects against quadratic
@@ -39,7 +43,7 @@ export function generateCombos(
   predictions: Prediction[],
   opts: { minConfidence?: number; size?: number; max?: number; payouts?: PayoutMap } = {},
 ): Combo[] {
-  const minConfidence = opts.minConfidence ?? 80;
+  const minConfidence = opts.minConfidence ?? 60;
   const size = opts.size ?? 2;
   const max = opts.max ?? 5;
   const payouts = opts.payouts ?? fallbackPayoutMap();
@@ -64,7 +68,6 @@ export function generateCombos(
       for (let j = i + 1; j < pool.length; j++) {
         const a = pool[i];
         const b = pool[j];
-        if (a.game_id === b.game_id) continue;
         if (a.player_id === b.player_id) continue;
         const combined =
           Math.floor((a.confidence / 100) * (b.confidence / 100) * 1000) / 10;
@@ -81,11 +84,9 @@ export function generateCombos(
       const a = pool[i];
       for (let j = i + 1; j < pool.length; j++) {
         const b = pool[j];
-        if (a.game_id === b.game_id) continue;
         if (a.player_id === b.player_id) continue;
         for (let k = j + 1; k < pool.length; k++) {
           const c = pool[k];
-          if (c.game_id === a.game_id || c.game_id === b.game_id) continue;
           if (c.player_id === a.player_id || c.player_id === b.player_id) continue;
           const combined =
             Math.floor(
