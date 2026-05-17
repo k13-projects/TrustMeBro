@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useState } from "react";
+import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { GuestPicker } from "@/components/auth/GuestPicker";
@@ -16,7 +17,7 @@ export default function LoginPage() {
 function LoginFallback() {
   return (
     <div className="mx-auto max-w-md px-4 py-16">
-      <div className="rounded-3xl glass-strong glass-sheen grain p-8 h-64 animate-pulse" />
+      <div className="rounded-3xl glass-strong glass-sheen grain p-8 h-96 animate-pulse" />
     </div>
   );
 }
@@ -24,7 +25,6 @@ function LoginFallback() {
 function safeNext(raw: string | null): string {
   if (!raw) return "/";
   if (!raw.startsWith("/")) return "/";
-  // Block protocol-relative + escaped paths.
   if (raw.startsWith("//") || raw.startsWith("/\\")) return "/";
   return raw;
 }
@@ -50,47 +50,82 @@ function LoginForm() {
       setError(oauthErr.message);
       setBusy(false);
     }
-    // On success Supabase navigates the page itself — nothing more to do.
   }
 
   return (
-    <div className="mx-auto max-w-md px-4 py-16">
-      <div className="relative overflow-hidden rounded-3xl glass-strong glass-sheen grain p-8 space-y-6">
-        <div className="space-y-2">
-          <p className="text-[11px] font-medium tracking-[0.22em] uppercase text-foreground/45">
-            Sign in
-          </p>
-          <h1 className="text-3xl font-semibold tracking-tight">Welcome</h1>
-          <p className="text-sm text-foreground/55">
-            Two ways in. Google keeps your bets locked to your account across
-            devices. Guest mode is faster but anyone who types the same name
-            sees those bets.
-          </p>
+    <div className="relative mx-auto max-w-md px-4 py-12 sm:py-16">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-72 bg-[radial-gradient(45rem_22rem_at_50%_-10%,rgba(255,184,0,0.22),transparent_70%)]"
+      />
+
+      <div className="relative overflow-hidden rounded-3xl card-tmb grain p-7 sm:p-9 space-y-7">
+        <div
+          aria-hidden
+          className="absolute -top-16 -right-16 size-48 rounded-full bg-primary/20 blur-3xl pointer-events-none"
+        />
+
+        <div className="flex flex-col items-center text-center space-y-4">
+          <div className="relative">
+            <span
+              aria-hidden
+              className="absolute inset-0 rounded-3xl bg-primary/30 blur-2xl opacity-90"
+            />
+            <Image
+              src="/Design/Logo 2.png"
+              alt="TrustMeBro"
+              width={96}
+              height={96}
+              priority
+              className="relative rounded-2xl"
+              style={{ mixBlendMode: "screen" }}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <p className="text-[10px] font-semibold tracking-[0.28em] uppercase text-primary/85">
+              TrustMeBro · NBA
+            </p>
+            <h1 className="font-display uppercase text-3xl sm:text-4xl tracking-tight leading-[0.95]">
+              Sign in <span className="text-primary">/ Sign up</span>
+            </h1>
+            <p className="text-sm text-foreground/65 max-w-xs mx-auto">
+              One pill, two paths. Google keeps your picks synced across
+              devices. Guest mode is faster and stays on this browser.
+            </p>
+          </div>
         </div>
 
         <button
           type="button"
           onClick={continueWithGoogle}
           disabled={busy}
-          className="w-full inline-flex items-center justify-center gap-3 rounded-xl bg-white text-black px-4 py-2.5 font-medium hover:bg-white/90 disabled:opacity-60 disabled:cursor-not-allowed transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+          className="group relative w-full inline-flex items-center justify-center gap-3 rounded-xl bg-white text-black px-4 py-3 font-semibold shadow-[0_10px_30px_-12px_rgba(255,255,255,0.4)] hover:bg-white/95 disabled:opacity-60 disabled:cursor-not-allowed transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         >
           <GoogleGlyph />
-          <span>{busy ? "Redirecting…" : "Continue with Google"}</span>
+          <span>{busy ? "Redirecting to Google…" : "Continue with Google"}</span>
         </button>
 
         {error ? (
-          <p role="alert" className="text-sm text-rose-300">
+          <p
+            role="alert"
+            className="rounded-xl border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-200"
+          >
             {error}
           </p>
         ) : null}
 
-        <div className="flex items-center gap-3 text-[10px] uppercase tracking-widest text-foreground/40">
+        <div className="flex items-center gap-3 text-[10px] uppercase tracking-[0.22em] text-foreground/45">
           <span className="h-px flex-1 bg-white/10" />
-          <span>or</span>
+          <span>or play as a guest</span>
           <span className="h-px flex-1 bg-white/10" />
         </div>
 
         <GuestPicker next={next} />
+
+        <p className="text-[10px] text-foreground/40 text-center leading-relaxed">
+          By signing in you agree to keep things friendly. No bookmaker
+          integration, no real wagering — analysis & education only.
+        </p>
       </div>
     </div>
   );
@@ -98,7 +133,7 @@ function LoginForm() {
 
 function GoogleGlyph() {
   return (
-    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden>
+    <svg width="20" height="20" viewBox="0 0 18 18" aria-hidden>
       <path
         d="M17.64 9.205c0-.638-.057-1.252-.164-1.841H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"
         fill="#4285F4"

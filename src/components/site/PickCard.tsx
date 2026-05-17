@@ -1,12 +1,10 @@
 "use client";
 
-import { Lock } from "lucide-react";
 import { motion } from "motion/react";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
 import { marketLabel } from "@/components/MarketLabel";
 import type { PredictionRow, TeamLite } from "@/components/types";
 import { GoldButton } from "@/components/site/GoldButton";
-import { PAYWALL_ENABLED } from "@/lib/feature-flags";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -16,8 +14,6 @@ type Props = {
   league?: string;
   gameTimeLabel?: string;
   odds?: string;
-  locked?: boolean;
-  free?: boolean;
   href?: string;
   className?: string;
 };
@@ -35,16 +31,14 @@ export function PickCard({
   league = "NBA",
   gameTimeLabel,
   odds,
-  locked = true,
-  free = false,
-  href = "/login",
+  href,
   className,
 }: Props) {
-  const { side, valueLabel } = pickHeadline(prediction);
-  const conf10 = Math.round((prediction.confidence / 10) * 10) / 10;
+  const { side } = pickHeadline(prediction);
   const matchup = opponentTeam
     ? `${team?.abbreviation ?? ""} vs ${opponentTeam.abbreviation}`
     : team?.full_name ?? "";
+  const target = href ?? `/players/${prediction.player.id}`;
 
   return (
     <motion.article
@@ -58,17 +52,9 @@ export function PickCard({
         <span
           className={cn(
             "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em]",
-            PAYWALL_ENABLED && free
-              ? "bg-positive/15 text-positive ring-1 ring-positive/30"
-              : "bg-primary/15 text-primary ring-1 ring-primary/30"
+            "bg-primary/15 text-primary ring-1 ring-primary/30",
           )}
         >
-          {PAYWALL_ENABLED ? (
-            <>
-              {free ? "Free Pick" : "VIP Pick"}
-              <span className="opacity-70">·</span>
-            </>
-          ) : null}
           {league}
         </span>
         {gameTimeLabel ? (
@@ -111,24 +97,10 @@ export function PickCard({
 
       <div className="px-4 pb-4 mt-auto space-y-3">
         <ConfidenceBar value={prediction.confidence} />
-        <GoldButton
-          href={href}
-          withLock={locked}
-          size="md"
-          className="w-full justify-center"
-        >
-          {locked ? "Unlock Pick" : "View Pick"}
+        <GoldButton href={target} size="md" className="w-full justify-center">
+          View Pick
         </GoldButton>
       </div>
-
-      {locked ? (
-        <Lock
-          aria-hidden
-          size={16}
-          strokeWidth={2.5}
-          className="absolute top-4 right-4 text-primary/80 group-hover:text-primary lock-wiggle"
-        />
-      ) : null}
     </motion.article>
   );
 }

@@ -1,11 +1,9 @@
 import Link from "next/link";
 import Image from "next/image";
-import { GoldButton } from "@/components/site/GoldButton";
 import { MagneticLink } from "@/components/site/MagneticLink";
 import { NavLinks } from "@/components/site/NavLinks";
 import { MobileNav } from "@/components/MobileNav";
 import { IdentityBadge } from "@/components/auth/IdentityBadge";
-import { PAYWALL_ENABLED } from "@/lib/feature-flags";
 
 const NAV_ITEMS = [
   { href: "/", label: "Home", exact: true },
@@ -68,13 +66,6 @@ export function Navbar({ identity }: { identity: IdentityLite }) {
 
         <div className="flex items-center gap-2">
           <IdentityBadge />
-          {PAYWALL_ENABLED ? (
-            <MagneticLink strength={0.2} className="hidden sm:inline-flex">
-              <GoldButton href="/login" withLock>
-                Join Now
-              </GoldButton>
-            </MagneticLink>
-          ) : null}
           <MobileNav
             identity={
               identity
