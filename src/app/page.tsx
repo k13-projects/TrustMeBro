@@ -22,7 +22,7 @@ import type { PredictionRow, TeamLite } from "@/components/types";
 
 import { InsightChip, type InsightHint } from "@/components/InsightChip";
 import { Hero } from "@/components/site/Hero";
-import { MoneyCombos } from "@/components/site/MoneyCombos";
+import { COMBO_TIERS, MoneyCombos } from "@/components/site/MoneyCombos";
 import { PickCard } from "@/components/site/PickCard";
 import { PillarRow } from "@/components/site/PillarRow";
 import { SectionHeading } from "@/components/site/SectionHeading";
@@ -175,24 +175,20 @@ export default async function HomePage({ searchParams }: PageProps) {
   const payouts = await loadPayoutMap();
   // Lowered floor from 75 → 60 so small slates still surface combos.
   // generateCombos already sorts results by combined confidence desc.
-  const twoPick = generateCombos(predictions as unknown as Prediction[], {
-    minConfidence: 60,
-    size: 2,
-    max: 4,
-    payouts,
-  }).map((c) => ({
-    ...c,
-    picks: c.picks as unknown as PredictionRow[],
-  }));
-  const threePick = generateCombos(predictions as unknown as Prediction[], {
-    minConfidence: 60,
-    size: 3,
-    max: 2,
-    payouts,
-  }).map((c) => ({
-    ...c,
-    picks: c.picks as unknown as PredictionRow[],
-  }));
+  // One combo set per tier — same input slate, different leg counts mapped
+  // to the multiplier ladder in COMBO_TIERS (3× / 5× / 10× / 20× / 37.5×).
+  const combosByTier = COMBO_TIERS.map((tier) => {
+    const combos = generateCombos(predictions as unknown as Prediction[], {
+      minConfidence: 60,
+      size: tier.legs,
+      max: tier.legs <= 3 ? 4 : 2,
+      payouts,
+    }).map((c) => ({
+      ...c,
+      picks: c.picks as unknown as PredictionRow[],
+    }));
+    return { tier, combos };
+  });
 
   return (
     <div className="fade-up">
@@ -217,8 +213,15 @@ export default async function HomePage({ searchParams }: PageProps) {
         </section>
       ) : null}
 
-      <MoneyCombos tier="double" combos={twoPick} teamById={teamById} />
-      <MoneyCombos tier="triple" combos={threePick} teamById={teamById} />
+      <ComboNav />
+      {combosByTier.map(({ tier, combos }) => (
+        <MoneyCombos
+          key={tier.slug}
+          tier={tier}
+          combos={combos}
+          teamById={teamById}
+        />
+      ))}
 
       <TrendingPlayers players={featuredPlayers} />
 
@@ -454,6 +457,37 @@ function BetOfTheDayCard({
         </div>
       </div>
     </section>
+  );
+}
+
+function ComboNav() {
+  return (
+    <nav
+      aria-label="Jump to combo size"
+      className="mx-auto max-w-7xl px-4 sm:px-6 pt-4"
+    >
+      <div className="card-tmb rounded-full inline-flex items-center gap-1 p-1 text-xs flex-wrap">
+        <span className="px-3 text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+          Jump to
+        </span>
+        {COMBO_TIERS.map((tier) => (
+          <Link
+            key={tier.slug}
+            href={`#combo-${tier.slug}`}
+            className="rounded-full px-3 py-1.5 hover:bg-foreground/10 font-mono tabular-nums"
+          >
+            <span className="text-foreground/85">
+              {tier.legs}-bet
+            </span>{" "}
+            <span className="text-primary font-semibold">
+              {tier.multiplier % 1 === 0
+                ? `${tier.multiplier}×`
+                : `${tier.multiplier.toFixed(1)}×`}
+            </span>
+          </Link>
+        ))}
+      </div>
+    </nav>
   );
 }
 

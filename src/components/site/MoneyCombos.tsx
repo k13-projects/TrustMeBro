@@ -14,19 +14,77 @@ export type MoneyCombo = {
   flex_payout: number;
 };
 
-type Tier = "double" | "triple";
+export type ComboTier = {
+  multiplier: number;
+  legs: number;
+  slug: string;
+  name: string;
+  tagline: string;
+};
 
-const TIER_COPY: Record<Tier, { eyebrow: string; title: string; tagline: string }> = {
-  double: {
-    eyebrow: "2-pick combo",
-    title: "Double Your Money",
-    tagline: "Two high-conviction picks. Hit both → ~3× payout (your stake doubled).",
+// Section identity is the multiplier. Leg count is shown in the header so
+// the same data also reads as "2-bet combo / 3-bet combo / …" without
+// needing duplicate sections.
+export const COMBO_TIERS: ComboTier[] = [
+  {
+    multiplier: 3,
+    legs: 2,
+    slug: "double-up",
+    name: "The Double-Up",
+    tagline: "Two locks. Hit both → 3× your stake.",
   },
-  triple: {
-    eyebrow: "3-pick combo",
-    title: "Triple Your Money",
-    tagline: "Three picks across three games. Hit all three → ~5× payout.",
+  {
+    multiplier: 5,
+    legs: 3,
+    slug: "high-five",
+    name: "High Five",
+    tagline: "Three picks. Run the board → 5× your stake.",
   },
+  {
+    multiplier: 10,
+    legs: 4,
+    slug: "ten-bag",
+    name: "Ten Bag",
+    tagline: "Four legs. All cash → 10× your stake.",
+  },
+  {
+    multiplier: 20,
+    legs: 5,
+    slug: "twenty-stack",
+    name: "Twenty-Stack",
+    tagline: "Five-leg power. Perfect card → 20×.",
+  },
+  {
+    multiplier: 37.5,
+    legs: 6,
+    slug: "moonshot",
+    name: "Moonshot",
+    tagline: "Six legs. The full ride → 37.5×.",
+  },
+];
+
+const GRID_BY_LEGS: Record<number, string> = {
+  2: "grid gap-4 sm:grid-cols-2 lg:grid-cols-4",
+  3: "grid gap-4 sm:grid-cols-2 lg:grid-cols-2",
+  4: "grid gap-4 sm:grid-cols-1 lg:grid-cols-2",
+  5: "grid gap-4 lg:grid-cols-1",
+  6: "grid gap-4 lg:grid-cols-1",
+};
+
+const MAX_CARDS_BY_LEGS: Record<number, number> = {
+  2: 4,
+  3: 2,
+  4: 2,
+  5: 1,
+  6: 1,
+};
+
+const AVATAR_SIZE_BY_LEGS: Record<number, number> = {
+  2: 64,
+  3: 60,
+  4: 52,
+  5: 48,
+  6: 44,
 };
 
 export function MoneyCombos({
@@ -35,26 +93,33 @@ export function MoneyCombos({
   teamById,
   stake = 10,
 }: {
-  tier: Tier;
+  tier: ComboTier;
   combos: MoneyCombo[];
   teamById: Map<number, TeamLite>;
   stake?: number;
 }) {
-  const copy = TIER_COPY[tier];
-  const ringClass =
-    tier === "triple"
-      ? "ring-1 ring-primary/40 shadow-[0_24px_60px_-30px_rgba(255,184,0,0.55)]"
-      : "";
+  const highlight = tier.multiplier >= 20;
+  const ringClass = highlight
+    ? "ring-1 ring-primary/40 shadow-[0_24px_60px_-30px_rgba(255,184,0,0.55)]"
+    : "";
+  const grid = GRID_BY_LEGS[tier.legs] ?? GRID_BY_LEGS[2];
+  const maxCards = MAX_CARDS_BY_LEGS[tier.legs] ?? 2;
+  const avatarSize = AVATAR_SIZE_BY_LEGS[tier.legs] ?? 56;
+  const payoutLabel = formatMultiplier(tier.multiplier);
+  const winAmount = stake * tier.multiplier;
 
   return (
-    <section className="mx-auto max-w-7xl px-4 sm:px-6 py-10 space-y-5">
+    <section
+      id={`combo-${tier.slug}`}
+      className="mx-auto max-w-7xl px-4 sm:px-6 py-10 space-y-5 scroll-mt-24"
+    >
       <header className="flex items-baseline justify-between gap-3 flex-wrap">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-            {copy.eyebrow}
+            {tier.legs}-bet combo · {payoutLabel} payout
           </p>
           <h2 className="font-display uppercase text-[clamp(1.9rem,4vw,2.8rem)] leading-tight tracking-tight mt-1">
-            <span className="text-foreground">{copy.title.split(" Your ")[0]}</span>{" "}
+            <span className="text-foreground">{tier.name}</span>{" "}
             <span
               style={{
                 background:
@@ -64,29 +129,35 @@ export function MoneyCombos({
                 WebkitTextFillColor: "transparent",
               }}
             >
-              Your {copy.title.split(" Your ")[1]}
+              {payoutLabel}
             </span>
           </h2>
           <p className="text-sm text-muted-foreground mt-1 max-w-xl">
-            {copy.tagline}
+            {tier.tagline}{" "}
+            <span className="text-foreground/70">
+              ${stake} → ${winAmount.toFixed(winAmount % 1 ? 2 : 0)}
+            </span>
           </p>
         </div>
       </header>
 
       {combos.length === 0 ? (
         <div className="card-tmb p-6 text-center text-sm text-muted-foreground">
-          Not enough high-confidence picks today to assemble a {tier === "double" ? "2-pick" : "3-pick"} combo. Check back after morning lines drop.
+          Not enough high-confidence picks today to assemble a{" "}
+          {tier.legs}-pick combo. Check back after morning lines drop.
         </div>
       ) : (
-        <div className={`grid gap-4 sm:grid-cols-2 ${tier === "triple" ? "lg:grid-cols-2" : "lg:grid-cols-4"}`}>
-          {combos.slice(0, tier === "triple" ? 2 : 4).map((combo, i) => (
+        <div className={grid}>
+          {combos.slice(0, maxCards).map((combo, i) => (
             <ComboCardLarge
               key={combo.picks.map((p) => p.id).join("|")}
               combo={combo}
+              tier={tier}
               teamById={teamById}
               stake={stake}
               ringClass={ringClass}
               rank={i + 1}
+              avatarSize={avatarSize}
             />
           ))}
         </div>
@@ -95,21 +166,29 @@ export function MoneyCombos({
   );
 }
 
+function formatMultiplier(m: number): string {
+  return m % 1 === 0 ? `${m}×` : `${m.toFixed(1)}×`;
+}
+
 function ComboCardLarge({
   combo,
+  tier,
   teamById,
   stake,
   ringClass,
   rank,
+  avatarSize,
 }: {
   combo: MoneyCombo;
+  tier: ComboTier;
   teamById: Map<number, TeamLite>;
   stake: number;
   ringClass: string;
   rank: number;
+  avatarSize: number;
 }) {
   const picks = combo.picks;
-  const payoutAmount = stake * combo.power_payout;
+  const payoutAmount = stake * tier.multiplier;
   const cartPicks: CartPick[] = picks.map((p) => ({
     prediction_id: p.id,
     game_id: p.game_id,
@@ -126,9 +205,7 @@ function ComboCardLarge({
   }));
 
   return (
-    <article
-      className={`card-tmb p-5 space-y-4 flex flex-col ${ringClass}`}
-    >
+    <article className={`card-tmb p-5 space-y-4 flex flex-col ${ringClass}`}>
       <header className="flex items-center justify-between gap-2">
         <span className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
           Combo #{rank}
@@ -138,8 +215,7 @@ function ComboCardLarge({
         </span>
       </header>
 
-      {/* Player sticker row */}
-      <div className="flex items-end justify-center gap-3 sm:gap-4 min-h-[5rem]">
+      <div className="flex items-end justify-center gap-3 sm:gap-4 min-h-[5rem] flex-wrap">
         {picks.map((p) => {
           const team = teamById.get(p.player.team_id ?? -1) ?? null;
           return (
@@ -154,7 +230,7 @@ function ComboCardLarge({
                 firstName={p.player.first_name}
                 lastName={p.player.last_name}
                 abbreviation={team?.abbreviation ?? ""}
-                size={64}
+                size={avatarSize}
                 variant="sticker"
               />
             </Link>
@@ -162,7 +238,6 @@ function ComboCardLarge({
         })}
       </div>
 
-      {/* Per-pick rows */}
       <ul className="space-y-1.5 text-xs">
         {picks.map((p, i) => {
           const team = teamById.get(p.player.team_id ?? -1) ?? null;
@@ -201,10 +276,10 @@ function ComboCardLarge({
           <span className="text-muted-foreground">
             Win{" "}
             <span className="font-mono tabular-nums text-positive font-semibold">
-              ${payoutAmount.toFixed(2)}
+              ${payoutAmount.toFixed(payoutAmount % 1 ? 2 : 0)}
             </span>{" "}
             <span className="text-foreground/55">
-              ({combo.power_payout}× power)
+              ({formatMultiplier(tier.multiplier)} power)
             </span>
           </span>
         </div>

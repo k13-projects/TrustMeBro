@@ -16,6 +16,17 @@ export function flexPayout(picks: number, map: PayoutMap = fallbackPayoutMap()):
   return flexPayoutFrom(map, picks);
 }
 
+// Pool caps per combo size. The combinatorial blow-up is the reason: at
+// size=6 a pool of 20 is 20C6 ≈ 38k iterations before player-dedup, so
+// we tighten the pool aggressively as size grows.
+const POOL_CAP_BY_SIZE: Record<number, number> = {
+  2: Infinity,
+  3: 24,
+  4: 18,
+  5: 14,
+  6: 12,
+};
+
 /**
  * Generate top combos from the slate.
  *
@@ -33,11 +44,6 @@ export function flexPayout(picks: number, map: PayoutMap = fallbackPayoutMap()):
  * Combined confidence is naive-independence: product of pick probabilities.
  * Slightly conservative across different games; slightly optimistic within
  * the same game.
- *
- * Caps:
- *  - Per-size cap of 1000 candidates explored — protects against quadratic
- *    blow-up when the eligible pool is large (a 60-pick eligible pool
- *    yields ~34k 3-pick triples).
  */
 export function generateCombos(
   predictions: Prediction[],
@@ -48,68 +54,46 @@ export function generateCombos(
   const max = opts.max ?? 5;
   const payouts = opts.payouts ?? fallbackPayoutMap();
 
+  if (size < 2 || size > 6) return [];
+
   const eligible = predictions
     .filter((p) => p.confidence >= minConfidence)
     .sort((a, b) => b.confidence - a.confidence);
   if (eligible.length < size) return [];
 
-  // Greedy candidate cap: only the top-N most confident picks feed the
-  // combinatorial search. For size=2 we can afford the whole pool; for
-  // size=3 we slice to the top 24 (≈2k triples worst case).
-  const poolSize = size === 3 ? 24 : eligible.length;
-  const pool = eligible.slice(0, poolSize);
+  const cap = POOL_CAP_BY_SIZE[size] ?? eligible.length;
+  const pool = eligible.slice(0, Math.min(cap, eligible.length));
 
   const powerMult = powerPayoutFrom(payouts, size) ?? 0;
   const flexMult = flexPayoutFrom(payouts, size) ?? 0;
   const combos: Combo[] = [];
 
-  if (size === 2) {
-    for (let i = 0; i < pool.length; i++) {
-      for (let j = i + 1; j < pool.length; j++) {
-        const a = pool[i];
-        const b = pool[j];
-        if (a.player_id === b.player_id) continue;
-        const combined =
-          Math.floor((a.confidence / 100) * (b.confidence / 100) * 1000) / 10;
-        combos.push({
-          picks: [a, b],
-          combined_confidence: combined,
-          power_payout: powerMult,
-          flex_payout: flexMult,
-        });
-      }
+  const current: Prediction[] = [];
+  const usedPlayers = new Set<number>();
+  const recurse = (start: number) => {
+    if (current.length === size) {
+      let prob = 1;
+      for (const p of current) prob *= p.confidence / 100;
+      combos.push({
+        picks: [...current],
+        combined_confidence: Math.floor(prob * 1000) / 10,
+        power_payout: powerMult,
+        flex_payout: flexMult,
+      });
+      return;
     }
-  } else if (size === 3) {
-    for (let i = 0; i < pool.length; i++) {
-      const a = pool[i];
-      for (let j = i + 1; j < pool.length; j++) {
-        const b = pool[j];
-        if (a.player_id === b.player_id) continue;
-        for (let k = j + 1; k < pool.length; k++) {
-          const c = pool[k];
-          if (c.player_id === a.player_id || c.player_id === b.player_id) continue;
-          const combined =
-            Math.floor(
-              (a.confidence / 100) *
-                (b.confidence / 100) *
-                (c.confidence / 100) *
-                1000,
-            ) / 10;
-          combos.push({
-            picks: [a, b, c],
-            combined_confidence: combined,
-            power_payout: powerMult,
-            flex_payout: flexMult,
-          });
-        }
-      }
+    const need = size - current.length;
+    for (let i = start; i <= pool.length - need; i++) {
+      const pick = pool[i];
+      if (usedPlayers.has(pick.player_id)) continue;
+      current.push(pick);
+      usedPlayers.add(pick.player_id);
+      recurse(i + 1);
+      current.pop();
+      usedPlayers.delete(pick.player_id);
     }
-  } else {
-    // Other sizes intentionally unsupported — covered by the UI's 2× / 3×
-    // sections. Add a new branch here when 4-pick or larger flex coupons
-    // become a homepage surface.
-    return [];
-  }
+  };
+  recurse(0);
 
   return combos
     .sort((a, b) => b.combined_confidence - a.combined_confidence)
