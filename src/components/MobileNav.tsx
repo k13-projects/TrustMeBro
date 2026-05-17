@@ -14,8 +14,7 @@ const ITEMS: Item[] = [
   { href: "/teams", label: "Teams" },
   { href: "/players", label: "Players" },
   { href: "/bros", label: "Bro Board" },
-  { href: "/engine", label: "Engine" },
-  { href: "/score", label: "Score" },
+  { href: "/scorecard", label: "Scorecard" },
   { href: "/history", label: "History" },
 ];
 

@@ -12,9 +12,8 @@ const NAV_ITEMS = [
   { href: "/news", label: "News" },
   { href: "/teams", label: "Teams" },
   { href: "/bros", label: "Bro Board" },
-  { href: "/score", label: "Results" },
+  { href: "/scorecard", label: "Scorecard" },
   { href: "/history", label: "History" },
-  { href: "/engine", label: "Engine" },
 ] as const;
 
 type IdentityLite = {

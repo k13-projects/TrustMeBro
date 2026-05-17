@@ -7,9 +7,8 @@ const COLS = [
     heading: "Company",
     links: [
       { href: "/", label: "About Us" },
-      { href: "/score", label: "Results" },
+      { href: "/scorecard", label: "Scorecard" },
       { href: "/history", label: "History" },
-      { href: "/engine", label: "Engine" },
     ],
   },
   {
