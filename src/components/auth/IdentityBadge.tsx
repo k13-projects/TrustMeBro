@@ -1,8 +1,10 @@
 import Link from "next/link";
+import { LogIn } from "lucide-react";
 import { getRequester } from "@/lib/identity";
 
-// Top-nav identity. Auth users see their Google display name; guests see
-// the name they picked. Both can sign out from the same button.
+// Top-nav identity. Signed-out users get a gold-bordered "Sign in / Sign up"
+// pill — the only auth CTA on the site. Signed-in users see their display
+// name with a discreet sign-out button.
 export async function IdentityBadge() {
   const me = await getRequester();
 
@@ -10,9 +12,12 @@ export async function IdentityBadge() {
     return (
       <Link
         href="/login"
-        className="hidden sm:inline-flex items-center rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-medium text-foreground/80 hover:bg-white/10 transition-colors"
+        className="hidden sm:inline-flex items-center gap-2 rounded-full border border-primary/40 bg-primary/10 px-3.5 py-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-primary hover:bg-primary/20 hover:border-primary/60 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 shadow-[0_4px_18px_-6px_rgba(255,184,0,0.4)]"
       >
-        Sign in
+        <LogIn size={14} strokeWidth={2.5} aria-hidden />
+        <span>Sign in</span>
+        <span className="opacity-60">/</span>
+        <span>Sign up</span>
       </Link>
     );
   }
