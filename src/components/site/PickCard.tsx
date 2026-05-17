@@ -127,8 +127,7 @@ function ConfidenceBar({ value }: { value: number }) {
       <div className="h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
         <motion.div
           initial={{ width: 0 }}
-          whileInView={{ width: `${pct}%` }}
-          viewport={{ once: true, margin: "-10%" }}
+          animate={{ width: `${pct}%` }}
           transition={{ duration: 1.1, ease: [0.22, 1, 0.36, 1] }}
           className="h-full bg-gradient-to-r from-primary/70 via-primary to-[var(--primary-hover)]"
           style={{ boxShadow: "0 0 12px rgba(255,184,0,0.5)" }}
