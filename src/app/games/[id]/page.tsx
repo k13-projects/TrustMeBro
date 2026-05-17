@@ -651,17 +651,23 @@ function H2HRow({
         <span className="text-[11px] tabular-nums text-foreground/55 font-mono w-[5.5rem]">
           {dateLabel}
         </span>
-        <span className="flex items-center justify-center gap-3">
+        <span className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 text-sm">
           <span
-            className={`font-mono tabular-nums text-sm ${awayWon ? "text-foreground font-semibold" : "text-foreground/50"}`}
+            className={`flex items-center justify-end gap-2 ${awayWon ? "text-foreground font-semibold" : "text-foreground/55"}`}
           >
-            {away?.abbreviation ?? "AWAY"} {awayScore}
+            <span className="uppercase tracking-wide">
+              {away?.abbreviation ?? "AWAY"}
+            </span>
+            <span className="font-mono tabular-nums">{awayScore}</span>
           </span>
-          <span className="text-foreground/30 text-xs">@</span>
+          <span className="text-foreground/30 text-xs font-mono">−</span>
           <span
-            className={`font-mono tabular-nums text-sm ${homeWon ? "text-foreground font-semibold" : "text-foreground/50"}`}
+            className={`flex items-center justify-start gap-2 ${homeWon ? "text-foreground font-semibold" : "text-foreground/55"}`}
           >
-            {home?.abbreviation ?? "HOME"} {homeScore}
+            <span className="font-mono tabular-nums">{homeScore}</span>
+            <span className="uppercase tracking-wide">
+              {home?.abbreviation ?? "HOME"}
+            </span>
           </span>
         </span>
         <span className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-foreground/40">
