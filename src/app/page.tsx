@@ -31,6 +31,7 @@ import { TodaysSlate } from "@/components/site/TodaysSlate";
 import { TrendingPlayers } from "@/components/site/TrendingPlayers";
 import { WinnersClub } from "@/components/site/WinnersClub";
 import { PricingTiers } from "@/components/site/PricingTiers";
+import { PAYWALL_ENABLED } from "@/lib/feature-flags";
 import { getEngineStats } from "@/lib/scoring/stats";
 
 export const revalidate = 30;
@@ -274,17 +275,27 @@ export default async function HomePage({ searchParams }: PageProps) {
               </div>
             ) : null}
             <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-              {filteredOthers.slice(0, 6).map((p, i) => (
-                <PickCard
-                  key={p.id}
-                  prediction={p}
-                  team={teamById.get(p.player.team_id ?? -1) ?? null}
-                  free={i === 0 && !isSignedIn}
-                  locked={!(i === 0 && !isSignedIn)}
-                  odds={"-110"}
-                  gameTimeLabel={undefined}
-                />
-              ))}
+              {filteredOthers.slice(0, 6).map((p, i) => {
+                // Paywall off (default): every pick is unlocked for everyone,
+                // CTA links to the player page. Paywall on: first pick is the
+                // "Free Pick" tease for signed-out users, rest are locked and
+                // bounce to /login.
+                const paywallActive = PAYWALL_ENABLED;
+                const isFreeTease = paywallActive && i === 0 && !isSignedIn;
+                const locked = paywallActive && !isFreeTease;
+                return (
+                  <PickCard
+                    key={p.id}
+                    prediction={p}
+                    team={teamById.get(p.player.team_id ?? -1) ?? null}
+                    free={isFreeTease || !paywallActive}
+                    locked={locked}
+                    href={locked ? "/login" : `/players/${p.player.id}`}
+                    odds={"-110"}
+                    gameTimeLabel={undefined}
+                  />
+                );
+              })}
             </div>
             {filteredOthers.length > 6 ? (
               <details className="card-tmb rounded-2xl overflow-hidden">
@@ -322,7 +333,7 @@ export default async function HomePage({ searchParams }: PageProps) {
 
       <PillarRow />
       <WinnersClub stats={engineStats} />
-      <PricingTiers />
+      {PAYWALL_ENABLED ? <PricingTiers /> : null}
     </div>
   );
 }
