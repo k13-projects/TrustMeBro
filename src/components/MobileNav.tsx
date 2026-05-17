@@ -10,6 +10,7 @@ type Item = { href: string; label: string; exact?: boolean };
 const ITEMS: Item[] = [
   { href: "/", label: "Picks", exact: true },
   { href: "/games", label: "Games" },
+  { href: "/news", label: "News" },
   { href: "/teams", label: "Teams" },
   { href: "/players", label: "Players" },
   { href: "/engine", label: "Engine" },
