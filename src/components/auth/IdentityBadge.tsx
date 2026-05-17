@@ -1,6 +1,12 @@
 import Link from "next/link";
-import { LogIn } from "lucide-react";
+import { LogIn, LogOut } from "lucide-react";
 import { getRequester } from "@/lib/identity";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 // Top-nav identity. Signed-out users get a gold-bordered "Sign in / Sign up"
 // pill — the only auth CTA on the site. Signed-in users see their display
@@ -44,12 +50,20 @@ export async function IdentityBadge() {
           </span>
         ) : null}
       </span>
-      <button
-        type="submit"
-        className="rounded-full border border-white/10 px-2.5 py-1 text-[11px] text-foreground/60 hover:text-foreground hover:bg-white/5 transition-colors"
-      >
-        Sign out
-      </button>
+      <TooltipProvider delay={1000}>
+        <Tooltip>
+          <TooltipTrigger
+            type="submit"
+            aria-label="Sign out"
+            className="grid place-items-center size-8 rounded-full border border-white/10 bg-white/5 text-foreground/60 hover:text-rose-300 hover:bg-rose-500/15 hover:border-rose-400/40 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/50"
+          >
+            <LogOut size={14} strokeWidth={2.25} aria-hidden />
+          </TooltipTrigger>
+          <TooltipContent side="bottom" sideOffset={6}>
+            Sign out
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
     </form>
   );
 }
