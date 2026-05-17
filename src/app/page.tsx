@@ -173,8 +173,10 @@ export default async function HomePage({ searchParams }: PageProps) {
   const filtersActive = marketFilter !== null || minConfidenceFilter > 0;
 
   const payouts = await loadPayoutMap();
+  // Lowered floor from 75 → 60 so small slates still surface combos.
+  // generateCombos already sorts results by combined confidence desc.
   const twoPick = generateCombos(predictions as unknown as Prediction[], {
-    minConfidence: 75,
+    minConfidence: 60,
     size: 2,
     max: 4,
     payouts,
@@ -183,7 +185,7 @@ export default async function HomePage({ searchParams }: PageProps) {
     picks: c.picks as unknown as PredictionRow[],
   }));
   const threePick = generateCombos(predictions as unknown as Prediction[], {
-    minConfidence: 75,
+    minConfidence: 60,
     size: 3,
     max: 2,
     payouts,
