@@ -16,6 +16,7 @@ import { SeasonStatsBlock } from "@/components/SeasonStatsBlock";
 import { StatComparisonCard } from "@/components/StatComparisonCard";
 import { TeamBadge } from "@/components/TeamBadge";
 import type { PredictionRow, TeamLite } from "@/components/types";
+import { buildReasoningSummary } from "@/lib/analysis/reasoning-text";
 
 export const revalidate = 30;
 
@@ -245,16 +246,20 @@ export default async function PlayerDetailPage({ params }: PageProps) {
             .slice(0, 5)
             .map((s) => statValue(s, market))
             .filter((v): v is number => v !== null);
-          const prevValue = statValue(history[0] ?? null as never, market);
-          const prev2Value = statValue(history[1] ?? null as never, market);
+          // Guard the lookups before calling statValue — newly seeded players
+          // (e.g. an off-day team's roster) have an empty history array and
+          // history[0]/history[1] are undefined, which used to crash the
+          // page when statValue tried to read .points off `null`.
+          const prevValue = history[0] ? statValue(history[0], market) : null;
+          const prev2Value = history[1] ? statValue(history[1], market) : null;
           return (
             <StatComparisonCard
               key={market}
               features={features}
               market={market}
               last5Values={last5Values}
-              prevValue={history[0] ? prevValue : null}
-              prev2Value={history[1] ? prev2Value : null}
+              prevValue={prevValue}
+              prev2Value={prev2Value}
               anomaly={anomalyByMarket.get(market) ?? null}
             />
           );
@@ -445,12 +450,36 @@ function ActivePicksCard({
       <h2 className="text-[11px] font-medium tracking-[0.22em] uppercase text-foreground/45">
         Active Picks
       </h2>
-      <div className="grid gap-3">
+      <div className="grid gap-4">
         {predictions.map((p) => (
-          <PickRow key={p.id} prediction={p} team={team} />
+          <div key={p.id} className="space-y-2">
+            <PickRationale prediction={p} />
+            <PickRow prediction={p} team={team} />
+          </div>
         ))}
       </div>
     </section>
+  );
+}
+
+function PickRationale({ prediction }: { prediction: PredictionRow }) {
+  const summary = buildReasoningSummary(prediction);
+  return (
+    <div className="rounded-2xl border border-primary/25 bg-primary/[0.06] px-4 py-3 flex items-start gap-3">
+      <span
+        aria-hidden
+        className="mt-0.5 inline-flex shrink-0 size-6 items-center justify-center rounded-full bg-primary/15 text-primary text-[11px] font-bold"
+        title="Why we picked this"
+      >
+        ?
+      </span>
+      <div className="min-w-0 space-y-1">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-primary/85">
+          Why we picked this
+        </p>
+        <p className="text-sm text-foreground/85 leading-snug">{summary}</p>
+      </div>
+    </div>
   );
 }
 
