@@ -170,7 +170,6 @@ export default async function HomePage({ searchParams }: PageProps) {
       return false;
     return true;
   });
-  const filtersActive = marketFilter !== null || minConfidenceFilter > 0;
 
   const payouts = await loadPayoutMap();
   // Lowered floor from 75 → 60 so small slates still surface combos.

@@ -626,11 +626,14 @@ function EmptyState({
   onRestore: () => void;
 }) {
   // SSR must render the same content as the first client render to avoid
-  // hydration mismatch — shuffle only on the client after mount.
+  // hydration mismatch — shuffle only on the client after mount. This is the
+  // textbook "hydration-safe randomized initial state" pattern, so the lint
+  // rule is correctly flagging-but-wrong here.
   const [starters, setStarters] = useState<string[]>(() =>
     STARTER_POOL.slice(0, 3),
   );
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- hydration-safe shuffle (see comment above)
     setStarters(pickStarters());
   }, []);
   return (

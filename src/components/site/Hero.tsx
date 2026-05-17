@@ -1,17 +1,10 @@
 "use client";
 
 import Image from "next/image";
-import { useRef } from "react";
-import {
-  motion,
-  useScroll,
-  useTransform,
-  type MotionValue,
-} from "motion/react";
+import { motion } from "motion/react";
 import { BarChart3, Clock, Flame, TrendingUp, Trophy } from "lucide-react";
 import { CountUp } from "@/components/site/CountUp";
 import { GoldButton } from "@/components/site/GoldButton";
-import { MagneticLink } from "@/components/site/MagneticLink";
 import type { EngineStats } from "@/lib/scoring/stats";
 
 type StatTone = "positive" | "negative" | "neutral";
@@ -55,19 +48,19 @@ function buildStatTiles(stats: EngineStats): StatTile[] {
             : "neutral",
   });
 
-  // 2) SCORE — net units, +1/-0.5 ledger
+  // 2) SCORE — net units, +1/−1 ledger
   tiles.push({
     Icon: TrendingUp,
     label: "Score",
     value: Math.abs(stats.score),
     decimals: 1,
     prefix: stats.score > 0 ? "+" : stats.score < 0 ? "−" : "",
-    note: "+1.0 / −0.5 ledger",
+    note: "+1.0 / −1.0 ledger",
     emptyText: stats.total_settled === 0 ? "0.0" : undefined,
     tone: stats.score > 0 ? "positive" : stats.score < 0 ? "negative" : "neutral",
   });
 
-  // 3) STREAK — coloured by direction so users can read it at a glance
+  // 3) STREAK — coloured by direction
   const streakSuffix =
     stats.current_streak.kind === "win"
       ? "W"
@@ -95,9 +88,7 @@ function buildStatTiles(stats: EngineStats): StatTile[] {
           : "neutral",
   });
 
-  // 4) PENDING when there is work in flight; else fall back to last-7-days
-  // delta. This avoids the "+15.0 / +15.0" duplicate-tile illusion that shows
-  // up early on when the all-time score equals the last-week net.
+  // 4) PENDING when work is in flight; else last-7-days net.
   if (stats.pending > 0) {
     tiles.push({
       Icon: Clock,
@@ -128,26 +119,14 @@ function buildStatTiles(stats: EngineStats): StatTile[] {
 }
 
 export function Hero({ stats }: { stats: EngineStats }) {
-  const ref = useRef<HTMLElement>(null);
   const tiles = buildStatTiles(stats);
-  const { scrollYProgress } = useScroll({
-    target: ref,
-    offset: ["start start", "end start"],
-  });
-
-  // Parallax: mascot drifts up faster than the text as you scroll out. Rotate
-  // transform on the headline was removed — it skewed legibility for no
-  // perceptible gain.
-  const mascotY = useTransform(scrollYProgress, [0, 1], [0, -120]);
-  const mascotScale = useTransform(scrollYProgress, [0, 1], [1, 1.04]);
-  const textY = useTransform(scrollYProgress, [0, 1], [0, -40]);
 
   return (
-    <section ref={ref} className="relative overflow-hidden">
+    <section className="relative overflow-hidden">
       <BackgroundFx />
 
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 pt-12 pb-20 lg:pt-20 lg:pb-28 grid gap-10 lg:grid-cols-[1.1fr_0.9fr] items-center">
-        <motion.div style={{ y: textY }} className="space-y-7">
+        <div className="space-y-7">
           <motion.p
             initial={{ opacity: 0, x: -16 }}
             animate={{ opacity: 1, x: 0 }}
@@ -158,26 +137,15 @@ export function Hero({ stats }: { stats: EngineStats }) {
             Data. Analysis. Winners.
           </motion.p>
 
-          {/* One typeface, one rhythm. Anton uppercase (no synthetic italic,
-              no brush mid-word) across all three words. Colour does the brand
-              work: "TRUST ME" white, "BRO" warm-gold. leading-[0.95] keeps
-              the two-line stack tight without the descenders of line 1
-              crashing into the ascenders of line 2 the way 0.88 did. */}
-          <motion.h1
-            className="font-display uppercase leading-[0.95] tracking-tight text-[clamp(3.4rem,9vw,6.8rem)]"
-          >
-            <span
-              className="hero-word block text-foreground"
-              style={{ animationDelay: "0ms" }}
-            >
+          <h1 className="font-display uppercase leading-[0.95] tracking-tight text-[clamp(3.4rem,9vw,6.8rem)]">
+            <span className="hero-word block text-foreground" style={{ animationDelay: "0ms" }}>
               TRUST ME
             </span>
             <span
               className="hero-word block"
               style={{
                 animationDelay: "110ms",
-                background:
-                  "linear-gradient(180deg, #FFE066 0%, #FFB800 100%)",
+                background: "linear-gradient(180deg, #FFE066 0%, #FFB800 100%)",
                 WebkitBackgroundClip: "text",
                 backgroundClip: "text",
                 WebkitTextFillColor: "transparent",
@@ -185,7 +153,7 @@ export function Hero({ stats }: { stats: EngineStats }) {
             >
               BRO
             </span>
-          </motion.h1>
+          </h1>
 
           <p className="max-w-md text-base text-foreground/70">
             Real bookmaker odds. Real expected value. Every pick graded the
@@ -193,102 +161,59 @@ export function Hero({ stats }: { stats: EngineStats }) {
           </p>
 
           <div className="flex items-center gap-3 flex-wrap">
-            <MagneticLink strength={0.2}>
-              <GoldButton href="/#picks" size="lg">
-                Get Today&apos;s Picks
-              </GoldButton>
-            </MagneticLink>
-            <MagneticLink strength={0.15}>
-              <GoldButton href="/scorecard" variant="outline" size="lg">
-                View Scorecard
-              </GoldButton>
-            </MagneticLink>
+            <GoldButton href="/#picks" size="lg">
+              Get Today&apos;s Picks
+            </GoldButton>
+            <GoldButton href="/scorecard" variant="outline" size="lg">
+              View Scorecard
+            </GoldButton>
           </div>
 
-          <StatLedgerPanel
-            tiles={tiles}
-            firstPickDate={stats.first_pick_date}
-          />
-        </motion.div>
+          <StatLedgerPanel tiles={tiles} firstPickDate={stats.first_pick_date} />
+        </div>
 
         <div className="relative h-full">
-          <MascotStage y={mascotY} scale={mascotScale} />
+          <MascotStage />
         </div>
       </div>
 
-      <motion.div
-        initial={{ opacity: 0, y: 6 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 1.2 }}
-        className="hidden lg:flex absolute bottom-6 left-1/2 -translate-x-1/2 items-center gap-2 text-[10px] uppercase tracking-[0.32em] text-muted-foreground"
+      <div
+        aria-hidden
+        className="hidden lg:flex absolute bottom-6 left-1/2 -translate-x-1/2 items-center gap-2 text-[10px] uppercase tracking-[0.32em] text-muted-foreground opacity-90"
       >
         <span className="inline-block w-8 h-px bg-primary/60" />
         Scroll
         <span className="inline-block w-8 h-px bg-primary/60" />
-      </motion.div>
+      </div>
     </section>
   );
 }
 
 function BackgroundFx() {
+  // Single static radial. The previous version stacked three radials plus a
+  // body::before screen-blend pattern — together they pegged the compositor
+  // on every scroll frame and overheated mobile devices.
   return (
-    <>
-      <div
-        aria-hidden
-        className="absolute inset-0 -z-10"
-        style={{
-          backgroundImage:
-            "radial-gradient(60rem 36rem at 74% 32%, rgba(255, 184, 0, 0.22), transparent 60%)," +
-            "radial-gradient(44rem 28rem at 14% 72%, rgba(255, 107, 53, 0.10), transparent 65%)",
-        }}
-      />
-      <div
-        aria-hidden
-        className="absolute top-16 right-[10%] size-[320px] -z-10 opacity-30"
-        style={{
-          background:
-            "radial-gradient(45% 45% at 50% 50%, rgba(255,184,0,0.22), transparent 70%)",
-        }}
-      />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-32 -z-10"
-        style={{
-          background:
-            "linear-gradient(180deg, transparent 0%, var(--background) 100%)",
-        }}
-      />
-    </>
+    <div
+      aria-hidden
+      className="absolute inset-0 -z-10"
+      style={{
+        backgroundImage:
+          "radial-gradient(60rem 36rem at 74% 32%, rgba(255, 184, 0, 0.18), transparent 60%)",
+      }}
+    />
   );
 }
 
-function MascotStage({
-  y,
-  scale,
-}: {
-  y: MotionValue<number>;
-  scale: MotionValue<number>;
-}) {
+function MascotStage() {
+  // Decorative loops removed in the 2026-05-17 perf pass: the conic gradient
+  // rotated infinitely (90s loop) and three coin sprites each ran an infinite
+  // motion keyframe — invisible to most users but never idle. Mascot now
+  // relies on a CSS-only `.mascot-bob` translate (also reduce-motion gated)
+  // for the soft hover. useScroll parallax dropped too — it allocated a
+  // MotionValue per scroll frame on every page.
   return (
-    <motion.div
-      style={{ y, scale }}
-      initial={{ opacity: 0, scale: 0.9, rotate: -3 }}
-      animate={{ opacity: 1, scale: 1, rotate: 0 }}
-      transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
-      className="relative mx-auto w-full max-w-[22rem] sm:max-w-md lg:max-w-[28rem] aspect-square"
-    >
-      {/* Subtle conic backdrop — same gold tone but lower opacity so the
-          sticker (now transparent-background) carries the visual weight. */}
-      <motion.div
-        aria-hidden
-        animate={{ rotate: 360 }}
-        transition={{ duration: 90, ease: "linear", repeat: Infinity }}
-        className="absolute inset-[10%] rounded-full"
-        style={{
-          background:
-            "conic-gradient(from 0deg, transparent 0%, rgba(255,184,0,0.10) 25%, transparent 50%, rgba(255,184,0,0.06) 75%, transparent 100%)",
-        }}
-      />
+    <div className="relative mx-auto w-full max-w-[22rem] sm:max-w-md lg:max-w-[28rem] aspect-square">
       <div
         aria-hidden
         className="absolute inset-[18%] rounded-full blur-3xl"
@@ -304,45 +229,11 @@ function MascotStage({
           width={620}
           height={620}
           priority
-          unoptimized
+          sizes="(max-width: 640px) 80vw, (max-width: 1024px) 28rem, 28rem"
           className="select-none drop-shadow-[0_24px_50px_rgba(255,184,0,0.35)]"
         />
       </div>
-      <Coin angle={20} distance="46%" delay={0} />
-      <Coin angle={120} distance="48%" delay={0.6} />
-      <Coin angle={240} distance="44%" delay={1.2} />
-    </motion.div>
-  );
-}
-
-function Coin({
-  angle,
-  distance,
-  delay,
-}: {
-  angle: number;
-  distance: string;
-  delay: number;
-}) {
-  const rad = (angle * Math.PI) / 180;
-  return (
-    <motion.div
-      aria-hidden
-      initial={{ opacity: 0, scale: 0 }}
-      animate={{
-        opacity: [0, 1, 1, 0.7, 1],
-        scale: [0, 1, 1, 0.95, 1],
-      }}
-      transition={{ delay, duration: 3.6, repeat: Infinity, repeatDelay: 1.2 }}
-      className="absolute size-5 rounded-full"
-      style={{
-        left: `calc(50% + ${Math.cos(rad)} * ${distance})`,
-        top: `calc(50% + ${Math.sin(rad)} * ${distance})`,
-        background:
-          "radial-gradient(circle at 30% 30%, #FFE066, #FFB800 60%, #B27B00 100%)",
-        boxShadow: "0 6px 16px -4px rgba(255,184,0,0.65)",
-      }}
-    />
+    </div>
   );
 }
 
@@ -358,7 +249,7 @@ function StatLedgerPanel({
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.45, duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-      className="card-tmb max-w-lg backdrop-blur-2xl bg-background/65"
+      className="card-tmb max-w-lg bg-background/65"
     >
       <div className="p-4 sm:p-5 grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-4">
         {tiles.map((tile) => (
@@ -367,9 +258,7 @@ function StatLedgerPanel({
       </div>
       <div className="px-4 sm:px-5 pb-3 pt-1 border-t border-border/60 flex items-center justify-between gap-2 flex-wrap">
         <span className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-          {firstPickDate
-            ? `Tracking since ${firstPickDate}`
-            : "First slate today"}
+          {firstPickDate ? `Tracking since ${firstPickDate}` : "First slate today"}
         </span>
         <span className="inline-flex items-center gap-1 text-[10px] text-positive">
           <span className="size-1.5 rounded-full bg-positive soft-pulse" />
