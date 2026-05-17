@@ -675,7 +675,17 @@ function H2HRow({
             <span className="rounded bg-amber-400/15 text-amber-300/85 border border-amber-400/30 px-1.5 py-0.5">
               Playoffs
             </span>
-          ) : null}
+          ) : (
+            // Invisible placeholder keeps the right column's width identical
+            // across rows so the scores column doesn't drift when some rows
+            // are regular-season and others are playoffs.
+            <span
+              aria-hidden
+              className="rounded border border-transparent px-1.5 py-0.5 select-none"
+            >
+              Playoffs
+            </span>
+          )}
           <span aria-hidden>›</span>
         </span>
       </Link>
