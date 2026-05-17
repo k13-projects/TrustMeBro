@@ -11,9 +11,10 @@ type PageProps = {
   searchParams: Promise<{ date?: string }>;
 };
 
-export default async function GamesPage({ searchParams }: PageProps) {
+export default async function ResultsPage({ searchParams }: PageProps) {
   const params = await searchParams;
-  const date = isValidIsoDate(params.date) ? params.date : todayIsoDate();
+  const today = todayIsoDate();
+  const date = isValidIsoDate(params.date) ? params.date : isoDateOffset(today, -1);
   const prev = isoDateOffset(date, -1);
   const next = isoDateOffset(date, 1);
 
@@ -25,52 +26,60 @@ export default async function GamesPage({ searchParams }: PageProps) {
   } catch (e) {
     hasError = true;
     if (process.env.NODE_ENV !== "production") {
-      console.error("[games/page] listGames failed", e);
+      console.error("[results/page] listGames failed", e);
     }
   }
 
-  const upcoming = allGames.filter((g) => !isFinalStatus(g.status));
-  const finishedCount = allGames.length - upcoming.length;
+  const finals = allGames.filter((g) => isFinalStatus(g.status));
+  const unfinishedCount = allGames.length - finals.length;
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10 space-y-8">
       <div className="flex items-end justify-between gap-4 flex-wrap">
         <div>
           <p className="text-[11px] font-medium tracking-[0.22em] uppercase text-foreground/45">
-            NBA · Slate
+            NBA · Final Scores
           </p>
           <h1 className="mt-2 text-3xl sm:text-4xl font-semibold tracking-tight">
-            Games
+            Results
           </h1>
           <p className="text-sm text-foreground/55 mt-1">
-            Upcoming and live matchups for {date}
-            {finishedCount > 0 ? (
+            Finished games for {date}
+            {unfinishedCount > 0 ? (
               <>
                 {" · "}
                 <Link
-                  href={`/results?date=${date}`}
+                  href={`/games?date=${date}`}
                   className="underline underline-offset-2 hover:text-foreground"
                 >
-                  {finishedCount} final →
+                  {unfinishedCount} still upcoming or live →
                 </Link>
               </>
             ) : null}
           </p>
         </div>
         <nav className="glass rounded-full flex items-center gap-1 p-1 text-sm">
-          <DatePill href={`/games?date=${prev}`} label={`← ${prev}`} />
-          <DatePill href="/games" label="Today" emphasis />
-          <DatePill href={`/games?date=${next}`} label={`${next} →`} />
+          <DatePill href={`/results?date=${prev}`} label={`← ${prev}`} />
+          <DatePill
+            href={`/results?date=${isoDateOffset(today, -1)}`}
+            label="Yesterday"
+            emphasis
+          />
+          <DatePill href={`/results?date=${next}`} label={`${next} →`} />
         </nav>
       </div>
 
       {hasError ? (
         <ErrorCard date={date} />
-      ) : upcoming.length === 0 ? (
-        <EmptySlate date={date} finishedCount={finishedCount} />
+      ) : finals.length === 0 ? (
+        <EmptyResults
+          date={date}
+          unfinishedCount={unfinishedCount}
+          isToday={date === today}
+        />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {upcoming.map((g) => (
+          {finals.map((g) => (
             <GameCard key={g.id} game={g} />
           ))}
         </div>
@@ -79,24 +88,27 @@ export default async function GamesPage({ searchParams }: PageProps) {
   );
 }
 
-function EmptySlate({
+function EmptyResults({
   date,
-  finishedCount,
+  unfinishedCount,
+  isToday,
 }: {
   date: string;
-  finishedCount: number;
+  unfinishedCount: number;
+  isToday: boolean;
 }) {
-  if (finishedCount > 0) {
+  if (unfinishedCount > 0) {
     return (
       <div className="glass glass-sheen rounded-2xl p-8 text-center space-y-2">
         <p className="text-foreground/60">
-          All {finishedCount} {finishedCount === 1 ? "game" : "games"} on {date} are final.
+          No games finished yet on {date}.
         </p>
         <Link
-          href={`/results?date=${date}`}
+          href={`/games?date=${date}`}
           className="inline-block text-sm text-amber-300 underline underline-offset-2 hover:text-amber-200"
         >
-          See results →
+          {unfinishedCount} {unfinishedCount === 1 ? "game is" : "games are"}{" "}
+          still upcoming or live →
         </Link>
       </div>
     );
@@ -104,6 +116,11 @@ function EmptySlate({
   return (
     <div className="glass glass-sheen rounded-2xl p-8 text-center text-foreground/60">
       No games on {date}.
+      {isToday ? (
+        <span className="block mt-2 text-xs text-foreground/45">
+          Try yesterday for the latest finals.
+        </span>
+      ) : null}
     </div>
   );
 }
@@ -111,12 +128,12 @@ function EmptySlate({
 function ErrorCard({ date }: { date: string }) {
   return (
     <div className="glass glass-sheen rounded-2xl p-6 border border-amber-400/30 space-y-3">
-      <h2 className="font-semibold">Couldn&apos;t load games</h2>
+      <h2 className="font-semibold">Couldn&apos;t load results</h2>
       <p className="text-sm text-foreground/70">
         We had trouble reaching the scoreboard for {date}. This is usually a
         temporary issue with the upstream data provider — try again in a moment.
       </p>
-      <DatePill href={`/games?date=${date}`} label="Retry" />
+      <DatePill href={`/results?date=${date}`} label="Retry" />
     </div>
   );
 }
