@@ -9,12 +9,12 @@ const NAV_ITEMS = [
   { href: "/", label: "Home", exact: true },
   { href: "/#picks", label: "Picks" },
   { href: "/games", label: "Games" },
+  { href: "/results", label: "Results" },
   { href: "/news", label: "News" },
   { href: "/teams", label: "Teams" },
   { href: "/bros", label: "Bro Board" },
-  { href: "/score", label: "Results" },
+  { href: "/scorecard", label: "Scorecard" },
   { href: "/history", label: "History" },
-  { href: "/engine", label: "Engine" },
 ] as const;
 
 type IdentityLite = {

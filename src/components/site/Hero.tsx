@@ -200,8 +200,8 @@ export function Hero({ stats }: { stats: EngineStats }) {
               </GoldButton>
             </MagneticLink>
             <MagneticLink strength={0.15}>
-              <GoldButton href="/score" variant="outline" size="lg">
-                View Results
+              <GoldButton href="/scorecard" variant="outline" size="lg">
+                View Scorecard
               </GoldButton>
             </MagneticLink>
           </div>

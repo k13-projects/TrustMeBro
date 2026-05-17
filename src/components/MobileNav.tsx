@@ -10,12 +10,12 @@ type Item = { href: string; label: string; exact?: boolean };
 const ITEMS: Item[] = [
   { href: "/", label: "Picks", exact: true },
   { href: "/games", label: "Games" },
+  { href: "/results", label: "Results" },
   { href: "/news", label: "News" },
   { href: "/teams", label: "Teams" },
   { href: "/players", label: "Players" },
   { href: "/bros", label: "Bro Board" },
-  { href: "/engine", label: "Engine" },
-  { href: "/score", label: "Score" },
+  { href: "/scorecard", label: "Scorecard" },
   { href: "/history", label: "History" },
 ];
 
