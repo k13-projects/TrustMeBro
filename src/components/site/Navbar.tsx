@@ -54,14 +54,6 @@ export function Navbar({ identity }: { identity: IdentityLite }) {
               style={{ mixBlendMode: "screen" }}
             />
           </MagneticLink>
-          <span className="hidden lg:flex flex-col leading-[0.9]">
-            <span className="font-display uppercase text-xl tracking-wide">
-              Trust Me
-            </span>
-            <span className="font-display uppercase text-xl tracking-wide text-primary">
-              Bro
-            </span>
-          </span>
         </Link>
 
         <NavLinks items={NAV_ITEMS} />
