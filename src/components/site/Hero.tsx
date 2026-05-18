@@ -117,27 +117,38 @@ function buildStatTiles(stats: EngineStats): StatTile[] {
 export function Hero({ stats }: { stats: EngineStats }) {
   const tiles = buildStatTiles(stats);
 
-  // Centered single-column layout. Mascot sits between the wordmark and the
-  // subtitle, so the visual lockup reads as: brand pill → TRUST ME BRO →
-  // mascot → tagline → CTAs → stats ledger. On mobile this naturally puts
-  // the mascot above the stats grid; on desktop everything stacks centered
-  // instead of the prior 2-column text+mascot split.
+  // Layout strategy:
+  //   - Mobile (< lg): flex column stacking, pill → wordmark → mascot →
+  //     subtitle → buttons → stats. DOM order matches visual order.
+  //   - Desktop (lg+): CSS grid switches on with [auto 1fr] columns.
+  //     Mascot is explicitly placed in col 1 spanning all rows; the rest
+  //     fall into col 2 by explicit row placement, so the right column
+  //     reads pill → wordmark → subtitle → buttons → stats.
+  // The mobile mascot position (between wordmark and subtitle) is purely
+  // DOM order — grid placement classes are no-ops below lg.
   return (
     <section className="relative overflow-hidden">
       <BackgroundFx />
 
-      <div className="relative mx-auto max-w-3xl px-4 sm:px-6 pt-10 pb-16 lg:pt-16 lg:pb-24 flex flex-col items-center text-center space-y-6">
+      <div
+        className="
+          relative mx-auto max-w-3xl lg:max-w-5xl px-4 sm:px-6
+          pt-10 pb-16 lg:pt-16 lg:pb-24
+          flex flex-col items-center text-center space-y-6
+          lg:grid lg:grid-cols-[auto_1fr] lg:gap-x-8 lg:gap-y-7 lg:items-center lg:text-left lg:space-y-0
+        "
+      >
         <motion.p
           initial={{ opacity: 0, x: -16 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.5 }}
-          className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.32em] text-muted-foreground"
+          className="lg:col-start-2 lg:row-start-1 lg:justify-self-start inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.32em] text-muted-foreground"
         >
           <span className="inline-block size-1.5 rounded-full bg-primary animate-pulse" />
           Data. Analysis. Winners.
         </motion.p>
 
-        <h1 className="font-display uppercase leading-[0.95] tracking-tight text-[clamp(3rem,8.5vw,6rem)]">
+        <h1 className="lg:col-start-2 lg:row-start-2 font-display uppercase leading-[0.95] tracking-tight text-[clamp(3rem,8.5vw,6rem)]">
           <span className="hero-word block text-foreground" style={{ animationDelay: "0ms" }}>
             TRUST ME
           </span>
@@ -155,14 +166,16 @@ export function Hero({ stats }: { stats: EngineStats }) {
           </span>
         </h1>
 
-        <MascotStage />
+        <div className="lg:col-start-1 lg:row-start-1 lg:row-span-5 lg:self-center">
+          <MascotStage />
+        </div>
 
-        <p className="max-w-md text-base text-foreground/70">
+        <p className="lg:col-start-2 lg:row-start-3 max-w-md text-base text-foreground/70">
           Real bookmaker odds. Real expected value. Every pick graded the
           morning after, win or lose.
         </p>
 
-        <div className="flex items-center gap-3 flex-wrap justify-center">
+        <div className="lg:col-start-2 lg:row-start-4 flex items-center gap-3 flex-wrap justify-center lg:justify-start">
           <GoldButton href="/#picks" size="lg">
             Get Today&apos;s Picks
           </GoldButton>
@@ -171,7 +184,9 @@ export function Hero({ stats }: { stats: EngineStats }) {
           </GoldButton>
         </div>
 
-        <StatLedgerPanel tiles={tiles} firstPickDate={stats.first_pick_date} />
+        <div className="lg:col-start-2 lg:row-start-5 w-full flex justify-center lg:justify-start">
+          <StatLedgerPanel tiles={tiles} firstPickDate={stats.first_pick_date} />
+        </div>
       </div>
     </section>
   );
@@ -194,12 +209,12 @@ function BackgroundFx() {
 }
 
 function MascotStage() {
-  // Smaller, centered. Sized so it sits comfortably between the TRUST ME
-  // BRO wordmark and the subtitle without dominating either. Drop-shadow
-  // softened a touch (50→40px blur, 0.35→0.28 alpha) so the gold glow
-  // doesn't compete with the wordmark's gradient.
+  // Mobile: stacked between wordmark and subtitle, centered (mx-auto).
+  // Desktop: anchors the left column of the 2-col grid (mx-0), slightly
+  // larger since it owns its own column instead of squeezing into the
+  // text stack.
   return (
-    <div className="relative w-full max-w-[14rem] sm:max-w-[16rem] lg:max-w-[18rem] aspect-square">
+    <div className="relative w-full max-w-[14rem] sm:max-w-[16rem] lg:max-w-[20rem] aspect-square mx-auto lg:mx-0">
       <div
         aria-hidden
         className="absolute inset-[18%] rounded-full blur-3xl"
@@ -215,7 +230,7 @@ function MascotStage() {
           width={400}
           height={400}
           priority
-          sizes="(max-width: 640px) 224px, (max-width: 1024px) 256px, 288px"
+          sizes="(max-width: 640px) 224px, (max-width: 1024px) 256px, 320px"
           className="select-none drop-shadow-[0_18px_40px_rgba(255,184,0,0.28)]"
         />
       </div>
