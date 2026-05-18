@@ -1,5 +1,4 @@
-import Link from "next/link";
-import Image from "next/image";
+import { LogoLink } from "@/components/site/LogoLink";
 import { NavLinks } from "@/components/site/NavLinks";
 import { MobileNav } from "@/components/MobileNav";
 import { IdentityBadge } from "@/components/auth/IdentityBadge";
@@ -33,29 +32,10 @@ export function Navbar({ identity }: { identity: IdentityLite }) {
         className="absolute inset-x-0 -bottom-px h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent -z-10"
       />
       <div className="mx-auto max-w-7xl px-4 sm:px-6 h-20 flex items-center justify-between gap-4">
-        {/* Logo is now a plain server component link — MagneticLink wrapper was
-            adding pointer-move + useSpring on every hover across every page,
-            and mix-blend-mode: screen forced a compositor pass behind it. The
-            logo-float CSS keyframe still gives the slow drift for free. */}
-        <Link
-          href="/"
-          className="group relative flex items-center gap-3"
-          aria-label="TrustMeBro home"
-        >
-          <span
-            aria-hidden
-            className="absolute inset-0 rounded-2xl bg-primary/30 blur-xl opacity-0 group-hover:opacity-80 transition-opacity duration-500 pointer-events-none"
-          />
-          <Image
-            src="/Design/Logo 2.png"
-            alt="TrustMeBro"
-            width={84}
-            height={84}
-            priority
-            sizes="84px"
-            className="relative rounded-2xl logo-float transition-transform duration-300 ease-out group-hover:rotate-[-5deg] group-hover:scale-[1.06] motion-reduce:transition-none motion-reduce:transform-none motion-reduce:animate-none"
-          />
-        </Link>
+        {/* LogoLink is a tiny client island that adds back-to-top scroll when
+            the logo is clicked on /. Everything else (the hover blur, the
+            logo-float keyframe) is identical to the previous inline render. */}
+        <LogoLink />
 
         <NavLinks items={NAV_ITEMS} />
 

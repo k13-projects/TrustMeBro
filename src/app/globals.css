@@ -159,6 +159,14 @@ body {
   text-rendering: optimizeLegibility;
 }
 
+/* Smooth scrolling for hash navigation (#picks, #combo-…) and any
+   programmatic scrollTo without an explicit behavior. Browsers honor
+   prefers-reduced-motion automatically here. The scroll-mt-24 utilities
+   on the section anchors already account for the sticky navbar height. */
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   position: relative;
   min-height: 100dvh;
