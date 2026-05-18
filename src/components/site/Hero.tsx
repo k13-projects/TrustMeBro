@@ -25,7 +25,6 @@ type StatTile = {
 function buildStatTiles(stats: EngineStats): StatTile[] {
   const tiles: StatTile[] = [];
 
-  // 1) WIN RATE — primary credibility metric
   tiles.push({
     Icon: Trophy,
     label: "Win Rate",
@@ -48,7 +47,6 @@ function buildStatTiles(stats: EngineStats): StatTile[] {
             : "neutral",
   });
 
-  // 2) SCORE — net units, +1/−1 ledger
   tiles.push({
     Icon: TrendingUp,
     label: "Score",
@@ -60,7 +58,6 @@ function buildStatTiles(stats: EngineStats): StatTile[] {
     tone: stats.score > 0 ? "positive" : stats.score < 0 ? "negative" : "neutral",
   });
 
-  // 3) STREAK — coloured by direction
   const streakSuffix =
     stats.current_streak.kind === "win"
       ? "W"
@@ -88,7 +85,6 @@ function buildStatTiles(stats: EngineStats): StatTile[] {
           : "neutral",
   });
 
-  // 4) PENDING when work is in flight; else last-7-days net.
   if (stats.pending > 0) {
     tiles.push({
       Icon: Clock,
@@ -121,116 +117,106 @@ function buildStatTiles(stats: EngineStats): StatTile[] {
 export function Hero({ stats }: { stats: EngineStats }) {
   const tiles = buildStatTiles(stats);
 
+  // Centered single-column layout. Mascot sits between the wordmark and the
+  // subtitle, so the visual lockup reads as: brand pill → TRUST ME BRO →
+  // mascot → tagline → CTAs → stats ledger. On mobile this naturally puts
+  // the mascot above the stats grid; on desktop everything stacks centered
+  // instead of the prior 2-column text+mascot split.
   return (
     <section className="relative overflow-hidden">
       <BackgroundFx />
 
-      <div className="relative mx-auto max-w-7xl px-4 sm:px-6 pt-12 pb-20 lg:pt-20 lg:pb-28 grid gap-10 lg:grid-cols-[1.1fr_0.9fr] items-center">
-        <div className="space-y-7">
-          <motion.p
-            initial={{ opacity: 0, x: -16 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5 }}
-            className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.32em] text-muted-foreground"
+      <div className="relative mx-auto max-w-3xl px-4 sm:px-6 pt-10 pb-16 lg:pt-16 lg:pb-24 flex flex-col items-center text-center space-y-6">
+        <motion.p
+          initial={{ opacity: 0, x: -16 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.5 }}
+          className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.32em] text-muted-foreground"
+        >
+          <span className="inline-block size-1.5 rounded-full bg-primary animate-pulse" />
+          Data. Analysis. Winners.
+        </motion.p>
+
+        <h1 className="font-display uppercase leading-[0.95] tracking-tight text-[clamp(3rem,8.5vw,6rem)]">
+          <span className="hero-word block text-foreground" style={{ animationDelay: "0ms" }}>
+            TRUST ME
+          </span>
+          <span
+            className="hero-word block"
+            style={{
+              animationDelay: "110ms",
+              background: "linear-gradient(180deg, #FFE066 0%, #FFB800 100%)",
+              WebkitBackgroundClip: "text",
+              backgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+            }}
           >
-            <span className="inline-block size-1.5 rounded-full bg-primary animate-pulse" />
-            Data. Analysis. Winners.
-          </motion.p>
+            BRO
+          </span>
+        </h1>
 
-          <h1 className="font-display uppercase leading-[0.95] tracking-tight text-[clamp(3.4rem,9vw,6.8rem)]">
-            <span className="hero-word block text-foreground" style={{ animationDelay: "0ms" }}>
-              TRUST ME
-            </span>
-            <span
-              className="hero-word block"
-              style={{
-                animationDelay: "110ms",
-                background: "linear-gradient(180deg, #FFE066 0%, #FFB800 100%)",
-                WebkitBackgroundClip: "text",
-                backgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-              }}
-            >
-              BRO
-            </span>
-          </h1>
+        <MascotStage />
 
-          <p className="max-w-md text-base text-foreground/70">
-            Real bookmaker odds. Real expected value. Every pick graded the
-            morning after, win or lose.
-          </p>
+        <p className="max-w-md text-base text-foreground/70">
+          Real bookmaker odds. Real expected value. Every pick graded the
+          morning after, win or lose.
+        </p>
 
-          <div className="flex items-center gap-3 flex-wrap">
-            <GoldButton href="/#picks" size="lg">
-              Get Today&apos;s Picks
-            </GoldButton>
-            <GoldButton href="/scorecard" variant="outline" size="lg">
-              View Scorecard
-            </GoldButton>
-          </div>
-
-          <StatLedgerPanel tiles={tiles} firstPickDate={stats.first_pick_date} />
+        <div className="flex items-center gap-3 flex-wrap justify-center">
+          <GoldButton href="/#picks" size="lg">
+            Get Today&apos;s Picks
+          </GoldButton>
+          <GoldButton href="/scorecard" variant="outline" size="lg">
+            View Scorecard
+          </GoldButton>
         </div>
 
-        <div className="relative h-full">
-          <MascotStage />
-        </div>
-      </div>
-
-      <div
-        aria-hidden
-        className="hidden lg:flex absolute bottom-6 left-1/2 -translate-x-1/2 items-center gap-2 text-[10px] uppercase tracking-[0.32em] text-muted-foreground opacity-90"
-      >
-        <span className="inline-block w-8 h-px bg-primary/60" />
-        Scroll
-        <span className="inline-block w-8 h-px bg-primary/60" />
+        <StatLedgerPanel tiles={tiles} firstPickDate={stats.first_pick_date} />
       </div>
     </section>
   );
 }
 
 function BackgroundFx() {
-  // Single static radial. The previous version stacked three radials plus a
-  // body::before screen-blend pattern — together they pegged the compositor
-  // on every scroll frame and overheated mobile devices.
+  // Single static radial. Previous version stacked three radials + a
+  // body::before screen-blend pattern that pegged the compositor on every
+  // scroll frame.
   return (
     <div
       aria-hidden
       className="absolute inset-0 -z-10"
       style={{
         backgroundImage:
-          "radial-gradient(60rem 36rem at 74% 32%, rgba(255, 184, 0, 0.18), transparent 60%)",
+          "radial-gradient(60rem 36rem at 50% 25%, rgba(255, 184, 0, 0.16), transparent 60%)",
       }}
     />
   );
 }
 
 function MascotStage() {
-  // Decorative loops removed in the 2026-05-17 perf pass: the conic gradient
-  // rotated infinitely (90s loop) and three coin sprites each ran an infinite
-  // motion keyframe — invisible to most users but never idle. Mascot now
-  // relies on a CSS-only `.mascot-bob` translate (also reduce-motion gated)
-  // for the soft hover. useScroll parallax dropped too — it allocated a
-  // MotionValue per scroll frame on every page.
+  // Smaller, centered. Sized so it sits comfortably between the TRUST ME
+  // BRO wordmark and the subtitle without dominating either. Drop-shadow
+  // softened a touch (50→40px blur, 0.35→0.28 alpha) so the gold glow
+  // doesn't compete with the wordmark's gradient.
   return (
-    <div className="relative mx-auto w-full max-w-[22rem] sm:max-w-md lg:max-w-[28rem] aspect-square">
+    <div className="relative w-full max-w-[14rem] sm:max-w-[16rem] lg:max-w-[18rem] aspect-square">
       <div
         aria-hidden
         className="absolute inset-[18%] rounded-full blur-3xl"
         style={{
           background:
-            "radial-gradient(38% 38% at 50% 50%, rgba(255,184,0,0.32), transparent 72%)",
+            "radial-gradient(38% 38% at 50% 50%, rgba(255,184,0,0.26), transparent 72%)",
         }}
       />
       <div className="mascot-bob absolute inset-0 grid place-items-center">
         <Image
           src="/Design/mascot-hero.png"
           alt="TrustMeBro mascot"
-          width={620}
-          height={620}
+          width={400}
+          height={400}
           priority
-          sizes="(max-width: 640px) 80vw, (max-width: 1024px) 28rem, 28rem"
-          className="select-none drop-shadow-[0_24px_50px_rgba(255,184,0,0.35)]"
+          sizes="(max-width: 640px) 224px, (max-width: 1024px) 256px, 288px"
+          className="select-none drop-shadow-[0_18px_40px_rgba(255,184,0,0.28)]"
         />
       </div>
     </div>
@@ -249,7 +235,7 @@ function StatLedgerPanel({
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.45, duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-      className="card-tmb max-w-lg bg-background/65"
+      className="card-tmb w-full max-w-lg bg-background/65 text-left"
     >
       <div className="p-4 sm:p-5 grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-4">
         {tiles.map((tile) => (
