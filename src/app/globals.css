@@ -380,16 +380,16 @@ body {
   animation: hero-word-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-/* Sticker outline for cutout-style player headshots. Stacks drop-shadows
-   so the white outline + gold ring follow the transparent PNG silhouette
-   without needing per-image alpha cleanup. */
+/* Sticker outline for cutout-style player headshots — single SVG filter
+   pass via #sticker-outline (defined in app/layout.tsx). The prior
+   approach chained 9 drop-shadow() filters to fake the outline (4 white
+   cardinal + 4 gold cardinal + 1 base shadow). At ~40 stickers visible
+   in the combos + trending sections, that produced ~360 chained GPU
+   filter passes and was the dominant cause of scroll jank between
+   "Bet of the Day" and "Today's Picks". feMorphology dilates the alpha
+   in one pass and is dramatically cheaper. */
 .sticker-headshot {
-  filter:
-    drop-shadow(0 1px 0 #FFFFFF) drop-shadow(0 -1px 0 #FFFFFF)
-    drop-shadow(1px 0 0 #FFFFFF) drop-shadow(-1px 0 0 #FFFFFF)
-    drop-shadow(0 2px 0 #FFB800) drop-shadow(0 -2px 0 #FFB800)
-    drop-shadow(2px 0 0 #FFB800) drop-shadow(-2px 0 0 #FFB800)
-    drop-shadow(0 12px 18px rgba(0, 0, 0, 0.55));
+  filter: url(#sticker-outline);
   transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 .sticker-headshot:hover {
