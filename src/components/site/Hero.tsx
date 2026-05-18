@@ -213,8 +213,11 @@ function MascotStage() {
   // Desktop: anchors the left column of the 2-col grid (mx-0), slightly
   // larger since it owns its own column instead of squeezing into the
   // text stack.
+  // Explicit widths instead of w-full + max-w-…: inside the desktop grid
+  // the parent column is `auto` (shrink-to-content), and a child asking
+  // for w-full of an auto-sized parent ends up at width 0.
   return (
-    <div className="relative w-full max-w-[14rem] sm:max-w-[16rem] lg:max-w-[20rem] aspect-square mx-auto lg:mx-0">
+    <div className="relative w-[14rem] sm:w-[16rem] lg:w-[20rem] aspect-square mx-auto lg:mx-0">
       <div
         aria-hidden
         className="absolute inset-[18%] rounded-full blur-3xl"
