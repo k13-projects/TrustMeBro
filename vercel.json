@@ -19,7 +19,7 @@
     },
     {
       "path": "/api/cron/settle-bets",
-      "schedule": "0 9 * * *"
+      "schedule": "0 11 * * *"
     }
   ]
 }
