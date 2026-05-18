@@ -113,6 +113,67 @@ export default async function RootLayout({
 
           <Toaster />
         </TooltipProvider>
+
+        {/* Reusable SVG filter for the .sticker-headshot outline. Defined
+            once here so every sticker on every page can apply it via
+            `filter: url(#sticker-outline)`. Hidden from layout and from
+            assistive tech. Replaces a 9-chain CSS drop-shadow stack that
+            was the dominant scroll-paint cost in the combos region. */}
+        <svg
+          aria-hidden
+          style={{
+            position: "absolute",
+            width: 0,
+            height: 0,
+            pointerEvents: "none",
+          }}
+        >
+          <defs>
+            <filter
+              id="sticker-outline"
+              x="-20%"
+              y="-20%"
+              width="140%"
+              height="140%"
+            >
+              {/* Drop shadow at the back: blur of alpha, offset down,
+                  scaled to 55% opacity. */}
+              <feGaussianBlur in="SourceAlpha" stdDeviation="6" />
+              <feOffset dx="0" dy="12" />
+              <feComponentTransfer result="shadow">
+                <feFuncA type="linear" slope="0.55" />
+              </feComponentTransfer>
+
+              {/* Gold ring: dilate alpha by 2px, fill with brand gold. */}
+              <feMorphology
+                operator="dilate"
+                radius="2"
+                in="SourceAlpha"
+                result="goldShape"
+              />
+              <feFlood floodColor="#FFB800" />
+              <feComposite operator="in" in2="goldShape" result="goldRing" />
+
+              {/* White ring inside the gold: dilate by 1px, fill white. */}
+              <feMorphology
+                operator="dilate"
+                radius="1"
+                in="SourceAlpha"
+                result="whiteShape"
+              />
+              <feFlood floodColor="#FFFFFF" />
+              <feComposite operator="in" in2="whiteShape" result="whiteRing" />
+
+              {/* Back-to-front stack. */}
+              <feMerge>
+                <feMergeNode in="shadow" />
+                <feMergeNode in="goldRing" />
+                <feMergeNode in="whiteRing" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+          </defs>
+        </svg>
       </body>
     </html>
   );
