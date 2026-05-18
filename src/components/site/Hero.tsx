@@ -120,12 +120,16 @@ export function Hero({ stats }: { stats: EngineStats }) {
   // Layout strategy:
   //   - Mobile (< lg): flex column stacking, pill → wordmark → mascot →
   //     subtitle → buttons → stats. DOM order matches visual order.
-  //   - Desktop (lg+): CSS grid switches on with [auto 1fr] columns.
-  //     Mascot is explicitly placed in col 1 spanning all rows; the rest
-  //     fall into col 2 by explicit row placement, so the right column
-  //     reads pill → wordmark → subtitle → buttons → stats.
-  // The mobile mascot position (between wordmark and subtitle) is purely
-  // DOM order — grid placement classes are no-ops below lg.
+  //   - Desktop (lg+): CSS grid with [auto 1fr] columns and 4 rows.
+  //       row 1: .       | pill
+  //       row 2: mascot  | wordmark      ← mascot row-spans 1–3, self-center
+  //       row 3: ↳       | subtitle
+  //       row 4: buttons | stats panel
+  //     So buttons sit directly below the mascot (left column) and the
+  //     stats panel sits below the subtitle (right column) at the same
+  //     visual level — the two read as a "bottom row" of the hero lockup.
+  // Mobile mascot position (between wordmark and subtitle) comes purely
+  // from DOM order; grid placement classes are no-ops below lg.
   return (
     <section className="relative overflow-hidden">
       <BackgroundFx />
@@ -135,7 +139,7 @@ export function Hero({ stats }: { stats: EngineStats }) {
           relative mx-auto max-w-3xl lg:max-w-5xl px-4 sm:px-6
           pt-10 pb-16 lg:pt-16 lg:pb-24
           flex flex-col items-center text-center space-y-6
-          lg:grid lg:grid-cols-[auto_1fr] lg:gap-x-8 lg:gap-y-7 lg:items-center lg:text-left lg:space-y-0
+          lg:grid lg:grid-cols-[auto_1fr] lg:gap-x-8 lg:gap-y-5 lg:items-start lg:text-left lg:space-y-0
         "
       >
         <motion.p
@@ -166,7 +170,7 @@ export function Hero({ stats }: { stats: EngineStats }) {
           </span>
         </h1>
 
-        <div className="lg:col-start-1 lg:row-start-1 lg:row-span-5 lg:self-center">
+        <div className="lg:col-start-1 lg:row-start-1 lg:row-span-3 lg:self-center">
           <MascotStage />
         </div>
 
@@ -175,7 +179,7 @@ export function Hero({ stats }: { stats: EngineStats }) {
           morning after, win or lose.
         </p>
 
-        <div className="lg:col-start-2 lg:row-start-4 flex items-center gap-3 flex-wrap justify-center lg:justify-start">
+        <div className="lg:col-start-1 lg:row-start-4 lg:justify-self-start flex items-center gap-3 flex-wrap justify-center lg:justify-start">
           <GoldButton href="/#picks" size="lg">
             Get Today&apos;s Picks
           </GoldButton>
@@ -184,7 +188,7 @@ export function Hero({ stats }: { stats: EngineStats }) {
           </GoldButton>
         </div>
 
-        <div className="lg:col-start-2 lg:row-start-5 w-full flex justify-center lg:justify-start">
+        <div className="lg:col-start-2 lg:row-start-4 w-full flex justify-center lg:justify-start">
           <StatLedgerPanel tiles={tiles} firstPickDate={stats.first_pick_date} />
         </div>
       </div>
@@ -217,7 +221,7 @@ function MascotStage() {
   // the parent column is `auto` (shrink-to-content), and a child asking
   // for w-full of an auto-sized parent ends up at width 0.
   return (
-    <div className="relative w-[14rem] sm:w-[16rem] lg:w-[20rem] aspect-square mx-auto lg:mx-0">
+    <div className="relative w-[14rem] sm:w-[16rem] lg:w-[18rem] aspect-square mx-auto lg:mx-0">
       <div
         aria-hidden
         className="absolute inset-[18%] rounded-full blur-3xl"
