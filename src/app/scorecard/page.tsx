@@ -14,6 +14,7 @@ import {
   type CouponLedger,
   type CouponLedgerRow,
 } from "@/lib/scoring/coupons";
+import { scheduleSelfHealingSettle } from "@/lib/scoring/auto-settle";
 
 export const revalidate = 30;
 
@@ -78,6 +79,8 @@ export default async function ScorecardPage({ searchParams }: PageProps) {
   const startDate = isoDateOffset(date, -(rangeDays - 1));
 
   const supabase = await createSupabaseServerClient();
+  // Catch any games that finalized between cron windows.
+  scheduleSelfHealingSettle();
 
   const [
     { data: scoreRow },
