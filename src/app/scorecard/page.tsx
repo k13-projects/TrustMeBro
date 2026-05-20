@@ -85,7 +85,8 @@ export default async function ScorecardPage({ searchParams }: PageProps) {
   const [
     { data: scoreRow },
     { data: history },
-    { data: predictionsAll },
+    { count: voidCount },
+    { count: pendingCount },
     couponLedger,
   ] = await Promise.all([
     supabase.from("system_score").select("*").eq("id", true).single(),
@@ -94,7 +95,14 @@ export default async function ScorecardPage({ searchParams }: PageProps) {
       .select("delta, outcome, score_after, recorded_at")
       .order("recorded_at", { ascending: true })
       .limit(500),
-    supabase.from("predictions").select("status"),
+    supabase
+      .from("predictions")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "void"),
+    supabase
+      .from("predictions")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "pending"),
     getCouponLedger({ recentLimit: 15 }),
   ]);
 
@@ -139,14 +147,8 @@ export default async function ScorecardPage({ searchParams }: PageProps) {
   const score = Number((scoreRow as SystemScore | null)?.score ?? 0);
   const wins = (scoreRow as SystemScore | null)?.wins ?? 0;
   const losses = (scoreRow as SystemScore | null)?.losses ?? 0;
-  const voids =
-    (predictionsAll ?? []).filter(
-      (p: { status: string }) => p.status === "void",
-    ).length;
-  const pending =
-    (predictionsAll ?? []).filter(
-      (p: { status: string }) => p.status === "pending",
-    ).length;
+  const voids = voidCount ?? 0;
+  const pending = pendingCount ?? 0;
 
   const chartPoints: ScorePoint[] = (history ?? []).map(
     (r: {

@@ -16,7 +16,11 @@ type PendingPrediction = {
   market: PropMarket;
   line: number;
   pick: "over" | "under";
+  game_status: string;
 };
+
+const isCancelled = (s: string) =>
+  s.includes("cancel") || s.includes("postpone") || s.includes("suspend");
 
 type GameStatRow = {
   game_id: number;
@@ -36,6 +40,9 @@ export type SettleResult = {
   won: number;
   lost: number;
   void: number;
+  // Final games whose box scores haven't been ingested yet — left pending on
+  // purpose rather than voided, so a later run grades them once stats land.
+  deferred: number;
 };
 
 /**
@@ -95,7 +102,9 @@ export async function settlePending(): Promise<SettleResult> {
       const row = r as unknown as RawRow;
       const games = Array.isArray(row.games) ? row.games[0] : row.games;
       const status = games?.status?.toLowerCase() ?? "";
-      if (!status.includes("final")) return null;
+      // Final → grade it. Cancelled/postponed → void it (game produces no
+      // result). Anything still scheduled or in-progress stays pending.
+      if (!status.includes("final") && !isCancelled(status)) return null;
       return {
         id: row.id,
         game_id: row.game_id,
@@ -103,12 +112,13 @@ export async function settlePending(): Promise<SettleResult> {
         market: row.market,
         line: row.line,
         pick: row.pick,
+        game_status: status,
       } satisfies PendingPrediction;
     })
     .filter((r): r is PendingPrediction => r !== null);
 
   if (pending.length === 0) {
-    return { considered: 0, settled: 0, won: 0, lost: 0, void: 0 };
+    return { considered: 0, settled: 0, won: 0, lost: 0, void: 0, deferred: 0 };
   }
 
   const gameIds = Array.from(new Set(pending.map((p) => p.game_id)));
@@ -124,18 +134,35 @@ export async function settlePending(): Promise<SettleResult> {
   if (statsErr) throw new Error(`load stats: ${statsErr.message}`);
 
   const statByKey = new Map<string, GameStatRow>();
+  const gamesWithStats = new Set<number>();
   for (const s of (stats ?? []) as GameStatRow[]) {
     statByKey.set(`${s.game_id}:${s.player_id}`, s);
+    gamesWithStats.add(s.game_id);
   }
 
   let won = 0;
   let lost = 0;
   let voided = 0;
   let settled = 0;
+  let deferred = 0;
 
   for (const p of pending) {
+    const cancelled = isCancelled(p.game_status);
+
+    // Ingest-lag guard: a Final game with ZERO box-score rows means stats
+    // haven't landed yet. Voiding here is the bug that stuck 125 picks
+    // (settled-before-ingest). Leave them pending for a later run instead.
+    // A player merely missing from a game that DOES have other stat rows is a
+    // genuine DNP and still voids below via resolveOutcome.
+    if (!cancelled && !gamesWithStats.has(p.game_id)) {
+      deferred++;
+      continue;
+    }
+
     const stat = statByKey.get(`${p.game_id}:${p.player_id}`) ?? null;
-    const { outcome, result_value } = resolveOutcome(p, stat);
+    const { outcome, result_value } = cancelled
+      ? { outcome: "void" as BetStatus, result_value: null }
+      : resolveOutcome(p, stat);
 
     const { error: predUpdErr } = await supabase
       .from("predictions")
@@ -172,5 +199,5 @@ export async function settlePending(): Promise<SettleResult> {
     }
   }
 
-  return { considered: pending.length, settled, won, lost, void: voided };
+  return { considered: pending.length, settled, won, lost, void: voided, deferred };
 }
