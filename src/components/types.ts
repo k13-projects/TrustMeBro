@@ -25,4 +25,9 @@ export type PredictionRow = {
     position: string | null;
     jersey_number: string | null;
   };
+  game?: {
+    date: string;
+    datetime?: string | null;
+    status?: string | null;
+  } | null;
 };

@@ -31,6 +31,7 @@ import { TodaysSlate } from "@/components/site/TodaysSlate";
 import { TrendingPlayers } from "@/components/site/TrendingPlayers";
 import { WinnersClub } from "@/components/site/WinnersClub";
 import { getEngineStats } from "@/lib/scoring/stats";
+import { scheduleSelfHealingSettle } from "@/lib/scoring/auto-settle";
 
 export const revalidate = 30;
 
@@ -61,6 +62,8 @@ export default async function HomePage({ searchParams }: PageProps) {
   const next = isoDateOffset(date, 1);
 
   const supabase = await createSupabaseServerClient();
+  // Fire-and-forget: catch up any games that finalized between cron runs.
+  scheduleSelfHealingSettle();
   const engineStats = await getEngineStats();
   const featuredPlayers = await pickFeaturedPlayers(date, 6);
 
@@ -89,6 +92,15 @@ export default async function HomePage({ searchParams }: PageProps) {
       .order("is_bet_of_the_day", { ascending: false })
       .order("confidence", { ascending: false });
     predictions = (data ?? []) as unknown as PredictionRow[];
+    // Attach the matching game row so each pick card can display when it
+    // settles (date + game status).
+    const gameById = new Map(games.map((g) => [g.id, g] as const));
+    predictions = predictions.map((p) => {
+      const g = gameById.get(p.game_id);
+      return g
+        ? { ...p, game: { date: g.date, datetime: g.datetime, status: g.status } }
+        : p;
+    });
   }
 
   // Team IDs we need to hydrate: featured players' teams + every team that
@@ -284,7 +296,6 @@ export default async function HomePage({ searchParams }: PageProps) {
                   team={teamById.get(p.player.team_id ?? -1) ?? null}
                   href={`/players/${p.player.id}`}
                   odds={"-110"}
-                  gameTimeLabel={undefined}
                 />
               ))}
             </div>

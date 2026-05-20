@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { teamColors } from "@/lib/sports/nba/branding";
 import { AddToCouponButton } from "./cart/AddToCouponButton";
 import { ConfidencePill } from "./ConfidencePill";
+import { GameDateBadge } from "./GameDateBadge";
 import { JerseyChip } from "./JerseyChip";
 import { marketLabel } from "./MarketLabel";
 import { PickSideTag } from "./PickSideTag";
@@ -112,6 +113,15 @@ export function PickRow({
             </div>
           </div>
 
+          {prediction.game?.date ? (
+            <div className="flex items-center">
+              <GameDateBadge
+                date={prediction.game.date}
+                status={prediction.game.status}
+              />
+            </div>
+          ) : null}
+
           {topCheck ? (
             <div className="flex items-center gap-1.5 text-[11px] text-foreground/55">
               <span aria-hidden className="text-emerald-400">✓</span>
@@ -144,6 +154,12 @@ export function PickRow({
               <PickSideTag side={prediction.pick} />
               <span className="font-mono tabular-nums">{prediction.line}</span>
               <span className="text-foreground/60">{market}</span>
+              {prediction.game?.date ? (
+                <GameDateBadge
+                  date={prediction.game.date}
+                  status={prediction.game.status}
+                />
+              ) : null}
               {hasPattern ? (
                 <span
                   className="rounded-md bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 px-1.5 py-0.5 text-[10px] uppercase tracking-wider font-medium"

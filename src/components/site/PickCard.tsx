@@ -2,6 +2,7 @@
 
 import { motion } from "motion/react";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
+import { GameDateBadge } from "@/components/GameDateBadge";
 import { marketLabel } from "@/components/MarketLabel";
 import type { PredictionRow, TeamLite } from "@/components/types";
 import { AddToCouponButton } from "@/components/cart/AddToCouponButton";
@@ -57,11 +58,21 @@ export function PickCard({
       transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
       className={cn("card-pick group flex flex-col", className)}
     >
-      {gameTimeLabel ? (
-        <div className="flex items-center justify-end px-4 pt-4">
-          <span className="text-[11px] text-muted-foreground tabular-nums">
-            {gameTimeLabel}
-          </span>
+      {gameTimeLabel || prediction.game?.date ? (
+        <div className="flex items-center justify-between gap-2 px-4 pt-4">
+          {prediction.game?.date ? (
+            <GameDateBadge
+              date={prediction.game.date}
+              status={prediction.game.status}
+            />
+          ) : (
+            <span />
+          )}
+          {gameTimeLabel ? (
+            <span className="text-[11px] text-muted-foreground tabular-nums">
+              {gameTimeLabel}
+            </span>
+          ) : null}
         </div>
       ) : null}
 

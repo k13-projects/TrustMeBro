@@ -2,12 +2,14 @@ import Link from "next/link";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { getRequester } from "@/lib/identity";
+import { GameDateBadge } from "@/components/GameDateBadge";
 import { marketLabel } from "@/components/MarketLabel";
 import { PickSideTag } from "@/components/PickSideTag";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
 import { TeamBadge } from "@/components/TeamBadge";
 import type { TeamLite } from "@/components/types";
 import { CouponShareToggle } from "@/components/bros/CouponShareToggle";
+import { scheduleSelfHealingSettle } from "@/lib/scoring/auto-settle";
 
 export const revalidate = 30;
 
@@ -49,6 +51,10 @@ type RawUserBet = {
               jersey_number: string | null;
             }
           | null;
+        game:
+          | { date: string; status: string | null }
+          | { date: string; status: string | null }[]
+          | null;
       }
     | null;
 };
@@ -57,6 +63,7 @@ export default async function HistoryPage({ searchParams }: PageProps) {
   const params = await searchParams;
   const tab: HistoryTab = params.tab === "coupons" ? "coupons" : "bets";
 
+  scheduleSelfHealingSettle();
   const requester = await getRequester();
 
   if (!requester) {
@@ -98,7 +105,8 @@ export default async function HistoryPage({ searchParams }: PageProps) {
       .select(
         `id, status, stake, taken_odds, result_value, user_note, created_at, settled_at,
          prediction:predictions!inner(id, game_id, player_id, market, line, pick, projection, confidence, is_bet_of_the_day,
-           player:players!inner(id, first_name, last_name, team_id, position, jersey_number))`,
+           player:players!inner(id, first_name, last_name, team_id, position, jersey_number),
+           game:games!inner(date, status))`,
       )
       .eq(ownerCol, ownerVal)
       .order("created_at", { ascending: false })
@@ -109,7 +117,8 @@ export default async function HistoryPage({ searchParams }: PageProps) {
         `id, mode, pick_count, stake, payout_multiplier, potential_payout,
          status, result_payout, settled_at, created_at, is_public, shared_at,
          picks:user_coupon_picks(pick_order, prediction:predictions(id, game_id, market, line, pick,
-           player:players(id, first_name, last_name, team_id)))`,
+           player:players(id, first_name, last_name, team_id),
+           game:games(date, status)))`,
       )
       .eq(ownerCol, ownerVal)
       .order("created_at", { ascending: false })
@@ -125,10 +134,12 @@ export default async function HistoryPage({ searchParams }: PageProps) {
       : row.prediction;
     let player = prediction?.player ?? null;
     if (Array.isArray(player)) player = player[0] ?? null;
+    let game = prediction?.game ?? null;
+    if (Array.isArray(game)) game = game[0] ?? null;
     return {
       ...(row as RawUserBet),
       prediction: prediction
-        ? { ...prediction, player }
+        ? { ...prediction, player, game }
         : null,
     };
   });
@@ -144,9 +155,14 @@ export default async function HistoryPage({ searchParams }: PageProps) {
           ? pred.player[0] ?? null
           : pred.player
         : null;
+      const game = pred
+        ? Array.isArray(pred.game)
+          ? pred.game[0] ?? null
+          : pred.game
+        : null;
       return {
         pick_order: p.pick_order,
-        prediction: pred ? { ...pred, player } : null,
+        prediction: pred ? { ...pred, player, game } : null,
       };
     });
     picks.sort((a, b) => a.pick_order - b.pick_order);
@@ -292,6 +308,8 @@ type CouponPickPlayerLite = {
   team_id: number | null;
 };
 
+type CouponPickGameLite = { date: string; status: string | null };
+
 type CouponPickPrediction = {
   id: string;
   game_id: number;
@@ -299,6 +317,7 @@ type CouponPickPrediction = {
   line: number;
   pick: "over" | "under";
   player: CouponPickPlayerLite | CouponPickPlayerLite[] | null;
+  game: CouponPickGameLite | CouponPickGameLite[] | null;
 };
 
 type CouponRow = {
@@ -324,8 +343,9 @@ type NormalizedCoupon = Omit<CouponRow, "picks"> & {
   picks: Array<{
     pick_order: number;
     prediction:
-      | (Omit<CouponPickPrediction, "player"> & {
+      | (Omit<CouponPickPrediction, "player" | "game"> & {
           player: CouponPickPlayerLite | null;
+          game: CouponPickGameLite | null;
         })
       | null;
   }>;
@@ -402,7 +422,7 @@ function CouponRowCard({
           p.prediction && p.prediction.player ? (
             <li
               key={p.prediction.id}
-              className="flex items-center gap-2 text-xs"
+              className="flex items-center gap-2 text-xs flex-wrap"
             >
               <span className="size-1.5 rounded-full bg-amber-300/70" aria-hidden />
               <span className="font-medium">
@@ -421,6 +441,12 @@ function CouponRowCard({
               <span className="text-foreground/55">
                 {marketLabel(p.prediction.market)}
               </span>
+              {p.prediction.game?.date ? (
+                <GameDateBadge
+                  date={p.prediction.game.date}
+                  status={p.prediction.game.status}
+                />
+              ) : null}
             </li>
           ) : null,
         )}
@@ -509,7 +535,8 @@ function BetRow({
 }) {
   if (!bet.prediction) return null;
   const p = bet.prediction;
-  const player = p.player;
+  const player = Array.isArray(p.player) ? p.player[0] : p.player;
+  const game = Array.isArray(p.game) ? p.game[0] : p.game;
   if (!player) return null;
   const name = `${player.first_name} ${player.last_name}`;
   const outcomeTones = {
@@ -546,6 +573,9 @@ function BetRow({
             <PickSideTag side={p.pick} />
             <span className="font-mono tabular-nums">{p.line}</span>
             <span className="text-foreground/60">{marketLabel(p.market)}</span>
+            {game?.date ? (
+              <GameDateBadge date={game.date} status={game.status} />
+            ) : null}
             {bet.result_value !== null ? (
               <span className="text-xs text-foreground/45 font-mono">
                 · actual {bet.result_value}
