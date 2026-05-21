@@ -67,12 +67,12 @@ function buildItems(stats: EngineStats): Item[] {
 
   items.push({
     Icon: Trophy,
-    text: "+1.0 PER WIN · −0.5 PER LOSS · SETTLED DAILY @ 9 UTC",
+    text: "+1.0 PER WIN · −1.0 PER LOSS · GRADED VS REAL BOX SCORES",
   });
 
   items.push({
     Icon: Sparkles,
-    text: "REAL BOOKMAKER ODDS · REAL EXPECTED VALUE",
+    text: "CALIBRATED CONFIDENCE · WHAT WE SHOW IS WHAT WE HIT",
   });
 
   items.push({
