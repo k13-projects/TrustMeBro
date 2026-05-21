@@ -23,6 +23,7 @@ import type { PredictionRow, TeamLite } from "@/components/types";
 import { InsightChip, type InsightHint } from "@/components/InsightChip";
 import { Hero } from "@/components/site/Hero";
 import { COMBO_TIERS, MoneyCombos } from "@/components/site/MoneyCombos";
+import { BankoPicks, type BankoRow } from "@/components/site/BankoPicks";
 import { PickCard } from "@/components/site/PickCard";
 import { PillarRow } from "@/components/site/PillarRow";
 import { SectionHeading } from "@/components/site/SectionHeading";
@@ -103,6 +104,41 @@ export default async function HomePage({ searchParams }: PageProps) {
     });
   }
 
+  // BANKO Picks — most trusted locks for today + tomorrow, anchored to the real
+  // calendar (independent of the date filter). Excludes the Bet of the Day.
+  const bankoToday = todayIsoDate();
+  const bankoTomorrow = isoDateOffset(bankoToday, 1);
+  const { data: bankoGamesRaw } = await supabase
+    .from("games")
+    .select("id, date, datetime, status")
+    .in("date", [bankoToday, bankoTomorrow]);
+  const bankoGameById = new Map(
+    (bankoGamesRaw ?? []).map((g) => [g.id, g] as const),
+  );
+  const bankoGameIds = (bankoGamesRaw ?? []).map((g) => g.id);
+  let bankoPredictions: PredictionRow[] = [];
+  if (bankoGameIds.length > 0) {
+    const { data: bankoData } = await supabase
+      .from("predictions")
+      .select(
+        "id, game_id, player_id, market, line, pick, projection, confidence, is_bet_of_the_day, reasoning, player:players!inner(id, first_name, last_name, team_id, position, jersey_number)",
+      )
+      .in("game_id", bankoGameIds)
+      .eq("is_bet_of_the_day", false)
+      .order("confidence", { ascending: false });
+    bankoPredictions = ((bankoData ?? []) as unknown as PredictionRow[]).map(
+      (p) => {
+        const g = bankoGameById.get(p.game_id);
+        return g
+          ? {
+              ...p,
+              game: { date: g.date, datetime: g.datetime, status: g.status },
+            }
+          : p;
+      },
+    );
+  }
+
   // Team IDs we need to hydrate: featured players' teams + every team that
   // appears on a game card or a prediction. One round-trip covers them all.
   const teamIds = new Set<number>();
@@ -111,6 +147,9 @@ export default async function HomePage({ searchParams }: PageProps) {
     teamIds.add(g.visitor_team_id);
   }
   for (const p of predictions) {
+    if (p.player.team_id != null) teamIds.add(p.player.team_id);
+  }
+  for (const p of bankoPredictions) {
     if (p.player.team_id != null) teamIds.add(p.player.team_id);
   }
   for (const f of featuredPlayers) {
@@ -201,6 +240,23 @@ export default async function HomePage({ searchParams }: PageProps) {
     return { tier, combos };
   });
 
+  const bankoRows: BankoRow[] = [
+    {
+      label: "Today",
+      date: bankoToday,
+      picks: bankoPredictions
+        .filter((p) => p.game?.date === bankoToday)
+        .slice(0, 3),
+    },
+    {
+      label: "Tomorrow",
+      date: bankoTomorrow,
+      picks: bankoPredictions
+        .filter((p) => p.game?.date === bankoTomorrow)
+        .slice(0, 3),
+    },
+  ];
+
   return (
     <div className="fade-up">
       <Hero stats={engineStats} />
@@ -223,6 +279,8 @@ export default async function HomePage({ searchParams }: PageProps) {
           />
         </section>
       ) : null}
+
+      <BankoPicks rows={bankoRows} teamById={teamById} />
 
       <ComboNav />
       {combosByTier.map(({ tier, combos }) => (
