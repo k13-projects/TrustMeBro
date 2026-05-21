@@ -81,15 +81,23 @@ export function SharedCouponCard({
       </header>
 
       <ul className="space-y-1.5">
-        {coupon.picks.map((p) =>
-          p.prediction && p.prediction.player ? (
+        {coupon.picks.map((p) => {
+          if (!p.prediction || !p.prediction.player) return null;
+          const st = p.prediction.status;
+          return (
             <li
               key={p.prediction.id}
               className="flex items-center gap-2 text-xs"
             >
               <span
                 aria-hidden
-                className="size-1.5 rounded-full bg-primary/70"
+                className={`size-1.5 rounded-full shrink-0 ${
+                  st === "won"
+                    ? "bg-emerald-400"
+                    : st === "lost"
+                      ? "bg-rose-400"
+                      : "bg-foreground/30"
+                }`}
               />
               <span className="font-medium">
                 {p.prediction.player.first_name}{" "}
@@ -110,9 +118,36 @@ export function SharedCouponCard({
               <span className="text-foreground/55">
                 {marketLabel(p.prediction.market)}
               </span>
+              {p.prediction.result_value !== null ? (
+                <span
+                  className={`ml-auto inline-flex items-center gap-1 font-mono tabular-nums font-semibold ${
+                    st === "won"
+                      ? "text-emerald-300"
+                      : st === "lost"
+                        ? "text-rose-300"
+                        : "text-foreground/50"
+                  }`}
+                  title={
+                    st === "won"
+                      ? `Hit — actually had ${p.prediction.result_value}`
+                      : st === "lost"
+                        ? `Missed — actually had ${p.prediction.result_value}`
+                        : "Void / push"
+                  }
+                >
+                  <span aria-hidden className="text-foreground/35">
+                    →
+                  </span>
+                  {p.prediction.result_value}
+                </span>
+              ) : (
+                <span className="ml-auto text-[10px] uppercase tracking-wide text-foreground/35">
+                  {st === "void" ? "void" : "—"}
+                </span>
+              )}
             </li>
-          ) : null,
-        )}
+          );
+        })}
       </ul>
 
       {resultPayout !== null ? (
