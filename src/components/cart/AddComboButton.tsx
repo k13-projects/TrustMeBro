@@ -48,10 +48,11 @@ export function AddComboButton({
       disabled={disabled}
       aria-label={label}
       className={cx(
-        "inline-flex items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors",
+        // Same gold-outline family as AddToCouponButton — unified look.
+        "inline-flex items-center justify-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors",
         allInCart
-          ? "bg-amber-400/20 text-amber-200 border border-amber-400/40 hover:bg-amber-400/30"
-          : "bg-primary text-primary-foreground hover:bg-[var(--primary-hover)]",
+          ? "border-amber-400/30 bg-amber-400/15 text-amber-300 hover:bg-amber-400/20"
+          : "border-primary/40 bg-primary/10 text-primary hover:bg-primary/20 hover:border-primary/60",
         disabled ? "opacity-50 cursor-not-allowed" : "",
         focusRing,
       )}
@@ -61,10 +62,7 @@ export function AddComboButton({
       ) : allInCart ? (
         "✓ In coupon"
       ) : (
-        <>
-          <span aria-hidden>🧾</span>
-          {label}
-        </>
+        <>+ {label}</>
       )}
     </button>
   );
