@@ -1,6 +1,7 @@
 import "server-only";
 
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { loadPayoutMap } from "@/lib/analysis/payouts";
 import type { BetStatus } from "@/lib/analysis/types";
 
 export type SettleCouponsResult = {
@@ -28,12 +29,18 @@ type CouponPickRow = {
 /**
  * Settle saved user_coupons whose linked predictions are now all final.
  *
- * MVP rules:
- *  - Power: every pick must be 'won' to win. Any 'lost' → coupon 'lost'.
- *    Any 'void' (without a 'lost') → coupon 'void' (refund the stake).
- *  - Flex: same as Power for v1. PrizePicks Flex actually pays a tiered
- *    multiplier for N-of-M hits; modelling that requires per-tier rates we
- *    don't store yet, so we treat Flex like Power until that ships.
+ * Rules (real-book style — a voided leg is DROPPED and the parlay re-prices
+ * on the legs that actually graded, like a sportsbook):
+ *  - Any surviving (non-void) leg 'lost' → coupon 'lost', pays 0.
+ *  - All legs void → coupon 'void', refund the stake.
+ *  - All survivors 'won', no voids → coupon 'won' at the locked-in payout.
+ *  - All survivors 'won' but some legs voided → re-price on the surviving
+ *    count: pay stake × the current multiplier for that smaller leg count
+ *    (e.g. a 4-pick with 1 void pays at the 3-pick rate). If it drops below a
+ *    valid parlay size (no multiplier for that count/mode — e.g. 2-pick → 1
+ *    survivor) → refund the stake.
+ *  - Flex is graded all-must-win like Power for now (we don't model N-of-M
+ *    tiers yet) but re-prices at flex rates.
  *
  * Does NOT call applyReward — engine system_score is for engine per-pick
  * performance, not user wagers.
@@ -69,6 +76,8 @@ export async function settleCoupons(): Promise<SettleCouponsResult> {
     picksByCoupon.set(raw.coupon_id, list);
   }
 
+  const payouts = await loadPayoutMap();
+
   let won = 0;
   let lost = 0;
   let voided = 0;
@@ -79,19 +88,41 @@ export async function settleCoupons(): Promise<SettleCouponsResult> {
     if (statuses.length === 0) continue;
     if (statuses.some((s) => s === "pending")) continue;
 
+    const stake = Number(coupon.stake);
+    // Drop voided legs; grade on the survivors (real-book style).
+    const survivors = statuses.filter((s) => s !== "void");
+    const hadVoid = survivors.length < statuses.length;
+
     let outcome: BetStatus;
     let resultPayout: number;
-    const stake = Number(coupon.stake);
-    const potential = Number(coupon.potential_payout);
-    if (statuses.some((s) => s === "lost")) {
+
+    if (survivors.some((s) => s === "lost")) {
       outcome = "lost";
       resultPayout = 0;
-    } else if (statuses.some((s) => s === "void")) {
+    } else if (survivors.length === 0) {
+      // Every leg voided → nothing to grade → refund.
       outcome = "void";
       resultPayout = stake;
-    } else {
+    } else if (!hadVoid) {
+      // Clean sweep → full win at the multiplier locked in at coupon creation.
       outcome = "won";
-      resultPayout = potential;
+      resultPayout = Number(coupon.potential_payout);
+    } else {
+      // Some voids, all survivors won → re-price on the surviving leg count.
+      const row = payouts.byCount[survivors.length];
+      const mult = row
+        ? coupon.mode === "power"
+          ? row.power_payout
+          : row.flex_payout
+        : null;
+      if (mult != null && survivors.length >= 2) {
+        outcome = "won";
+        resultPayout = Math.round(stake * mult * 100) / 100;
+      } else {
+        // Dropped below a valid parlay size for this mode → refund.
+        outcome = "void";
+        resultPayout = stake;
+      }
     }
 
     const { error: updErr } = await supabase
