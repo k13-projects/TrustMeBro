@@ -10,18 +10,29 @@ import type { OddsPlayerMarket, RawEvent, RequestCredits } from "./types";
 const BASE_URL = "https://api.the-odds-api.com/v4";
 const SPORT_KEY = "basketball_nba";
 
+// We request the *alternate* player-prop markets (the full line ladder), not
+// the single main line. The engine bets deep lines away from the main number
+// (see .claude/ENGINE_STRATEGY.md), so the ladder is what we need. Cost-neutral
+// vs. the old main-line markets — 4 markets requested either way.
 const PLAYER_PROP_MARKETS = [
-  "player_points",
-  "player_rebounds",
-  "player_assists",
-  "player_threes",
+  "player_points_alternate",
+  "player_rebounds_alternate",
+  "player_assists_alternate",
+  "player_threes_alternate",
 ] as const;
 
+// Map both the main and alternate market keys, so a response carrying either
+// (some books fold the standard line into the alternate ladder) lands in the
+// right prop bucket.
 const MARKET_KEY_TO_PROP: Record<string, OddsPlayerMarket> = {
   player_points: "points",
   player_rebounds: "rebounds",
   player_assists: "assists",
   player_threes: "threes_made",
+  player_points_alternate: "points",
+  player_rebounds_alternate: "rebounds",
+  player_assists_alternate: "assists",
+  player_threes_alternate: "threes_made",
 };
 
 function getApiKey(): string {

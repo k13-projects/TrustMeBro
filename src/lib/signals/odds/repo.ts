@@ -2,6 +2,7 @@ import "server-only";
 
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import type { OddsPlayerMarket, OddsQuote } from "./types";
+import type { LadderQuote } from "@/lib/analysis/alt-line";
 
 export async function insertOddsSnapshots(
   quotes: OddsQuote[],
@@ -151,4 +152,72 @@ export function oddsKey(
   market: OddsPlayerMarket,
 ): string {
   return `${game_id}:${player_id}:${market}`;
+}
+
+/**
+ * Load the full alt-line ladder per (game, player, market) for the alt-line
+ * engine (see src/lib/analysis/alt-line.ts). Unlike loadLatestOddsForGames —
+ * which collapses to one modal line — this returns every available line with
+ * the best price per (line, side), taking the latest snapshot per bookmaker.
+ */
+export async function loadAltLaddersForGames(
+  gameIds: number[],
+): Promise<Map<string, LadderQuote[]>> {
+  const out = new Map<string, LadderQuote[]>();
+  if (gameIds.length === 0) return out;
+
+  const supabase = supabaseAdmin();
+  const since = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+  const { data, error } = await supabase
+    .from("odds_snapshots")
+    .select("game_id, player_id, market, line, pick, bookmaker, odds, captured_at")
+    .in("game_id", gameIds)
+    .gte("captured_at", since)
+    .order("captured_at", { ascending: false });
+  if (error) throw new Error(`odds_snapshots ladder read: ${error.message}`);
+  if (!data || data.length === 0) return out;
+
+  type Row = {
+    game_id: number;
+    player_id: number | null;
+    market: string;
+    line: number;
+    pick: "over" | "under";
+    bookmaker: string;
+    odds: number;
+  };
+
+  const groups = new Map<string, Row[]>();
+  for (const row of data as Row[]) {
+    if (row.player_id == null) continue;
+    const key = `${row.game_id}:${row.player_id}:${row.market}`;
+    const list = groups.get(key) ?? [];
+    list.push(row);
+    groups.set(key, list);
+  }
+
+  for (const [key, rows] of groups) {
+    // Data is DESC by captured_at, so the first row per (book, line, side) is
+    // the latest snapshot. Then keep the best price per (line, side).
+    const seenBook = new Set<string>();
+    const bestByLineSide = new Map<string, LadderQuote>();
+    for (const r of rows) {
+      const bookKey = `${r.bookmaker}:${r.line}:${r.pick}`;
+      if (seenBook.has(bookKey)) continue;
+      seenBook.add(bookKey);
+      const lsKey = `${r.pick}:${r.line}`;
+      const cur = bestByLineSide.get(lsKey);
+      if (!cur || r.odds > cur.price_decimal) {
+        bestByLineSide.set(lsKey, {
+          line: r.line,
+          side: r.pick,
+          price_decimal: r.odds,
+          bookmaker: r.bookmaker,
+        });
+      }
+    }
+    out.set(key, [...bestByLineSide.values()]);
+  }
+
+  return out;
 }

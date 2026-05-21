@@ -1,17 +1,13 @@
 import "server-only";
 
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { buildPrediction, pickBetOfTheDay } from "./predictions";
+import { computeFeatures } from "./features";
+import { selectAltLinePick } from "./alt-line";
 import { detectAll, type DetectedPattern } from "./patterns";
-import { statValue } from "./market-field";
-import type {
-  PlayerGameStatLine,
-  Prediction,
-  PropMarket,
-  SignalImpact,
-} from "./types";
+import type { PlayerGameStatLine, Prediction, PropMarket } from "./types";
 import type { Game, Player, Team } from "@/lib/sports/types";
-import { loadLatestOddsForGames, oddsKey } from "@/lib/signals/odds/repo";
+import { loadAltLaddersForGames, oddsKey } from "@/lib/signals/odds/repo";
+import { americanFromDecimal } from "@/lib/signals/odds/provider";
 import type { OddsPlayerMarket } from "@/lib/signals/odds";
 
 const MARKETS: PropMarket[] = [
@@ -35,6 +31,14 @@ const ODDS_BACKED_MARKETS = new Set<PropMarket>([
 const HISTORY_DEPTH = 30;
 const MIN_HISTORY = 5;
 const MIN_AVG_MINUTES = 18;
+
+// Alt-line engine (see .claude/ENGINE_STRATEGY.md). Bet the deepest line that
+// still clears this calibrated win rate; show fewer, surer picks.
+const TARGET_WIN_RATE = 0.85;
+// Locked-starter gate: a real minutes floor across the last 5 (not just a
+// healthy average), so a deep-line pick doesn't get voided by a DNP.
+const MIN_MINUTES_FLOOR = 20;
+const MIN_GAMES_AT_FLOOR = 4; // of the last 5
 
 /**
  * Generate predictions for every NBA game on the given date.
@@ -62,11 +66,10 @@ export async function generateForDate(date: string) {
     teamIds.add(g.visitor_team_id);
   }
 
-  // Pre-load every odds snapshot for today's games in one query. Predictions
-  // are gated on real odds existing for the (game, player, market) — no
-  // bookmaker line, no pick. This makes "confidence" mean something at the
-  // price you'd actually bet, instead of against a synthesised line.
-  const oddsByKey = await loadLatestOddsForGames(games.map((g) => g.id));
+  // Pre-load the full alt-line ladder per (game, player, market) in one query.
+  // Picks are gated on a ladder existing AND a deep line clearing the target
+  // win rate — no ladder (or nothing deep enough), no pick.
+  const laddersByKey = await loadAltLaddersForGames(games.map((g) => g.id));
 
   const { data: teams, error: teamsErr } = await supabase
     .from("teams")
@@ -120,7 +123,6 @@ export async function generateForDate(date: string) {
     if (!game.home_team || !game.visitor_team) continue;
 
     for (const teamId of [g.home_team_id, g.visitor_team_id]) {
-      const team = teamById.get(teamId)!;
       const isHome = teamId === g.home_team_id;
       const opponentId = isHome ? g.visitor_team_id : g.home_team_id;
       const opponent = teamById.get(opponentId)!;
@@ -194,85 +196,88 @@ export async function generateForDate(date: string) {
           minutesValues.reduce((s, v) => s + v, 0) / minutesValues.length;
         if (avgMin < MIN_AVG_MINUTES) continue;
 
-        for (const market of MARKETS) {
-          const values = recent
-            .map((h) => statValue(h, market))
-            .filter((v): v is number => v !== null);
-          if (values.length < 3) continue;
-          const l10mean = values.reduce((s, v) => s + v, 0) / values.length;
-          if (l10mean < 0.5) continue;
+        // Locked-starter gate: a real minutes floor over the last 5, not just a
+        // healthy average — a deep alt-line pick is wasted if the player sits.
+        const gamesAtFloor = history
+          .slice(0, 5)
+          .filter((h) => (h.minutes ?? 0) >= MIN_MINUTES_FLOOR).length;
+        if (gamesAtFloor < MIN_GAMES_AT_FLOOR) continue;
 
-          // Real odds required to emit a pick — no fallback synthetic line.
-          // Markets the books don't offer (e.g. PRA) are skipped here.
+        for (const market of MARKETS) {
+          // Pattern detection feeds the dashboard badges only; it no longer
+          // moves confidence (the alt-line probability stands on its own).
+          const patterns = detectAll(history, market);
+          patternsByMarket.push(
+            ...patterns.map((p) => ({ player_id: player.id, market, pattern: p })),
+          );
+
+          // Only markets the book quotes an alt ladder for (PRA is skipped).
           if (!ODDS_BACKED_MARKETS.has(market)) continue;
-          const sides = oddsByKey.get(
+          const ladder = laddersByKey.get(
             oddsKey(g.id, player.id, market as OddsPlayerMarket),
           );
-          if (!sides || (!sides.over && !sides.under)) continue;
-          const line = (sides.over?.line ?? sides.under?.line) as number;
+          if (!ladder || ladder.length === 0) continue;
 
-          const last5Values = values.slice(0, 5);
-          const last5Mean =
-            last5Values.reduce((s, v) => s + v, 0) / last5Values.length;
-          const provisionalSide: "over" | "under" =
-            last5Mean >= line ? "over" : "under";
-          const best_odds =
-            provisionalSide === "over" ? sides.over : sides.under;
-          if (!best_odds) continue;
-
-          // Detect patterns for this market and surface them as signals to
-          // the confidence scorer. Pattern impact aligns with the implied
-          // pick direction.
-          //
-          // cold_streak — boosts an under, penalizes an over.
-          // home_away_split — boosts an over only when the player is on
-          //   their better side tonight; penalizes overs and boosts unders
-          //   when they're on their worse side. Without this check, a split
-          //   would nudge confidence positive no matter which side the
-          //   player was playing — which is what the audit flagged.
-          const patterns = detectAll(history, market);
-          const patternSignals: SignalImpact[] = patterns.map((p) => {
-            const provisionalPick = l10mean >= line ? "over" : "under";
-            let aligns: boolean;
-            if (p.pattern_type === "cold_streak") {
-              aligns = provisionalPick === "under";
-            } else if (p.pattern_type === "home_away_split") {
-              const ev = p.evidence as {
-                home_mean?: number;
-                away_mean?: number;
-              };
-              const homeMean = ev.home_mean ?? 0;
-              const awayMean = ev.away_mean ?? 0;
-              const onBetterSide = isHome
-                ? homeMean >= awayMean
-                : awayMean >= homeMean;
-              // Better side → confirm over / contradict under.
-              // Worse side  → confirm under / contradict over.
-              aligns =
-                provisionalPick === "over" ? onBetterSide : !onBetterSide;
-            } else {
-              aligns = true;
-            }
-            return {
-              source: `pattern:${p.pattern_type}`,
-              impact: p.confidence * (aligns ? 0.5 : -0.5),
-              note: p.description,
-            };
-          });
-
-          const prediction = buildPrediction({
-            game,
-            player,
-            team,
-            opponent,
-            history,
+          const features = computeFeatures({
+            player_id: player.id,
             market,
-            line,
-            signals: patternSignals,
-            best_odds,
+            history,
+            opponent_team_id: opponent.id,
           });
-          newPredictions.push(prediction);
-          patternsByMarket.push(...patterns.map((p) => ({ player_id: player.id, market, pattern: p })));
+
+          // Pick the shallowest deep line that still clears the target win
+          // rate. No qualifying line ⇒ no pick (selectivity by design).
+          const sel = selectAltLinePick({
+            ladder,
+            features,
+            isHome,
+            targetWinRate: TARGET_WIN_RATE,
+          });
+          if (!sel) continue;
+
+          const confidence = Math.round(sel.prob_calibrated * 1000) / 10;
+          const expected_value =
+            Math.round((sel.prob_calibrated * sel.price_decimal - 1) * 1000) /
+            1000;
+
+          newPredictions.push({
+            game_id: g.id,
+            player_id: player.id,
+            market,
+            line: sel.line,
+            pick: sel.side,
+            projection: Math.round(sel.projection * 10) / 10,
+            confidence,
+            expected_value,
+            reasoning: {
+              checks: [
+                {
+                  label: "Projection vs line",
+                  passed: true,
+                  value: Math.round(sel.projection * 10) / 10,
+                  target: sel.line,
+                  weight: 1,
+                },
+                {
+                  label: "Calibrated P(clear)",
+                  passed: confidence >= TARGET_WIN_RATE * 100,
+                  value: confidence,
+                  target: Math.round(TARGET_WIN_RATE * 100),
+                  weight: 0,
+                },
+              ],
+              signals: [],
+              odds: {
+                bookmaker: sel.bookmaker,
+                price_decimal: sel.price_decimal,
+                price_american: americanFromDecimal(sel.price_decimal),
+                book_count: 1,
+              },
+            },
+            is_bet_of_the_day: false,
+            status: "pending",
+            generated_at: new Date().toISOString(),
+          });
         }
       }
     }
@@ -282,7 +287,12 @@ export async function generateForDate(date: string) {
     return { date, games: games.length, predictions: 0, bet_of_the_day_id: null };
   }
 
-  const botd = pickBetOfTheDay(newPredictions);
+  // Bet of the Day = the single highest-confidence (most calibrated-certain)
+  // pick across the slate.
+  const botd =
+    newPredictions.length > 0
+      ? [...newPredictions].sort((a, b) => b.confidence - a.confidence)[0]
+      : null;
   const rows = newPredictions.map((p) => ({
     game_id: p.game_id,
     player_id: p.player_id,
