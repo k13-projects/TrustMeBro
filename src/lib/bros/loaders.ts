@@ -32,6 +32,8 @@ type CouponRow = {
           market: string;
           line: number;
           pick: "over" | "under";
+          status: "pending" | "won" | "lost" | "void";
+          result_value: number | null;
           player:
             | {
                 id: number;
@@ -53,6 +55,8 @@ type CouponRow = {
           market: string;
           line: number;
           pick: "over" | "under";
+          status: "pending" | "won" | "lost" | "void";
+          result_value: number | null;
           player: unknown;
         }>
       | null;
@@ -80,6 +84,8 @@ function normalizeCoupon(row: CouponRow, owner: BroProfile): SharedCoupon {
           market: pred.market,
           line: pred.line,
           pick: pred.pick,
+          status: pred.status,
+          result_value: pred.result_value,
           player: player as SharedCoupon["picks"][number]["prediction"] extends
             | { player: infer P }
             | null
@@ -131,7 +137,7 @@ export async function loadFeedCoupons(opts: {
       `id, user_id, mode, pick_count, stake, payout_multiplier, potential_payout,
        status, result_payout, shared_at, settled_at, created_at,
        picks:user_coupon_picks(pick_order,
-         prediction:predictions(id, game_id, market, line, pick,
+         prediction:predictions(id, game_id, market, line, pick, status, result_value,
            player:players(id, first_name, last_name, team_id)))`,
     )
     .eq("is_public", true)
@@ -241,7 +247,7 @@ export async function loadProfileCoupons(
       `id, user_id, mode, pick_count, stake, payout_multiplier, potential_payout,
        status, result_payout, shared_at, settled_at, created_at,
        picks:user_coupon_picks(pick_order,
-         prediction:predictions(id, game_id, market, line, pick,
+         prediction:predictions(id, game_id, market, line, pick, status, result_value,
            player:players(id, first_name, last_name, team_id)))`,
     )
     .eq("is_public", true)

@@ -50,6 +50,8 @@ export type SharedCouponPick = {
     market: string;
     line: number;
     pick: "over" | "under";
+    status: BetStatus;
+    result_value: number | null;
     player: SharedCouponPickPlayer | null;
   } | null;
 };
