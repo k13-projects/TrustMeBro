@@ -92,11 +92,16 @@ export async function generateForDate(date: string) {
     playersByTeam.set(p.team_id, list);
   }
 
+  // Reset Bet of the Day across the whole slate by GAME, not generated_at —
+  // picks for a game can be generated on an earlier day (we generate tomorrow's
+  // slate too) and would otherwise keep a stale BotD flag.
   await supabase
     .from("predictions")
     .update({ is_bet_of_the_day: false })
-    .gte("generated_at", `${date}T00:00:00Z`)
-    .lte("generated_at", `${date}T23:59:59Z`);
+    .in(
+      "game_id",
+      games.map((g) => g.id),
+    );
 
   const newPredictions: Prediction[] = [];
   const patternsByMarket: Array<{
@@ -315,6 +320,23 @@ export async function generateForDate(date: string) {
   if (upErr) throw new Error(`predictions upsert: ${upErr.message}`);
 
   const botdRow = upserted?.find((r) => r.is_bet_of_the_day);
+
+  // Supersede prior PENDING engine picks for the games we just regenerated that
+  // aren't in this run's fresh set — otherwise old or lower-quality picks (a
+  // previous engine version, or a different line last run) linger on the slate.
+  // Only touches games that produced a fresh pick, so a temporarily empty run
+  // (e.g. odds not loaded) can't wipe a game's existing picks. Pending → void
+  // is zero-impact on the score ledger.
+  const freshGameIds = [...new Set(newPredictions.map((p) => p.game_id))];
+  const freshIds = (upserted ?? []).map((r) => r.id);
+  if (freshGameIds.length > 0 && freshIds.length > 0) {
+    await supabase
+      .from("predictions")
+      .update({ status: "void", settled_at: new Date().toISOString() })
+      .in("game_id", freshGameIds)
+      .eq("status", "pending")
+      .not("id", "in", `(${freshIds.join(",")})`);
+  }
 
   // Persist detected patterns so dashboards can badge picks without
   // recomputing 30 games of history per request. Dedup by
