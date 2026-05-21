@@ -83,6 +83,29 @@ export function NavLinks({ items }: { items: ReadonlyArray<Item> }) {
               <Link
                 href={item.href}
                 aria-current={isActive ? "page" : undefined}
+                onClick={(e) => {
+                  // Same-page navigation: do the scroll + active state
+                  // ourselves. Next's Link hash handling is racy on the FIRST
+                  // click — it misses the scroll and the active-dot animation
+                  // (only "takes" on the second click). A different route is
+                  // left to normal Link navigation.
+                  if (pathname !== itemPath) return;
+                  if (itemHash) {
+                    const el = document.getElementById(itemHash.slice(1));
+                    if (!el) return;
+                    e.preventDefault();
+                    window.history.pushState(null, "", item.href);
+                    window.dispatchEvent(new Event("hashchange"));
+                    el.scrollIntoView({ behavior: "smooth", block: "start" });
+                  } else if (item.exact) {
+                    // Home, already home → scroll to top + clear the hash, so
+                    // the Home dot lights up (same as clicking the logo).
+                    e.preventDefault();
+                    window.history.pushState(null, "", itemPath);
+                    window.dispatchEvent(new Event("hashchange"));
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }
+                }}
                 className={`relative inline-flex items-center px-4 py-2 font-semibold uppercase tracking-[0.14em] transition-colors duration-200 ${
                   isActive
                     ? "text-primary"

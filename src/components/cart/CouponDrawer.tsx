@@ -102,14 +102,10 @@ export function CouponDrawer({ isSignedIn }: { isSignedIn: boolean }) {
 
   return (
     <>
-      {cart.isOpen ? (
-        <button
-          type="button"
-          aria-label="Close coupon"
-          onClick={cart.close}
-          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px] animate-[fadeIn_120ms_ease-out]"
-        />
-      ) : null}
+      {/* No backdrop on purpose — the coupon is a non-blocking side panel so
+          you can keep adding picks from the page while it's open. Close it
+          with the ✕ or Escape. Capped to a phone-friendly max width so the
+          rest of the page stays reachable even on small screens. */}
       <aside
         role="dialog"
         aria-label="Coupon"
@@ -117,7 +113,7 @@ export function CouponDrawer({ isSignedIn }: { isSignedIn: boolean }) {
         className={cx(
           // Fully-opaque surface — the stake input and payout numbers need
           // to read clearly without the page bleeding through.
-          "fixed top-0 right-0 z-50 h-full w-full sm:w-[420px] glass-coupon border-l border-white/10 transition-transform duration-300 ease-out flex flex-col",
+          "fixed top-0 right-0 z-50 h-full w-[min(420px,calc(100vw-2.5rem))] glass-coupon border-l border-white/10 shadow-[0_0_60px_-12px_rgba(0,0,0,0.6)] transition-transform duration-300 ease-out flex flex-col",
           cart.isOpen ? "translate-x-0" : "translate-x-full",
         )}
       >

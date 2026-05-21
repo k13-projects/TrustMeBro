@@ -4,7 +4,6 @@ import { notFound } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { teamColors, teamLogoUrl } from "@/lib/sports/nba/branding";
 import { PickRow } from "@/components/PickRow";
-import { PlayButton } from "@/components/PlayButton";
 import type { PredictionRow, TeamLite } from "@/components/types";
 
 export const revalidate = 30;
@@ -70,23 +69,6 @@ export default async function GameDetailPage({ params }: PageProps) {
     .order("confidence", { ascending: false });
   const predictions = (predictionsRaw ?? []) as unknown as PredictionRow[];
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const playedSet = new Set<string>();
-  if (user && predictions.length > 0) {
-    const { data: userBets } = await supabase
-      .from("user_bets")
-      .select("prediction_id")
-      .eq("user_id", user.id)
-      .in(
-        "prediction_id",
-        predictions.map((p) => p.id),
-      );
-    for (const ub of userBets ?? []) playedSet.add(ub.prediction_id);
-  }
-  const isSignedIn = !!user;
-
   const homePicks = predictions.filter(
     (p) => p.player.team_id === game.home_team_id,
   );
@@ -129,8 +111,6 @@ export default async function GameDetailPage({ params }: PageProps) {
                 ? away
                 : null
           }
-          played={playedSet.has(botd.id)}
-          isSignedIn={isSignedIn}
         />
       ) : null}
 
@@ -138,15 +118,11 @@ export default async function GameDetailPage({ params }: PageProps) {
         <TeamPicksColumn
           team={away}
           picks={awayPicks}
-          playedSet={playedSet}
-          isSignedIn={isSignedIn}
           side="away"
         />
         <TeamPicksColumn
           team={home}
           picks={homePicks}
-          playedSet={playedSet}
-          isSignedIn={isSignedIn}
           side="home"
         />
       </section>
@@ -437,13 +413,9 @@ function TeamHero({
 function BotDStrip({
   prediction,
   team,
-  played,
-  isSignedIn,
 }: {
   prediction: PredictionRow;
   team: TeamLite | null;
-  played: boolean;
-  isSignedIn: boolean;
 }) {
   return (
     <section className="glass-strong glass-sheen rounded-2xl p-4 sm:p-5 flex items-center gap-4 flex-wrap">
@@ -452,17 +424,7 @@ function BotDStrip({
         Bet of the Day
       </span>
       <div className="flex-1 min-w-[200px]">
-        <PickRow
-          prediction={prediction}
-          team={team}
-          trailing={
-            <PlayButton
-              predictionId={prediction.id}
-              initialPlayed={played}
-              isSignedIn={isSignedIn}
-            />
-          }
-        />
+        <PickRow prediction={prediction} team={team} />
       </div>
     </section>
   );
@@ -471,14 +433,10 @@ function BotDStrip({
 function TeamPicksColumn({
   team,
   picks,
-  playedSet,
-  isSignedIn,
   side,
 }: {
   team: TeamLite | null;
   picks: PredictionRow[];
-  playedSet: Set<string>;
-  isSignedIn: boolean;
   side: "home" | "away";
 }) {
   const colors = teamColors(team?.abbreviation);
@@ -503,18 +461,7 @@ function TeamPicksColumn({
       ) : (
         <div className="grid gap-2">
           {picks.map((p) => (
-            <PickRow
-              key={p.id}
-              prediction={p}
-              team={team}
-              trailing={
-                <PlayButton
-                  predictionId={p.id}
-                  initialPlayed={playedSet.has(p.id)}
-                  isSignedIn={isSignedIn}
-                />
-              }
-            />
+            <PickRow key={p.id} prediction={p} team={team} />
           ))}
         </div>
       )}
