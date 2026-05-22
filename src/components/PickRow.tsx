@@ -4,7 +4,7 @@ import { AddToCouponButton } from "./cart/AddToCouponButton";
 import { ConfidencePill } from "./ConfidencePill";
 import { GameDateBadge } from "./GameDateBadge";
 import { JerseyChip } from "./JerseyChip";
-import { marketLabel, marketAccent } from "./MarketLabel";
+import { marketLabel } from "./MarketLabel";
 import { PickSideTag } from "./PickSideTag";
 import { PlayerAvatar } from "./PlayerAvatar";
 import { ReasoningPanel, topReasoningCheck } from "./ReasoningPanel";
@@ -99,9 +99,7 @@ export function PickRow({
             <div className="flex items-baseline gap-1.5 text-sm min-w-0">
               <PickSideTag side={prediction.pick} />
               <span className="font-mono tabular-nums">{prediction.line}</span>
-              <span className={`truncate ${marketAccent(prediction.market)}`}>
-                {market}
-              </span>
+              <span className="text-foreground/60 truncate">{market}</span>
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
               <AddToCouponButton pick={cartPick} />
@@ -155,7 +153,7 @@ export function PickRow({
             <div className="mt-1 flex items-baseline gap-2 text-sm flex-wrap">
               <PickSideTag side={prediction.pick} />
               <span className="font-mono tabular-nums">{prediction.line}</span>
-              <span className={marketAccent(prediction.market)}>{market}</span>
+              <span className="text-foreground/60">{market}</span>
               {prediction.game?.date ? (
                 <GameDateBadge
                   date={prediction.game.date}
