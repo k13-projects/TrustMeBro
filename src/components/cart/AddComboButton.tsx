@@ -48,8 +48,9 @@ export function AddComboButton({
       disabled={disabled}
       aria-label={label}
       className={cx(
-        // Same gold-outline family as AddToCouponButton — unified look.
-        "inline-flex items-center justify-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors",
+        // Same gold-outline family AND text treatment as AddToCouponButton's
+        // card variant — uppercase, same size/weight/tracking. Unified look.
+        "inline-flex items-center justify-center gap-1 rounded-full border px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.1em] transition-colors",
         allInCart
           ? "border-amber-400/30 bg-amber-400/15 text-amber-300 hover:bg-amber-400/20"
           : "border-primary/40 bg-primary/10 text-primary hover:bg-primary/20 hover:border-primary/60",

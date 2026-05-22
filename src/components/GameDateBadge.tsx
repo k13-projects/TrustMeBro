@@ -24,9 +24,10 @@ type Props = {
 };
 
 /**
- * Compact "when does this pick settle" label. Shows the game date plus the
- * game status (Scheduled/Final/etc.) so the user knows whether a pending
- * pick is waiting on tipoff or waiting on settlement.
+ * Compact "when does this pick settle" label. Today / Tomorrow get distinct
+ * shades from the gold palette so the slate's two days read apart at a glance;
+ * live and final lean on their data-viz tones. Full status stays in the
+ * tooltip — no redundant "· scheduled" text cluttering the chip.
  */
 export function GameDateBadge({ date, status, className }: Props) {
   const label = labelFor(date);
@@ -36,18 +37,17 @@ export function GameDateBadge({ date, status, className }: Props) {
     ? "border-white/15 text-foreground/55"
     : isLive
       ? "border-emerald-400/35 text-emerald-300"
-      : "border-amber-400/30 text-amber-200/85";
+      : label === "Today"
+        ? "border-primary/45 text-primary"
+        : label === "Tomorrow"
+          ? "border-amber-400/25 text-amber-200/65"
+          : "border-amber-400/30 text-amber-200/85";
   return (
     <span
       className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wider font-mono tabular-nums ${tone} ${className ?? ""}`}
       title={status ? `Game ${status} on ${date}` : `Game on ${date}`}
     >
       <span>{label}</span>
-      {status ? (
-        <span className="text-[9px] opacity-70 normal-case tracking-normal">
-          · {status.toLowerCase()}
-        </span>
-      ) : null}
     </span>
   );
 }

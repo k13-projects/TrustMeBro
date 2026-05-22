@@ -3,7 +3,7 @@
 import { motion } from "motion/react";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
 import { GameDateBadge } from "@/components/GameDateBadge";
-import { marketLabel, marketAccent } from "@/components/MarketLabel";
+import { marketLabel } from "@/components/MarketLabel";
 import type { PredictionRow, TeamLite } from "@/components/types";
 import { AddToCouponButton } from "@/components/cart/AddToCouponButton";
 import { GoldButton } from "@/components/site/GoldButton";
@@ -98,9 +98,7 @@ export function PickCard({
             <span className="font-numeric not-italic tabular-nums">
               {prediction.line}
             </span>{" "}
-            <span className={cn("text-[14px]", marketAccent(prediction.market))}>
-              {market}
-            </span>
+            <span>{market}</span>
           </p>
           {odds ? (
             <p className="text-[11px] text-muted-foreground">
