@@ -51,6 +51,9 @@ type PageProps = {
 };
 
 export default async function HomePage({ searchParams }: PageProps) {
+  // Note: the bare root "/" is redirected to /football for the default (soccer)
+  // sport by the proxy (src/proxy.ts) — this page renders only when the user
+  // has toggled to Basketball (cookie tmb_sport = nba).
   const params = await searchParams;
   const date = isValidIsoDate(params.date) ? params.date : todayIsoDate();
   const marketFilter =

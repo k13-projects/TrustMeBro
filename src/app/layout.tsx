@@ -19,6 +19,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { getRequester } from "@/lib/identity";
 import { getEngineStats } from "@/lib/scoring/stats";
 import { touchProfilePresence } from "@/lib/bros/presence";
+import { activeSport } from "@/lib/sports/sport-cookie";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -65,9 +66,10 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const [requester, engineStats] = await Promise.all([
+  const [requester, engineStats, sport] = await Promise.all([
     getRequester(),
     getEngineStats(),
+    activeSport(),
   ]);
   const isSignedIn = !!requester;
 
@@ -93,6 +95,7 @@ export default async function RootLayout({
           <ScrollProgress />
           <MarqueeTicker stats={engineStats} />
           <Navbar
+            sport={sport}
             identity={
               requester
                 ? {

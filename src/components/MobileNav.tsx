@@ -7,7 +7,7 @@ import { cx, focusRing } from "@/lib/design/tokens";
 
 type Item = { href: string; label: string; exact?: boolean };
 
-const ITEMS: Item[] = [
+const DEFAULT_ITEMS: Item[] = [
   { href: "/", label: "Picks", exact: true },
   { href: "/games", label: "Games" },
   { href: "/results", label: "Results" },
@@ -23,7 +23,11 @@ type Identity =
   | { kind: "auth" | "guest"; display_name: string }
   | null;
 
-export function MobileNav({ identity }: { identity?: Identity } = {}) {
+export function MobileNav({
+  identity,
+  items,
+}: { identity?: Identity; items?: ReadonlyArray<Item> } = {}) {
+  const ITEMS = items ?? DEFAULT_ITEMS;
   const pathname = usePathname() ?? "/";
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);

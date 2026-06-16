@@ -19,6 +19,17 @@ export async function proxy(request: NextRequest) {
     });
   }
 
+  // Football is the default sport: send the bare root to /football unless the
+  // user has toggled to Basketball (cookie tmb_sport = nba). Done here so we
+  // don't render the whole NBA home just to bounce. See project_soccer_expansion.
+  if (request.nextUrl.pathname === "/") {
+    if (request.cookies.get("tmb_sport")?.value !== "nba") {
+      const dest = request.nextUrl.clone();
+      dest.pathname = "/football";
+      return NextResponse.redirect(dest);
+    }
+  }
+
   const response = NextResponse.next({ request });
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
