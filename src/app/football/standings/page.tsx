@@ -1,4 +1,5 @@
 import { getStandings } from "@/lib/sports/soccer/queries";
+import { FootballHeader } from "@/components/soccer/FootballHeader";
 import { StandingsTable } from "@/components/soccer/StandingsTable";
 
 export const dynamic = "force-dynamic";
@@ -8,13 +9,8 @@ export default async function StandingsPage() {
   const groups = [...byGroup.keys()].sort();
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-8 space-y-8">
-      <header>
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
-          ⚽ World Cup
-        </p>
-        <h1 className="mt-1 text-3xl font-black">Standings</h1>
-      </header>
+    <div className="mx-auto max-w-5xl px-4 py-10 space-y-8">
+      <FootballHeader title="Standings" />
 
       {groups.length > 0 ? (
         <div className="grid gap-5 md:grid-cols-2">

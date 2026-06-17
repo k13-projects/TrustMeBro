@@ -19,14 +19,34 @@ const QuerySchema = z.object({
   ahead: z.coerce.number().int().min(0).max(7).optional(),
 });
 
+// ESPN and The Odds API name some countries differently. Map both spellings to
+// a single canonical token so the team-name join matches. Keyed by the
+// already-normalized form.
+const COUNTRY_ALIASES: Record<string, string> = {
+  "dr congo": "congo dr",
+  "democratic republic of the congo": "congo dr",
+  "congo democratic republic": "congo dr",
+  "south korea": "korea republic",
+  "north korea": "korea dr",
+  "ivory coast": "cote divoire",
+  "cape verde": "cabo verde",
+  "ir iran": "iran",
+  turkiye: "turkey",
+  "united states": "usa",
+  "united states of america": "usa",
+  "republic of ireland": "ireland",
+  "czechia": "czech republic",
+};
+
 function normalize(name: string): string {
-  return name
+  const base = name
     .toLowerCase()
     .normalize("NFKD")
     .replace(/\p{Diacritic}/gu, "")
     .replace(/[.'’]/g, "")
     .replace(/\s+/g, " ")
     .trim();
+  return COUNTRY_ALIASES[base] ?? base;
 }
 
 // Pulls World Cup match odds (1X2 + totals) from The Odds API and stores a

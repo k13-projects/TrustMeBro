@@ -1,4 +1,5 @@
 import { getSoccerScore } from "@/lib/sports/soccer/queries";
+import { FootballHeader } from "@/components/soccer/FootballHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -17,17 +18,14 @@ export default async function ScoreboardPage() {
   const hitRate = settled > 0 ? Math.round((s.wins / settled) * 100) : 0;
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8 space-y-8">
-      <header>
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
-          ⚽ World Cup
-        </p>
-        <h1 className="mt-1 text-3xl font-black">Engine Scoreboard</h1>
-        <p className="mt-1 text-sm text-foreground/55">
+    <div className="mx-auto max-w-3xl px-4 py-10 space-y-8">
+      <div>
+        <FootballHeader title="Engine Scoreboard" />
+        <p className="mt-2 text-sm text-foreground/55">
           Football&apos;s own ledger — separate from the NBA engine. +1 per win,
           −1 per loss.
         </p>
-      </header>
+      </div>
 
       <div className="rounded-3xl border border-primary/40 bg-gradient-to-br from-primary/15 to-transparent px-6 py-8 text-center">
         <div className="text-xs uppercase tracking-wide text-foreground/55">Net Units</div>

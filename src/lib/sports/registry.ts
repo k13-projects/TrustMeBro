@@ -18,6 +18,7 @@ export type SportMeta = {
   label: string; // human nav label: "Basketball" / "Football"
   competition: string; // current competition: "NBA" / "World Cup"
   emoji: string; // 🏀 / ⚽
+  logo: string; // league logo (dark-variant, for the toggle/chrome)
   /** Root section path for this sport. NBA is the legacy root; football is additive. */
   home: string;
   accent: string; // section accent hex (gold master-brand by default)
@@ -30,6 +31,7 @@ export const SPORTS: Record<Sport, SportMeta> = {
     label: "Basketball",
     competition: "NBA",
     emoji: "🏀",
+    logo: "https://a.espncdn.com/i/teamlogos/leagues/500-dark/nba.png",
     home: "/",
     accent: "#FFB800",
     nav: [
@@ -49,6 +51,7 @@ export const SPORTS: Record<Sport, SportMeta> = {
     label: "Football",
     competition: "World Cup",
     emoji: "⚽",
+    logo: "https://a.espncdn.com/i/leaguelogos/soccer/500-dark/4.png",
     home: "/football",
     accent: "#FFB800",
     nav: [

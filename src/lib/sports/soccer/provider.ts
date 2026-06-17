@@ -40,9 +40,19 @@ export type SoccerStanding = {
   points: number;
 };
 
+// A notable in-match moment (goal / card / substitution) with its minute.
+export type MatchEvent = {
+  minute: string; // e.g. "66'"
+  kind: "goal" | "yellow" | "red" | "sub";
+  side: "home" | "away" | null;
+  player: string;
+  detail: string | null; // assist (goal) or other player (sub)
+};
+
 export interface SoccerProvider {
   listTeams(): Promise<SoccerTeam[]>;
   listMatches(params: { dates: string[] }): Promise<Match[]>;
   getMatch(id: number): Promise<Match | null>;
   listStandings(season?: number): Promise<SoccerStanding[]>;
+  getMatchEvents(id: number): Promise<MatchEvent[]>;
 }

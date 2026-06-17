@@ -165,6 +165,10 @@ export type PredictionDetail = {
   is_banko: boolean;
   home: string;
   away: string;
+  home_crest: string | null;
+  away_crest: string | null;
+  home_abbr: string;
+  away_abbr: string;
   datetime: string | null;
 };
 
@@ -187,11 +191,13 @@ type RawPrediction = {
 const PREDICTION_SELECT =
   "id, match_id, market, side, line, confidence, best_odds, expected_value, is_banko, " +
   "soccer_matches(datetime, " +
-  "home:soccer_teams!soccer_matches_home_team_id_fkey(name), " +
-  "away:soccer_teams!soccer_matches_away_team_id_fkey(name))";
+  "home:soccer_teams!soccer_matches_home_team_id_fkey(name, abbreviation, crest_url), " +
+  "away:soccer_teams!soccer_matches_away_team_id_fkey(name, abbreviation, crest_url))";
 
 function toPredictionDetail(p: RawPrediction): PredictionDetail {
   const match = one(p.soccer_matches);
+  const home = one(match?.home ?? null);
+  const away = one(match?.away ?? null);
   return {
     id: p.id,
     match_id: p.match_id,
@@ -202,8 +208,12 @@ function toPredictionDetail(p: RawPrediction): PredictionDetail {
     best_odds: Number(p.best_odds),
     expected_value: p.expected_value === null ? null : Number(p.expected_value),
     is_banko: p.is_banko,
-    home: one(match?.home ?? null)?.name ?? "Home",
-    away: one(match?.away ?? null)?.name ?? "Away",
+    home: home?.name ?? "Home",
+    away: away?.name ?? "Away",
+    home_crest: home?.crest_url ?? null,
+    away_crest: away?.crest_url ?? null,
+    home_abbr: home?.abbreviation ?? "",
+    away_abbr: away?.abbreviation ?? "",
     datetime: match?.datetime ?? null,
   };
 }

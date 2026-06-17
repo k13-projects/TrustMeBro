@@ -1,4 +1,5 @@
 import type { StandingRow } from "@/lib/sports/soccer/queries";
+import { CountryFlag } from "./CountryFlag";
 
 export function StandingsTable({
   group,
@@ -12,7 +13,8 @@ export function StandingsTable({
       <div className="px-4 py-2.5 border-b border-border/60 font-bold uppercase tracking-wide text-sm">
         {group}
       </div>
-      <table className="w-full text-sm">
+      <div className="overflow-x-auto">
+      <table className="w-full min-w-[20rem] text-sm">
         <thead>
           <tr className="text-[11px] uppercase tracking-wide text-foreground/45">
             <th className="px-4 py-2 text-left font-medium">Team</th>
@@ -40,6 +42,7 @@ export function StandingsTable({
                     >
                       {r.rank}
                     </span>
+                    <CountryFlag crest={r.team.crest} abbr={r.team.abbreviation} name={r.team.name} size={18} />
                     <span className="font-semibold">{r.team.name}</span>
                   </span>
                 </td>
@@ -56,6 +59,7 @@ export function StandingsTable({
           })}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }

@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { setSport } from "@/lib/sports/actions";
 import { SPORTS, SPORT_ORDER } from "@/lib/sports/registry";
 import type { Sport } from "@/lib/sports/types";
@@ -26,8 +27,15 @@ export function SportToggle({ active }: { active: Sport }) {
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              <span aria-hidden>{meta.emoji}</span>
-              <span className="hidden sm:inline">{meta.label}</span>
+              <Image
+                src={meta.logo}
+                alt={`${meta.competition} logo`}
+                width={18}
+                height={18}
+                className="size-[18px] object-contain"
+                unoptimized
+              />
+              <span className="hidden sm:inline">{meta.competition}</span>
             </button>
           </form>
         );

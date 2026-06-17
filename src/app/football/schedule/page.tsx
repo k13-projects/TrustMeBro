@@ -1,5 +1,6 @@
 import { isoDateOffset, todayIsoDate } from "@/lib/date";
 import { getMatchesByDates } from "@/lib/sports/soccer/queries";
+import { FootballHeader } from "@/components/soccer/FootballHeader";
 import { MatchRow } from "@/components/soccer/MatchRow";
 
 export const dynamic = "force-dynamic";
@@ -30,19 +31,14 @@ export default async function SchedulePage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8 space-y-8">
-      <header>
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
-          ⚽ World Cup
-        </p>
-        <h1 className="mt-1 text-3xl font-black">Schedule</h1>
-      </header>
+    <div className="mx-auto max-w-3xl px-4 py-10 space-y-8">
+      <FootballHeader title="Schedule" />
 
       {dates
         .filter((d) => byDate.has(d))
         .map((d) => (
           <section key={d} className="space-y-3">
-            <h2 className="text-sm font-bold uppercase tracking-wide text-foreground/60">
+            <h2 className="font-display uppercase text-lg tracking-wide text-foreground/70">
               {dayLabel(d, today)}
             </h2>
             <div className="space-y-2">

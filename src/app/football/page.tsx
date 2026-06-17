@@ -7,6 +7,7 @@ import {
 } from "@/lib/sports/soccer/queries";
 import { BankoCard } from "@/components/soccer/BankoCard";
 import { CouponCard } from "@/components/soccer/CouponCard";
+import { FootballHeader } from "@/components/soccer/FootballHeader";
 import { MatchRow } from "@/components/soccer/MatchRow";
 
 export const dynamic = "force-dynamic";
@@ -25,18 +26,13 @@ export default async function FootballHome() {
     .slice(0, 3);
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8 space-y-12">
-      <header>
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
-          ⚽ World Cup
-        </p>
-        <h1 className="mt-1 text-3xl font-black">Today&apos;s Football</h1>
-      </header>
+    <div className="mx-auto max-w-6xl px-4 py-10 space-y-12">
+      <FootballHeader title="Today's Football" />
 
       {topBanko.length > 0 ? (
         <section className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-black">🔒 BANKO — Most Trusted</h2>
+            <h2 className="font-display uppercase text-2xl tracking-tight">🔒 BANKO — Most Trusted</h2>
             <Link href="/football/picks" className="text-sm font-semibold text-primary">
               All picks →
             </Link>
@@ -51,7 +47,7 @@ export default async function FootballHome() {
 
       {headlineCoupons.length > 0 ? (
         <section className="space-y-4">
-          <h2 className="text-xl font-black">Double · Triple · 10× Your Money</h2>
+          <h2 className="font-display uppercase text-2xl tracking-tight">Double · Triple · 10× Your Money</h2>
           <div className="grid gap-4 md:grid-cols-3">
             {headlineCoupons.map((c) => (
               <CouponCard key={c.id} coupon={c} />
@@ -62,7 +58,7 @@ export default async function FootballHome() {
 
       <section className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-xl font-black">Today&apos;s Matches</h2>
+          <h2 className="font-display uppercase text-2xl tracking-tight">Today&apos;s Matches</h2>
           <Link href="/football/schedule" className="text-sm font-semibold text-primary">
             Full schedule →
           </Link>

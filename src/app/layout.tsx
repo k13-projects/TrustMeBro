@@ -17,7 +17,7 @@ import { ScrollProgress } from "@/components/site/ScrollProgress";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 import { getRequester } from "@/lib/identity";
-import { getEngineStats } from "@/lib/scoring/stats";
+import { getEngineStats, getSoccerEngineStats } from "@/lib/scoring/stats";
 import { touchProfilePresence } from "@/lib/bros/presence";
 import { activeSport } from "@/lib/sports/sport-cookie";
 
@@ -66,11 +66,11 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const [requester, engineStats, sport] = await Promise.all([
-    getRequester(),
-    getEngineStats(),
-    activeSport(),
-  ]);
+  const [requester, sport] = await Promise.all([getRequester(), activeSport()]);
+  // Engine stats follow the active sport so the marquee never shows NBA numbers
+  // on football pages (and vice versa). Ledgers are fully separate.
+  const engineStats =
+    sport === "soccer" ? await getSoccerEngineStats() : await getEngineStats();
   const isSignedIn = !!requester;
 
   if (requester?.kind === "auth") {
@@ -93,7 +93,7 @@ export default async function RootLayout({
 
         <TooltipProvider delay={150}>
           <ScrollProgress />
-          <MarqueeTicker stats={engineStats} />
+          <MarqueeTicker stats={engineStats} sport={sport} />
           <Navbar
             sport={sport}
             identity={

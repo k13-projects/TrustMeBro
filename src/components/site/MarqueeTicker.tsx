@@ -2,6 +2,7 @@
 
 import { Check, Clock, Flame, Sparkles, Trophy, X } from "lucide-react";
 import type { EngineStats } from "@/lib/scoring/stats";
+import type { Sport } from "@/lib/sports/types";
 
 type Item = { Icon: typeof Trophy; text: string };
 
@@ -22,7 +23,7 @@ const MARKET_LABEL: Record<string, string> = {
 // design review flagged. These items lean on *events* (latest BotD,
 // tracking start, slate cadence) so the marquee complements rather than
 // duplicates the hero.
-function buildItems(stats: EngineStats): Item[] {
+function buildItems(stats: EngineStats, sport: Sport): Item[] {
   const items: Item[] = [];
 
   // Latest BotD with outcome — the most editorially interesting line.
@@ -67,7 +68,10 @@ function buildItems(stats: EngineStats): Item[] {
 
   items.push({
     Icon: Trophy,
-    text: "+1.0 PER WIN · −1.0 PER LOSS · GRADED VS REAL BOX SCORES",
+    text:
+      sport === "soccer"
+        ? "+1.0 PER WIN · −1.0 PER LOSS · GRADED VS FINAL SCORES"
+        : "+1.0 PER WIN · −1.0 PER LOSS · GRADED VS REAL BOX SCORES",
   });
 
   items.push({
@@ -77,14 +81,23 @@ function buildItems(stats: EngineStats): Item[] {
 
   items.push({
     Icon: Trophy,
-    text: "NBA TODAY · MORE SPORTS COMING",
+    text:
+      sport === "soccer"
+        ? "WORLD CUP LIVE · DE-VIGGED CONSENSUS ODDS"
+        : "NBA TODAY · MORE SPORTS COMING",
   });
 
   return items;
 }
 
-export function MarqueeTicker({ stats }: { stats: EngineStats }) {
-  const items = buildItems(stats);
+export function MarqueeTicker({
+  stats,
+  sport,
+}: {
+  stats: EngineStats;
+  sport: Sport;
+}) {
+  const items = buildItems(stats, sport);
   const rendered = [...items, ...items];
   return (
     <div className="relative overflow-hidden border-y border-primary/25 bg-gradient-to-r from-background via-[#1a1408] to-background">

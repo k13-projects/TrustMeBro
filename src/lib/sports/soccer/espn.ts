@@ -5,6 +5,7 @@ import { SOCCER_LEAGUE_SLUG } from "@/lib/sports/registry";
 import { countryCrestUrl } from "./branding";
 import type {
   Match,
+  MatchEvent,
   SoccerProvider,
   SoccerStanding,
   SoccerTeam,
@@ -172,6 +173,60 @@ export class EspnSoccerProvider implements SoccerProvider {
     } catch {
       return null;
     }
+  }
+
+  async getMatchEvents(id: number): Promise<MatchEvent[]> {
+    type KeyEvent = {
+      type?: { text?: string; type?: string };
+      clock?: { displayValue?: string };
+      team?: { id?: string };
+      scoringPlay?: boolean;
+      participants?: Array<{ athlete?: { displayName?: string } }>;
+    };
+    let data: {
+      header?: {
+        competitions?: Array<{
+          competitors?: Array<{ homeAway?: string; team?: { id?: string } }>;
+        }>;
+      };
+      keyEvents?: KeyEvent[];
+    };
+    try {
+      data = await fetchJson(SITE_BASE, "/summary", { event: String(id) }, { revalidate: 30 });
+    } catch {
+      return [];
+    }
+
+    const sideById = new Map<string, "home" | "away">();
+    for (const c of data.header?.competitions?.[0]?.competitors ?? []) {
+      if (c.team?.id && (c.homeAway === "home" || c.homeAway === "away")) {
+        sideById.set(String(c.team.id), c.homeAway);
+      }
+    }
+
+    const out: MatchEvent[] = [];
+    for (const e of data.keyEvents ?? []) {
+      const label = e.type?.text ?? "";
+      let kind: MatchEvent["kind"];
+      if (e.type?.type === "goal" || e.scoringPlay) kind = "goal";
+      else if (label === "Yellow Card") kind = "yellow";
+      else if (label.includes("Red Card")) kind = "red";
+      else if (label === "Substitution") kind = "sub";
+      else continue;
+
+      const players = (e.participants ?? [])
+        .map((p) => p.athlete?.displayName)
+        .filter((n): n is string => Boolean(n));
+
+      out.push({
+        minute: e.clock?.displayValue ?? "",
+        kind,
+        side: e.team?.id ? sideById.get(String(e.team.id)) ?? null : null,
+        player: players[0] ?? "",
+        detail: players[1] ?? null,
+      });
+    }
+    return out;
   }
 
   async listStandings(season?: number): Promise<SoccerStanding[]> {
