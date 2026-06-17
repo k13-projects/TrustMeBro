@@ -26,6 +26,23 @@ export async function insertOddsSnapshots(
   return { inserted: count ?? rows.length };
 }
 
+// Delete odds snapshots older than the cutoff. The engine only ever reads the
+// last 24h, so a 48h retention is a safe buffer that keeps the table from
+// growing without bound. Picks already persist their odds, so nothing the
+// scoreboard/history uses is affected.
+export async function pruneOddsSnapshots(
+  olderThanHours = 48,
+): Promise<{ deleted: number }> {
+  const supabase = supabaseAdmin();
+  const cutoff = new Date(Date.now() - olderThanHours * 3600 * 1000).toISOString();
+  const { error, count } = await supabase
+    .from("odds_snapshots")
+    .delete({ count: "exact" })
+    .lt("captured_at", cutoff);
+  if (error) throw new Error(`odds_snapshots prune: ${error.message}`);
+  return { deleted: count ?? 0 };
+}
+
 export type BestOdds = {
   line: number;
   bookmaker: string;

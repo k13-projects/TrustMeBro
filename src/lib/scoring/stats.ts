@@ -75,14 +75,14 @@ async function _getEngineStats(): Promise<EngineStats> {
 
   const [
     { data: scoreRow },
-    { data: statusCounts },
+    { count: pendingCount },
     { data: firstPick },
     { data: history7d },
     { data: recentSettlements },
     { data: recentBotds },
   ] = await Promise.all([
     supabase.from("system_score").select("score, wins, losses, voids").eq("id", true).maybeSingle(),
-    supabase.from("predictions").select("status"),
+    supabase.from("predictions").select("*", { count: "exact", head: true }).eq("status", "pending"),
     supabase
       .from("predictions")
       .select("generated_at")
@@ -108,7 +108,7 @@ async function _getEngineStats(): Promise<EngineStats> {
       .limit(6),
   ]);
 
-  if (!scoreRow && !statusCounts?.length) return EMPTY;
+  if (!scoreRow && !pendingCount) return EMPTY;
 
   const score = Number(scoreRow?.score ?? 0);
   const wins = Number(scoreRow?.wins ?? 0);
@@ -120,7 +120,7 @@ async function _getEngineStats(): Promise<EngineStats> {
   // (we keep the running tally on system_score), so the authoritative
   // settled count is wins+losses+voids from system_score, and total picks
   // is settled + currently-pending.
-  const pending = (statusCounts ?? []).filter((p) => p.status === "pending").length;
+  const pending = pendingCount ?? 0;
   const total_settled = wins + losses + voids;
   const total_picks = total_settled + pending;
 
@@ -231,13 +231,13 @@ async function _getSoccerEngineStats(): Promise<EngineStats> {
 
   const [
     { data: scoreRow },
-    { data: statusCounts },
+    { count: pendingCount },
     { data: firstPick },
     { data: history7d },
     { data: recentSettlements },
   ] = await Promise.all([
     supabase.from("soccer_system_score").select("score, wins, losses, voids").eq("id", true).maybeSingle(),
-    supabase.from("soccer_predictions").select("status"),
+    supabase.from("soccer_predictions").select("*", { count: "exact", head: true }).eq("status", "pending"),
     supabase
       .from("soccer_predictions")
       .select("generated_at")
@@ -254,13 +254,13 @@ async function _getSoccerEngineStats(): Promise<EngineStats> {
       .limit(50),
   ]);
 
-  if (!scoreRow && !statusCounts?.length) return EMPTY;
+  if (!scoreRow && !pendingCount) return EMPTY;
 
   const score = Number(scoreRow?.score ?? 0);
   const wins = Number(scoreRow?.wins ?? 0);
   const losses = Number(scoreRow?.losses ?? 0);
   const voids = Number(scoreRow?.voids ?? 0);
-  const pending = (statusCounts ?? []).filter((p) => p.status === "pending").length;
+  const pending = pendingCount ?? 0;
   const total_settled = wins + losses + voids;
   const total_picks = total_settled + pending;
   const win_rate = wins + losses > 0 ? wins / (wins + losses) : null;

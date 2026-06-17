@@ -9,7 +9,7 @@ import {
   todayIsoDate,
 } from "@/lib/date";
 import { oddsProvider, MARKET_KEY_TO_PROP } from "@/lib/signals/odds";
-import { insertOddsSnapshots } from "@/lib/signals/odds/repo";
+import { insertOddsSnapshots, pruneOddsSnapshots } from "@/lib/signals/odds/repo";
 import type { OddsQuote, RequestCredits } from "@/lib/signals/odds";
 
 export const runtime = "nodejs";
@@ -274,6 +274,8 @@ export async function GET(req: Request) {
     );
   }
 
+  const pruneResult = await pruneOddsSnapshots();
+
   const perDate = targetDates.map((date) => {
     const dateMatches = matches.filter((m) => m.date === date);
     const dateGames = gamesByDate.get(date) ?? [];
@@ -297,6 +299,7 @@ export async function GET(req: Request) {
     games_matched: matches.length,
     quotes_collected: allQuotes.length,
     snapshots_inserted: insertedResult.inserted,
+    snapshots_pruned: pruneResult.deleted,
     unknown_players_skipped: totalUnknownPlayers,
     per_date: perDate,
     per_game: perGame,
