@@ -44,3 +44,5 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .audit-output/
+.gstack/
+.claude/settings.local.json
