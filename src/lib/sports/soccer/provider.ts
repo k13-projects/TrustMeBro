@@ -40,13 +40,14 @@ export type SoccerStanding = {
   points: number;
 };
 
-// A notable in-match moment (goal / card / substitution) with its minute.
+// A notable in-match moment (goal / card) with its minute. Substitutions are
+// intentionally excluded — they clutter the timeline.
 export type MatchEvent = {
   minute: string; // e.g. "66'"
-  kind: "goal" | "yellow" | "red" | "sub";
+  kind: "goal" | "yellow" | "red";
   side: "home" | "away" | null;
   player: string;
-  detail: string | null; // assist (goal) or other player (sub)
+  detail: string | null; // assist, for goals
 };
 
 export interface SoccerProvider {

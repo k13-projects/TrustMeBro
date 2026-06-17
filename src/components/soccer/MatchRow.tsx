@@ -59,7 +59,13 @@ export function MatchRow({ match }: { match: Match }) {
         ) : null}
       </div>
       </div>
-      {live || done ? <MatchEvents matchId={match.id} /> : null}
+      {live || done ? (
+        <MatchEvents
+          matchId={match.id}
+          home={match.home.name}
+          away={match.away.name}
+        />
+      ) : null}
     </div>
   );
 }
