@@ -2,25 +2,23 @@ import { LogoLink } from "@/components/site/LogoLink";
 import { NavLinks } from "@/components/site/NavLinks";
 import { MobileNav } from "@/components/MobileNav";
 import { IdentityBadge } from "@/components/auth/IdentityBadge";
-
-const NAV_ITEMS = [
-  { href: "/", label: "Home", exact: true },
-  { href: "/#picks", label: "Picks" },
-  { href: "/games", label: "Games" },
-  { href: "/results", label: "Results" },
-  { href: "/news", label: "News" },
-  { href: "/teams", label: "Teams" },
-  { href: "/bros", label: "Bro Board" },
-  { href: "/scorecard", label: "Scorecard" },
-  { href: "/history", label: "History" },
-] as const;
+import { SportToggle } from "@/components/sports/SportToggle";
+import { SPORTS } from "@/lib/sports/registry";
+import type { Sport } from "@/lib/sports/types";
 
 type IdentityLite = {
   kind: "auth" | "guest";
   display_name: string | null;
 } | null;
 
-export function Navbar({ identity }: { identity: IdentityLite }) {
+export function Navbar({
+  identity,
+  sport,
+}: {
+  identity: IdentityLite;
+  sport: Sport;
+}) {
+  const navItems = SPORTS[sport].nav;
   return (
     <header className="sticky top-0 z-30">
       <div
@@ -37,11 +35,13 @@ export function Navbar({ identity }: { identity: IdentityLite }) {
             logo-float keyframe) is identical to the previous inline render. */}
         <LogoLink />
 
-        <NavLinks items={NAV_ITEMS} />
+        <NavLinks items={navItems} />
 
         <div className="flex items-center gap-2">
+          <SportToggle active={sport} />
           <IdentityBadge />
           <MobileNav
+            items={navItems}
             identity={
               identity
                 ? {

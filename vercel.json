@@ -20,6 +20,22 @@
     {
       "path": "/api/cron/settle-bets",
       "schedule": "0 11 * * *"
+    },
+    {
+      "path": "/api/cron/soccer/sync-fixtures",
+      "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/soccer/track-odds",
+      "schedule": "30 13 * * *"
+    },
+    {
+      "path": "/api/cron/soccer/generate-predictions",
+      "schedule": "0 15 * * *"
+    },
+    {
+      "path": "/api/cron/soccer/settle-bets",
+      "schedule": "30 11 * * *"
     }
   ]
 }

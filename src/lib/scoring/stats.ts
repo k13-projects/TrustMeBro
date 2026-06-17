@@ -218,6 +218,79 @@ async function _getEngineStats(): Promise<EngineStats> {
   };
 }
 
+/**
+ * Soccer engine performance — same shape as getEngineStats but sourced from the
+ * separate soccer ledger (soccer_system_score / soccer_predictions /
+ * soccer_system_score_history). Keeps football's numbers fully isolated from
+ * NBA. No Bet-of-the-Day concept for soccer yet, so recent_botds is empty.
+ */
+export const getSoccerEngineStats = cache(_getSoccerEngineStats);
+
+async function _getSoccerEngineStats(): Promise<EngineStats> {
+  const supabase = supabaseAdmin();
+
+  const [
+    { data: scoreRow },
+    { data: statusCounts },
+    { data: firstPick },
+    { data: history7d },
+    { data: recentSettlements },
+  ] = await Promise.all([
+    supabase.from("soccer_system_score").select("score, wins, losses, voids").eq("id", true).maybeSingle(),
+    supabase.from("soccer_predictions").select("status"),
+    supabase
+      .from("soccer_predictions")
+      .select("generated_at")
+      .order("generated_at", { ascending: true })
+      .limit(1),
+    supabase
+      .from("soccer_system_score_history")
+      .select("delta, recorded_at")
+      .gte("recorded_at", new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString()),
+    supabase
+      .from("soccer_system_score_history")
+      .select("outcome, recorded_at")
+      .order("recorded_at", { ascending: false })
+      .limit(50),
+  ]);
+
+  if (!scoreRow && !statusCounts?.length) return EMPTY;
+
+  const score = Number(scoreRow?.score ?? 0);
+  const wins = Number(scoreRow?.wins ?? 0);
+  const losses = Number(scoreRow?.losses ?? 0);
+  const voids = Number(scoreRow?.voids ?? 0);
+  const pending = (statusCounts ?? []).filter((p) => p.status === "pending").length;
+  const total_settled = wins + losses + voids;
+  const total_picks = total_settled + pending;
+  const win_rate = wins + losses > 0 ? wins / (wins + losses) : null;
+  const net_units_7d = (history7d ?? []).reduce((s, r) => s + Number(r.delta ?? 0), 0);
+  const current_streak = computeStreak(
+    (recentSettlements ?? []) as Array<{ outcome: string }>,
+  );
+  const first_pick_date_iso = firstPick?.[0]?.generated_at ?? null;
+  const first_pick_date = first_pick_date_iso ? first_pick_date_iso.slice(0, 10) : null;
+  const days_tracked = first_pick_date
+    ? Math.max(0, Math.floor((Date.now() - new Date(first_pick_date).getTime()) / (24 * 3600 * 1000)))
+    : 0;
+
+  return {
+    total_picks,
+    total_settled,
+    wins,
+    losses,
+    voids,
+    pending,
+    win_rate,
+    score,
+    net_units_7d,
+    current_streak,
+    first_pick_date,
+    days_tracked,
+    recent_botds: [],
+  };
+}
+
 function computeStreak(
   rows: Array<{ outcome: string }>,
 ): { kind: "win" | "loss" | "none"; length: number } {

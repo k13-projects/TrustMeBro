@@ -1,4 +1,14 @@
-export type Sport = "nba";
+export type Sport = "nba" | "soccer";
+
+// Soccer match-level markets (MVP — no player props). See
+// project_soccer_expansion: confidence is de-vigged consensus + form.
+export type SoccerMarket = "match_winner" | "total_goals" | "btts";
+
+// Soccer pick sides span all three markets:
+//   match_winner → home | draw | away
+//   total_goals  → over | under
+//   btts         → yes | no
+export type MatchSide = "home" | "draw" | "away" | "over" | "under" | "yes" | "no";
 
 export type Team = {
   id: number;
