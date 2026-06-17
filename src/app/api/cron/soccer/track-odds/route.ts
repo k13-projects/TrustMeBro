@@ -9,7 +9,11 @@ import {
 } from "@/lib/date";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { fetchSoccerOdds } from "@/lib/signals/odds/soccer";
-import { insertSoccerOdds, type SoccerOddsRow } from "@/lib/sports/soccer/repo";
+import {
+  insertSoccerOdds,
+  pruneSoccerOdds,
+  type SoccerOddsRow,
+} from "@/lib/sports/soccer/repo";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -144,6 +148,7 @@ export async function GET(req: Request) {
   }
 
   const { inserted } = await insertSoccerOdds(rows);
+  const { deleted } = await pruneSoccerOdds();
 
   return NextResponse.json({
     ok: true,
@@ -151,6 +156,7 @@ export async function GET(req: Request) {
     events_returned: events.length,
     quotes_collected: rows.length,
     snapshots_inserted: inserted,
+    snapshots_pruned: deleted,
     unmatched,
     credits,
   });

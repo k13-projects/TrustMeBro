@@ -104,6 +104,22 @@ export async function insertSoccerOdds(
   return { inserted: count ?? rows.length };
 }
 
+// Drop soccer odds snapshots older than the cutoff (48h default). The engine
+// only reads the last 24h and picks persist their own odds, so this is pure
+// cleanup — scoreboard/history are unaffected.
+export async function pruneSoccerOdds(
+  olderThanHours = 48,
+): Promise<{ deleted: number }> {
+  const supabase = supabaseAdmin();
+  const cutoff = new Date(Date.now() - olderThanHours * 3600 * 1000).toISOString();
+  const { error, count } = await supabase
+    .from("soccer_odds_snapshots")
+    .delete({ count: "exact" })
+    .lt("captured_at", cutoff);
+  if (error) throw new Error(`soccer_odds_snapshots prune: ${error.message}`);
+  return { deleted: count ?? 0 };
+}
+
 // Latest snapshot per (match, market, side, line, bookmaker) within 24h,
 // returned as engine quotes grouped by match_id.
 export async function loadLatestSoccerOdds(
