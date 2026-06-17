@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, ExternalLink } from "lucide-react";
 
 type Ev = {
   minute: string;
-  kind: "goal" | "yellow" | "red" | "sub";
+  kind: "goal" | "yellow" | "red";
   side: "home" | "away" | null;
   player: string;
   detail: string | null;
@@ -15,17 +15,22 @@ const ICON: Record<Ev["kind"], string> = {
   goal: "⚽",
   yellow: "🟨",
   red: "🟥",
-  sub: "🔁",
 };
 
-const DETAIL_LABEL: Record<Ev["kind"], string> = {
-  goal: "assist",
-  sub: "for",
-  yellow: "",
-  red: "",
-};
+// Google surfaces a rich match panel (score, timeline, stats, lineups) for a
+// "<home> vs <away> world cup" query — reliable and deep-linkable per match.
+const matchFactsUrl = (home: string, away: string) =>
+  `https://www.google.com/search?q=${encodeURIComponent(`${home} vs ${away} world cup`)}`;
 
-export function MatchEvents({ matchId }: { matchId: number }) {
+export function MatchEvents({
+  matchId,
+  home,
+  away,
+}: {
+  matchId: number;
+  home: string;
+  away: string;
+}) {
   const [open, setOpen] = useState(false);
   const [events, setEvents] = useState<Ev[] | null>(null);
   const [loading, setLoading] = useState(false);
@@ -81,11 +86,8 @@ export function MatchEvents({ matchId }: { matchId: number }) {
                   <span aria-hidden>{ICON[e.kind]}</span>
                   <span className="min-w-0">
                     <span className="font-semibold">{e.player}</span>
-                    {e.detail && DETAIL_LABEL[e.kind] ? (
-                      <span className="text-foreground/45">
-                        {" "}
-                        ({DETAIL_LABEL[e.kind]}: {e.detail})
-                      </span>
+                    {e.kind === "goal" && e.detail ? (
+                      <span className="text-foreground/45"> (assist: {e.detail})</span>
                     ) : null}
                   </span>
                 </li>
@@ -93,9 +95,19 @@ export function MatchEvents({ matchId }: { matchId: number }) {
             </ul>
           ) : (
             <p className="py-2 text-center text-xs text-foreground/40">
-              No events recorded.
+              No goals or cards recorded.
             </p>
           )}
+
+          <a
+            href={matchFactsUrl(home, away)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-3 flex items-center justify-center gap-1.5 rounded-full border border-border/60 bg-white/5 py-1.5 text-xs font-semibold text-foreground/70 hover:bg-white/10 hover:text-foreground transition-colors"
+          >
+            See match facts
+            <ExternalLink size={12} />
+          </a>
         </div>
       ) : null}
     </div>

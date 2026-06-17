@@ -211,8 +211,7 @@ export class EspnSoccerProvider implements SoccerProvider {
       if (e.type?.type === "goal" || e.scoringPlay) kind = "goal";
       else if (label === "Yellow Card") kind = "yellow";
       else if (label.includes("Red Card")) kind = "red";
-      else if (label === "Substitution") kind = "sub";
-      else continue;
+      else continue; // skip substitutions and other non-key events
 
       const players = (e.participants ?? [])
         .map((p) => p.athlete?.displayName)
