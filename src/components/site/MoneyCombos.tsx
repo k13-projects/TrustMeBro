@@ -204,6 +204,7 @@ function ComboCardLarge({
   const picks = combo.picks;
   const payoutAmount = stake * tier.multiplier;
   const cartPicks: CartPick[] = picks.map((p) => ({
+    sport: "nba" as const,
     prediction_id: p.id,
     game_id: p.game_id,
     player_id: p.player_id,

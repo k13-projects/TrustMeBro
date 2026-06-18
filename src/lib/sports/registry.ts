@@ -60,6 +60,8 @@ export const SPORTS: Record<Sport, SportMeta> = {
       { href: "/football/standings", label: "Standings" },
       { href: "/football/picks", label: "Picks" },
       { href: "/football/scoreboard", label: "Scoreboard" },
+      { href: "/bros", label: "Bro Board" },
+      { href: "/history", label: "History" },
     ],
   },
 };

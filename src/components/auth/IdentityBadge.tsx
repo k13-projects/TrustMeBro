@@ -11,14 +11,19 @@ import {
 // Top-nav identity. Signed-out users get a gold-bordered "Sign in / Sign up"
 // pill — the only auth CTA on the site. Signed-in users see their display
 // name with a discreet sign-out button.
-export async function IdentityBadge() {
+export async function IdentityBadge({ dense = false }: { dense?: boolean } = {}) {
   const me = await getRequester();
+  // Match the nav handoff: appear only once the link row does (lg, or xl when
+  // the nav is dense). Below that the sign-in / sign-out lives in the drawer.
+  // Full literal class strings so Tailwind's scanner generates both variants.
+  const showInline = dense ? "hidden xl:inline-flex" : "hidden lg:inline-flex";
+  const showFlex = dense ? "hidden xl:flex" : "hidden lg:flex";
 
   if (!me) {
     return (
       <Link
         href="/login"
-        className="hidden sm:inline-flex items-center gap-2 rounded-full border border-primary/40 bg-primary/10 px-3.5 py-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-primary hover:bg-primary/20 hover:border-primary/60 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 shadow-[0_4px_18px_-6px_rgba(255,184,0,0.4)]"
+        className={`${showInline} items-center gap-2 whitespace-nowrap rounded-full border border-primary/40 bg-primary/10 px-3.5 py-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-primary hover:bg-primary/20 hover:border-primary/60 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 shadow-[0_4px_18px_-6px_rgba(255,184,0,0.4)]`}
       >
         <LogIn size={14} strokeWidth={2.5} aria-hidden />
         <span>Sign in</span>
@@ -33,7 +38,7 @@ export async function IdentityBadge() {
     <form
       action="/api/auth/signout"
       method="post"
-      className="hidden sm:flex items-center gap-2"
+      className={`${showFlex} items-center gap-2`}
     >
       <span
         className="inline-flex items-center gap-1.5 rounded-full bg-white/5 border border-white/10 px-3 py-1.5 text-xs font-medium text-foreground/80"

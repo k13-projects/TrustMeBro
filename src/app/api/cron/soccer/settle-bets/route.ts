@@ -4,13 +4,15 @@ import { isoDateOffset, todayIsoDate } from "@/lib/date";
 import { soccerProvider } from "@/lib/sports/soccer";
 import { upsertMatches } from "@/lib/sports/soccer/repo";
 import { settleSoccer } from "@/lib/analysis/soccer/settle";
+import { settleSoccerCoupons } from "@/lib/scoring/settle-coupons";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 // Refreshes recent match scores from ESPN (yesterday + today), then settles
 // any pending predictions whose match is finished — updating the soccer engine
-// ledger and resolving engine coupons. NBA's ledger is never touched.
+// ledger and resolving engine coupons. Once predictions grade, user-built
+// soccer coupons are settled too. NBA's ledger is never touched.
 export async function GET(req: Request) {
   const unauth = assertCronAuth(req);
   if (unauth) return unauth;
@@ -23,6 +25,12 @@ export async function GET(req: Request) {
   await upsertMatches(matches);
 
   const result = await settleSoccer();
+  const userCoupons = await settleSoccerCoupons();
 
-  return NextResponse.json({ ok: true, refreshed_matches: matches.length, ...result });
+  return NextResponse.json({
+    ok: true,
+    refreshed_matches: matches.length,
+    ...result,
+    user_coupons: userCoupons,
+  });
 }

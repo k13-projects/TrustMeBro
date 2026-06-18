@@ -15,10 +15,12 @@ export function AddToCouponButton({
 }) {
   const cart = useCart();
   const inCart = cart.has(pick.prediction_id);
-  const conflict =
-    !inCart && cart.sameGameConflict(pick.game_id, pick.prediction_id);
+  // Same-game parlays are allowed, so the only block left is a cross-sport
+  // coupon: you can't add a football pick onto an NBA coupon (and vice versa).
+  const wrongSport =
+    !inCart && cart.sport !== null && cart.sport !== pick.sport;
   const atMax = !inCart && cart.picks.length >= 6;
-  const disabled = !cart.hydrated || (!inCart && (conflict || atMax));
+  const disabled = !cart.hydrated || (!inCart && (wrongSport || atMax));
   const [flash, setFlash] = useState<string | null>(null);
 
   function onClick(e: React.MouseEvent) {
@@ -40,8 +42,8 @@ export function AddToCouponButton({
 
   const title = inCart
     ? "Remove from coupon"
-    : conflict
-      ? "You already have a pick from this game"
+    : wrongSport
+      ? "Clear your coupon to mix in another sport"
       : atMax
         ? "Coupons cap at 6 picks"
         : "Add to coupon";

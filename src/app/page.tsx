@@ -1,5 +1,7 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { activeSport } from "@/lib/sports/sport-cookie";
 import { isoDateOffset, isValidIsoDate, todayIsoDate } from "@/lib/date";
 import { teamColors } from "@/lib/sports/nba/branding";
 import { generateCombos } from "@/lib/analysis/combos";
@@ -51,9 +53,14 @@ type PageProps = {
 };
 
 export default async function HomePage({ searchParams }: PageProps) {
-  // Note: the bare root "/" is redirected to /football for the default (soccer)
-  // sport by the proxy (src/proxy.ts) — this page renders only when the user
-  // has toggled to Basketball (cookie tmb_sport = nba).
+  // The bare root "/" is the NBA home; football users get bounced to /football.
+  // This gate lives here (not in the edge proxy) because the sport cookie is
+  // set by a Server Action (the toggle) and a freshly-set cookie is reliably
+  // visible to `cookies()` in this render but NOT to edge middleware on the
+  // same redirect — which would strand a just-toggled NBA user back on /football.
+  if ((await activeSport()) !== "nba") {
+    redirect("/football");
+  }
   const params = await searchParams;
   const date = isValidIsoDate(params.date) ? params.date : todayIsoDate();
   const marketFilter =
@@ -475,6 +482,7 @@ function BetOfTheDayCard({
         <div className="flex items-center gap-2 flex-wrap">
           <AddToCouponButton
             pick={{
+              sport: "nba",
               prediction_id: prediction.id,
               game_id: prediction.game_id,
               player_id: prediction.player_id,

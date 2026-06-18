@@ -36,6 +36,7 @@ export function PickCard({
   const target = href ?? `/players/${prediction.player.id}`;
 
   const cartPick = {
+    sport: "nba" as const,
     prediction_id: prediction.id,
     game_id: prediction.game_id,
     player_id: prediction.player_id,

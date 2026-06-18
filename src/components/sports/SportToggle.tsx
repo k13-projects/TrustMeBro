@@ -1,45 +1,97 @@
+"use client";
+
 import Image from "next/image";
+import { useState } from "react";
 import { setSport } from "@/lib/sports/actions";
 import { SPORTS, SPORT_ORDER } from "@/lib/sports/registry";
+import { cx, focusRing } from "@/lib/design/tokens";
 import type { Sport } from "@/lib/sports/types";
 
-// The single global sport switch. Each option submits a server action that
-// sets the `tmb:sport` cookie (so SSR agrees) and redirects to that sport's
-// home — also works with JS disabled. Scopes sections, scoreboard, coupons.
+// Knob geometry (px). The knob is deliberately larger than the track so it
+// overflows top/bottom/ends — that physical "poke-out" is what reads as a
+// real switch knob rather than a flat segmented button.
+const TRACK_W = 72;
+const KNOB = 44;
+const OVERFLOW = 5; // how far the knob pokes past the active end
+
+const [LEFT_SPORT] = SPORT_ORDER; // soccer sits on the left, nba on the right
+
+// The single global sport switch, rendered as a physical knob toggle. The knob
+// carries the *active* sport's logo and slides to that sport's side; the dim
+// hint on the empty side previews where a tap will take you. The form submits
+// `setSport` (cookie + redirect) so it still works with JS disabled; the
+// optimistic state just lets the knob slide before the navigation lands.
 export function SportToggle({ active }: { active: Sport }) {
+  const [optimistic, setOptimistic] = useState<Sport>(active);
+  const current = optimistic;
+  const onLeft = current === LEFT_SPORT;
+  const target = onLeft ? SPORT_ORDER[1] : SPORT_ORDER[0];
+
+  const activeMeta = SPORTS[current];
+  const targetMeta = SPORTS[target];
+
+  const knobX = onLeft ? -OVERFLOW : TRACK_W - KNOB + OVERFLOW;
+
   return (
-    <div
-      role="group"
-      aria-label="Sport"
-      className="inline-flex items-center rounded-full border border-border/70 bg-background/60 p-0.5"
-    >
-      {SPORT_ORDER.map((sport) => {
-        const meta = SPORTS[sport];
-        const isActive = sport === active;
-        return (
-          <form key={sport} action={setSport.bind(null, sport)}>
-            <button
-              type="submit"
-              aria-pressed={isActive}
-              className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold transition-colors ${
-                isActive
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Image
-                src={meta.logo}
-                alt={`${meta.competition} logo`}
-                width={18}
-                height={18}
-                className="size-[18px] object-contain"
-                unoptimized
-              />
-              <span className="hidden sm:inline">{meta.competition}</span>
-            </button>
-          </form>
-        );
-      })}
-    </div>
+    <form action={setSport.bind(null, target)} className="shrink-0">
+      <button
+        type="submit"
+        role="switch"
+        aria-checked={!onLeft}
+        aria-label={`Sport: ${activeMeta.competition}. Switch to ${targetMeta.competition}`}
+        title={`Switch to ${targetMeta.competition}`}
+        onClick={() => setOptimistic(target)}
+        style={{ width: TRACK_W, height: KNOB }}
+        className={cx(
+          "group relative grid place-items-center isolate cursor-pointer",
+          focusRing,
+          "rounded-full",
+        )}
+      >
+        {/* Track — shorter than the button box so the knob overflows it. */}
+        <span
+          aria-hidden
+          className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-8 rounded-full border border-border/70 bg-background/60 shadow-[inset_0_1px_2px_rgba(0,0,0,0.45)] transition-colors group-hover:border-primary/50"
+        />
+
+        {/* Hint: the sport you'll switch to, dim, on the empty side. */}
+        <span
+          aria-hidden
+          className={cx(
+            "absolute top-1/2 -translate-y-1/2 z-[1] grid place-items-center transition-all duration-300",
+            onLeft ? "right-2.5" : "left-2.5",
+          )}
+        >
+          <Image
+            src={targetMeta.logo}
+            alt=""
+            width={20}
+            height={20}
+            className="size-5 object-contain opacity-35 grayscale group-hover:opacity-60 group-hover:grayscale-0 transition-all"
+            unoptimized
+          />
+        </span>
+
+        {/* Knob: the active sport's logo, oversized, sliding between sides. */}
+        <span
+          aria-hidden
+          style={{
+            width: KNOB,
+            height: KNOB,
+            transform: `translate(${knobX}px, -50%)`,
+          }}
+          className="absolute left-0 top-1/2 z-[2] grid place-items-center rounded-full border-2 border-primary/90 bg-gradient-to-b from-[#1b1c22] to-[#0c0d11] shadow-[0_6px_16px_-4px_rgba(0,0,0,0.7),0_0_0_1px_rgba(0,0,0,0.5),0_0_14px_-4px_rgba(255,184,0,0.55)] transition-[transform,border-color] duration-300 ease-[cubic-bezier(0.34,1.4,0.64,1)] group-hover:border-primary group-active:scale-95"
+        >
+          <Image
+            src={activeMeta.logo}
+            alt={`${activeMeta.competition} logo`}
+            width={30}
+            height={30}
+            className="size-[30px] object-contain drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]"
+            unoptimized
+          />
+        </span>
+      </button>
+    </form>
   );
 }

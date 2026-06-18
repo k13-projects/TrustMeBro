@@ -26,7 +26,8 @@ type Identity =
 export function MobileNav({
   identity,
   items,
-}: { identity?: Identity; items?: ReadonlyArray<Item> } = {}) {
+  dense = false,
+}: { identity?: Identity; items?: ReadonlyArray<Item>; dense?: boolean } = {}) {
   const ITEMS = items ?? DEFAULT_ITEMS;
   const pathname = usePathname() ?? "/";
   const [open, setOpen] = useState(false);
@@ -62,7 +63,7 @@ export function MobileNav({
   }, [pathname]);
 
   return (
-    <div ref={containerRef} className="sm:hidden relative">
+    <div ref={containerRef} className={cx(dense ? "xl:hidden" : "lg:hidden", "relative")}>
       <button
         type="button"
         aria-label={open ? "Close menu" : "Open menu"}

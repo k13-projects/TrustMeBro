@@ -9,6 +9,8 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const BodySchema = z.object({
+  // Older clients don't send `sport`; default to nba so they keep working.
+  sport: z.enum(["nba", "soccer"]).default("nba"),
   mode: z.enum(["power", "flex"]),
   stake: z.number().positive().max(10000),
   prediction_ids: z.array(z.string().uuid()).min(2).max(6),
@@ -38,7 +40,7 @@ export async function POST(req: Request) {
       { status: 400 },
     );
   }
-  const { mode, stake, prediction_ids, payout_multiplier, potential_payout } =
+  const { sport, mode, stake, prediction_ids, payout_multiplier, potential_payout } =
     parsed.data;
   const uniqueIds = Array.from(new Set(prediction_ids));
   if (uniqueIds.length !== prediction_ids.length) {
@@ -67,11 +69,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "payout_mismatch" }, { status: 400 });
   }
 
-  // Validate the picks: they must be real, pending, and come from distinct
-  // games — same rule as the cart UI enforces.
+  // Validate the picks against the right table for the sport: they must be
+  // real and still pending. Same-game / same-match picks are allowed
+  // (same-game parlays), so we only check existence + pending status.
+  const predTable = sport === "soccer" ? "soccer_predictions" : "predictions";
   const { data: preds, error: predsErr } = await supabase
-    .from("predictions")
-    .select("id, game_id, status")
+    .from(predTable)
+    .select("id, status")
     .in("id", uniqueIds);
   if (predsErr) {
     return NextResponse.json({ error: predsErr.message }, { status: 500 });
@@ -82,9 +86,6 @@ export async function POST(req: Request) {
   if (preds.some((p) => p.status !== "pending")) {
     return NextResponse.json({ error: "prediction_already_settled" }, { status: 400 });
   }
-  // Same-game picks are allowed (same-game parlays). The frontend cart no
-  // longer blocks adding multiple picks from one game; the backend matches
-  // so save-coupon doesn't reject what the UI just let the user assemble.
 
   // Guests don't have a Supabase session, so RLS would reject any insert
   // gated on auth.uid(). Service role bypasses RLS; the identity in the
@@ -99,6 +100,7 @@ export async function POST(req: Request) {
     .from("user_coupons")
     .insert({
       ...identity,
+      sport,
       mode,
       pick_count: uniqueIds.length,
       stake,
@@ -115,14 +117,16 @@ export async function POST(req: Request) {
     );
   }
 
-  const pickRows = uniqueIds.map((prediction_id, idx) => ({
+  // Soccer legs FK to soccer_predictions and live in their own table; NBA legs
+  // stay in user_coupon_picks. The parent user_coupons.sport marks which.
+  const legTable = sport === "soccer" ? "soccer_coupon_legs" : "user_coupon_picks";
+  const legCol = sport === "soccer" ? "soccer_prediction_id" : "prediction_id";
+  const pickRows = uniqueIds.map((predictionId, idx) => ({
     coupon_id: coupon.id,
-    prediction_id,
+    [legCol]: predictionId,
     pick_order: idx,
   }));
-  const { error: pErr } = await writer
-    .from("user_coupon_picks")
-    .insert(pickRows);
+  const { error: pErr } = await writer.from(legTable).insert(pickRows);
   if (pErr) {
     // Best-effort rollback so we don't leave an orphan coupon.
     await writer.from("user_coupons").delete().eq("id", coupon.id);

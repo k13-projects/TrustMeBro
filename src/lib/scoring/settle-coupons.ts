@@ -22,7 +22,6 @@ type CouponRow = {
 
 type CouponPickRow = {
   coupon_id: string;
-  prediction_id: string;
   prediction: { status: BetStatus } | { status: BetStatus }[] | null;
 };
 
@@ -46,12 +45,28 @@ type CouponPickRow = {
  * performance, not user wagers.
  */
 export async function settleCoupons(): Promise<SettleCouponsResult> {
+  return settleCouponsForSport("nba");
+}
+
+/**
+ * Same grading rules as {@link settleCoupons}, for soccer user coupons. Their
+ * legs live in soccer_coupon_legs (FK → soccer_predictions) and the parent
+ * user_coupons row carries sport = 'soccer'.
+ */
+export async function settleSoccerCoupons(): Promise<SettleCouponsResult> {
+  return settleCouponsForSport("soccer");
+}
+
+async function settleCouponsForSport(
+  sport: "nba" | "soccer",
+): Promise<SettleCouponsResult> {
   const supabase = supabaseAdmin();
 
   const { data: pendingCoupons, error: cErr } = await supabase
     .from("user_coupons")
     .select("id, mode, stake, payout_multiplier, potential_payout")
-    .eq("status", "pending");
+    .eq("status", "pending")
+    .eq("sport", sport);
   if (cErr) throw new Error(`load pending coupons: ${cErr.message}`);
   const coupons = (pendingCoupons ?? []) as CouponRow[];
   if (coupons.length === 0) {
@@ -59,9 +74,14 @@ export async function settleCoupons(): Promise<SettleCouponsResult> {
   }
 
   const couponIds = coupons.map((c) => c.id);
+  const legTable = sport === "soccer" ? "soccer_coupon_legs" : "user_coupon_picks";
+  const legSelect =
+    sport === "soccer"
+      ? "coupon_id, prediction:soccer_predictions(status)"
+      : "coupon_id, prediction:predictions(status)";
   const { data: pickRows, error: pErr } = await supabase
-    .from("user_coupon_picks")
-    .select("coupon_id, prediction_id, prediction:predictions(status)")
+    .from(legTable)
+    .select(legSelect)
     .in("coupon_id", couponIds);
   if (pErr) throw new Error(`load coupon picks: ${pErr.message}`);
 
@@ -142,9 +162,9 @@ export async function settleCoupons(): Promise<SettleCouponsResult> {
     settled++;
   }
 
-  // Refresh the public W/L aggregate that powers /bros profiles. Cheap because
-  // bro_stats only aggregates is_public coupons. Concurrent refresh tolerates
-  // an empty matview, so we can call this even when nothing changed.
+  // Refresh the public W/L aggregate that powers /bros profiles. It now spans
+  // both sports (one row per user+sport), so refresh after either settles.
+  // Cheap + tolerant of an empty matview.
   const { error: refreshErr } = await supabase.rpc("refresh_bro_stats");
   if (refreshErr) {
     // Don't fail settlement on a stats refresh hiccup — log and move on.

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
+import { cx } from "@/lib/design/tokens";
 
 type Item = { href: string; label: string; exact?: boolean };
 
@@ -35,7 +36,13 @@ function useUrlHash() {
   return hash;
 }
 
-export function NavLinks({ items }: { items: ReadonlyArray<Item> }) {
+export function NavLinks({
+  items,
+  dense = false,
+}: {
+  items: ReadonlyArray<Item>;
+  dense?: boolean;
+}) {
   const pathname = usePathname();
   const urlHash = useUrlHash();
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
@@ -44,7 +51,7 @@ export function NavLinks({ items }: { items: ReadonlyArray<Item> }) {
   return (
     <div
       ref={containerRef}
-      className="hidden md:flex items-center"
+      className={cx(dense ? "hidden xl:flex" : "hidden lg:flex", "items-center")}
       onMouseLeave={() => setHoverIdx(null)}
     >
       <nav
@@ -106,7 +113,7 @@ export function NavLinks({ items }: { items: ReadonlyArray<Item> }) {
                     window.scrollTo({ top: 0, behavior: "smooth" });
                   }
                 }}
-                className={`relative inline-flex items-center px-4 py-2 font-semibold uppercase tracking-[0.14em] transition-colors duration-200 ${
+                className={`relative inline-flex items-center whitespace-nowrap px-4 py-2 font-semibold uppercase tracking-[0.14em] transition-colors duration-200 ${
                   isActive
                     ? "text-primary"
                     : "text-foreground/72 hover:text-foreground"
