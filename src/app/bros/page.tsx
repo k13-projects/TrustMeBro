@@ -8,6 +8,8 @@ import {
 import { ActiveBrosSidebar } from "@/components/bros/ActiveBrosSidebar";
 import { SharedCouponCard } from "@/components/bros/SharedCouponCard";
 import { SectionHeading } from "@/components/site/SectionHeading";
+import { activeSport } from "@/lib/sports/sport-cookie";
+import { SPORTS } from "@/lib/sports/registry";
 
 export const revalidate = 60;
 
@@ -21,7 +23,7 @@ export default async function BroBoardPage({ searchParams }: PageProps) {
   const params = await searchParams;
   const requestedTab: FeedTab = params.tab === "following" ? "following" : "all";
 
-  const requester = await getRequester();
+  const [requester, sport] = await Promise.all([getRequester(), activeSport()]);
   const isAuth = requester?.kind === "auth";
   const viewerUserId = isAuth ? requester.user_id : null;
   const tab: FeedTab =
@@ -29,10 +31,11 @@ export default async function BroBoardPage({ searchParams }: PageProps) {
 
   const [coupons, bros] = await Promise.all([
     loadFeedCoupons({
+      sport,
       followerId: tab === "following" && viewerUserId ? viewerUserId : null,
       limit: 30,
     }),
-    listBros({ viewerUserId, limit: 80 }),
+    listBros({ sport, viewerUserId, limit: 80 }),
   ]);
   const teamById = await collectTeams(coupons);
 
@@ -40,7 +43,7 @@ export default async function BroBoardPage({ searchParams }: PageProps) {
     <div className="mx-auto max-w-7xl px-4 py-10 space-y-8">
       <header className="space-y-3">
         <SectionHeading
-          eyebrow="NBA · The Feed"
+          eyebrow={`${SPORTS[sport].competition} · The Feed`}
           title={
             <>
               <span

@@ -6,6 +6,10 @@ import useSWR from "swr";
 import { cx, focusRing } from "@/lib/design/tokens";
 import { marketLabel } from "@/components/MarketLabel";
 import { PickSideTag } from "@/components/PickSideTag";
+import {
+  marketLabel as soccerMarketLabel,
+  sideLabel as soccerSideLabel,
+} from "@/lib/sports/soccer/labels";
 import { useCart, combinedConfidence, type CartPick } from "./CartContext";
 import type { PayoutMap } from "@/lib/analysis/payouts";
 
@@ -78,6 +82,7 @@ export function CouponDrawer({ isSignedIn }: { isSignedIn: boolean }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          sport: cart.sport ?? "nba",
           mode: cart.mode,
           stake: cart.stake,
           prediction_ids: cart.picks.map((p) => p.prediction_id),
@@ -292,29 +297,54 @@ function ModeButton({
 
 function DrawerPickRow({ pick }: { pick: CartPick }) {
   const cart = useCart();
+  const removeLabel =
+    pick.sport === "soccer"
+      ? `Remove ${pick.home} v ${pick.away} from coupon`
+      : `Remove ${pick.player_first_name} ${pick.player_last_name} from coupon`;
   return (
     <div className="flex items-center gap-3 rounded-xl bg-white/3 border border-white/8 px-3 py-2.5">
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-sm font-medium truncate">
-            {pick.player_first_name} {pick.player_last_name}
-          </span>
-          {pick.team_abbreviation ? (
-            <span className="text-[10px] font-mono uppercase text-foreground/55">
-              {pick.team_abbreviation}
-            </span>
-          ) : null}
-        </div>
-        <div className="mt-0.5 flex items-baseline gap-1.5 text-xs">
-          <PickSideTag side={pick.pick} />
-          <span className="font-mono tabular-nums">{pick.line}</span>
-          <span className="text-foreground/55">{marketLabel(pick.market)}</span>
-          <span className="text-foreground/40 font-mono tabular-nums ml-auto">{pick.confidence}%</span>
-        </div>
+        {pick.sport === "soccer" ? (
+          <>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-sm font-medium truncate">
+                {pick.home_abbr || pick.home} v {pick.away_abbr || pick.away}
+              </span>
+            </div>
+            <div className="mt-0.5 flex items-baseline gap-1.5 text-xs">
+              <span className="font-medium text-amber-200">
+                {soccerSideLabel(pick.market, pick.side, pick.line, pick.home, pick.away)}
+              </span>
+              <span className="text-foreground/55">{soccerMarketLabel(pick.market)}</span>
+              <span className="text-foreground/40 font-mono tabular-nums ml-auto">
+                {Math.round(pick.confidence)}%
+              </span>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-sm font-medium truncate">
+                {pick.player_first_name} {pick.player_last_name}
+              </span>
+              {pick.team_abbreviation ? (
+                <span className="text-[10px] font-mono uppercase text-foreground/55">
+                  {pick.team_abbreviation}
+                </span>
+              ) : null}
+            </div>
+            <div className="mt-0.5 flex items-baseline gap-1.5 text-xs">
+              <PickSideTag side={pick.pick} />
+              <span className="font-mono tabular-nums">{pick.line}</span>
+              <span className="text-foreground/55">{marketLabel(pick.market)}</span>
+              <span className="text-foreground/40 font-mono tabular-nums ml-auto">{pick.confidence}%</span>
+            </div>
+          </>
+        )}
       </div>
       <button
         type="button"
-        aria-label={`Remove ${pick.player_first_name} ${pick.player_last_name} from coupon`}
+        aria-label={removeLabel}
         onClick={() => cart.remove(pick.prediction_id)}
         className={cx(
           "shrink-0 size-7 inline-flex items-center justify-center rounded-full bg-white/5 hover:bg-rose-400/15 hover:text-rose-300 border border-white/10",

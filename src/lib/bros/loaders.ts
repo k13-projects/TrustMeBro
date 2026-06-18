@@ -2,11 +2,13 @@ import "server-only";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { TeamLite } from "@/components/types";
+import type { MatchSide, SoccerMarket, Sport } from "@/lib/sports/types";
 import type {
   BroDirectoryEntry,
   BroProfile,
   BroStatRow,
   SharedCoupon,
+  SharedCouponSoccerPick,
 } from "./types";
 import { isOnline } from "./presence";
 
@@ -63,6 +65,63 @@ type CouponRow = {
   }>;
 };
 
+type SoccerTeamLite = { name: string; abbreviation: string };
+
+type RawSoccerPred = {
+  id: string;
+  market: SoccerMarket;
+  side: MatchSide;
+  line: number | string | null;
+  status: "pending" | "won" | "lost" | "void";
+  soccer_matches:
+    | {
+        home: SoccerTeamLite | SoccerTeamLite[] | null;
+        away: SoccerTeamLite | SoccerTeamLite[] | null;
+      }
+    | {
+        home: SoccerTeamLite | SoccerTeamLite[] | null;
+        away: SoccerTeamLite | SoccerTeamLite[] | null;
+      }[]
+    | null;
+};
+
+type SoccerCouponRow = {
+  id: string;
+  user_id: string;
+  mode: "power" | "flex";
+  pick_count: number;
+  stake: number | string;
+  payout_multiplier: number | string;
+  potential_payout: number | string;
+  status: "pending" | "won" | "lost" | "void";
+  result_payout: number | string | null;
+  shared_at: string | null;
+  settled_at: string | null;
+  created_at: string;
+  legs: Array<{
+    pick_order: number;
+    prediction: RawSoccerPred | RawSoccerPred[] | null;
+  }>;
+};
+
+const NBA_COUPON_SELECT = `id, user_id, mode, pick_count, stake, payout_multiplier, potential_payout,
+   status, result_payout, shared_at, settled_at, created_at,
+   picks:user_coupon_picks(pick_order,
+     prediction:predictions(id, game_id, market, line, pick, status, result_value,
+       player:players(id, first_name, last_name, team_id)))`;
+
+const SOCCER_COUPON_SELECT = `id, user_id, mode, pick_count, stake, payout_multiplier, potential_payout,
+   status, result_payout, shared_at, settled_at, created_at,
+   legs:soccer_coupon_legs(pick_order,
+     prediction:soccer_predictions(id, market, side, line, status,
+       soccer_matches(
+         home:soccer_teams!soccer_matches_home_team_id_fkey(name, abbreviation),
+         away:soccer_teams!soccer_matches_away_team_id_fkey(name, abbreviation))))`;
+
+function one<T>(v: T | T[] | null | undefined): T | null {
+  return Array.isArray(v) ? (v[0] ?? null) : (v ?? null);
+}
+
 function normalizeCoupon(row: CouponRow, owner: BroProfile): SharedCoupon {
   const picks = row.picks
     .map((p) => {
@@ -86,17 +145,19 @@ function normalizeCoupon(row: CouponRow, owner: BroProfile): SharedCoupon {
           pick: pred.pick,
           status: pred.status,
           result_value: pred.result_value,
-          player: player as SharedCoupon["picks"][number]["prediction"] extends
-            | { player: infer P }
-            | null
-            ? P
-            : never,
+          player: player as {
+            id: number;
+            first_name: string;
+            last_name: string;
+            team_id: number | null;
+          } | null,
         },
       };
     })
     .sort((a, b) => a.pick_order - b.pick_order);
 
   return {
+    sport: "nba",
     id: row.id,
     user_id: row.user_id,
     mode: row.mode,
@@ -114,7 +175,71 @@ function normalizeCoupon(row: CouponRow, owner: BroProfile): SharedCoupon {
   };
 }
 
+function normalizeSoccerCoupon(
+  row: SoccerCouponRow,
+  owner: BroProfile,
+): SharedCoupon {
+  const picks: SharedCouponSoccerPick[] = row.legs
+    .map((l) => {
+      const pred = one(l.prediction);
+      if (!pred) return { pick_order: l.pick_order, prediction: null };
+      const match = one(pred.soccer_matches);
+      const home = one(match?.home ?? null);
+      const away = one(match?.away ?? null);
+      return {
+        pick_order: l.pick_order,
+        prediction: {
+          id: pred.id,
+          market: pred.market,
+          side: pred.side,
+          line: pred.line === null ? null : Number(pred.line),
+          status: pred.status,
+          home: home?.name ?? "Home",
+          away: away?.name ?? "Away",
+          home_abbr: home?.abbreviation ?? "",
+          away_abbr: away?.abbreviation ?? "",
+        },
+      };
+    })
+    .sort((a, b) => a.pick_order - b.pick_order);
+
+  return {
+    sport: "soccer",
+    id: row.id,
+    user_id: row.user_id,
+    mode: row.mode,
+    pick_count: row.pick_count,
+    stake: row.stake,
+    payout_multiplier: row.payout_multiplier,
+    potential_payout: row.potential_payout,
+    status: row.status,
+    result_payout: row.result_payout,
+    shared_at: row.shared_at,
+    settled_at: row.settled_at,
+    created_at: row.created_at,
+    owner,
+    picks,
+  };
+}
+
+async function attachOwners(
+  rows: Array<{ user_id: string }>,
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
+): Promise<Map<string, BroProfile>> {
+  const ownerIds = Array.from(new Set(rows.map((r) => r.user_id)));
+  if (ownerIds.length === 0) return new Map();
+  const { data: profiles, error } = await supabase
+    .from("profiles")
+    .select("user_id, handle, display_name, bio, avatar_url")
+    .in("user_id", ownerIds);
+  if (error) throw new Error(`load profiles: ${error.message}`);
+  const byId = new Map<string, BroProfile>();
+  for (const p of (profiles ?? []) as BroProfile[]) byId.set(p.user_id, p);
+  return byId;
+}
+
 export async function loadFeedCoupons(opts: {
+  sport: Sport;
   followerId?: string | null;
   limit?: number;
 }): Promise<SharedCoupon[]> {
@@ -131,44 +256,31 @@ export async function loadFeedCoupons(opts: {
     if (userIds.length === 0) return [];
   }
 
+  const select =
+    opts.sport === "soccer" ? SOCCER_COUPON_SELECT : NBA_COUPON_SELECT;
   let q = supabase
     .from("user_coupons")
-    .select(
-      `id, user_id, mode, pick_count, stake, payout_multiplier, potential_payout,
-       status, result_payout, shared_at, settled_at, created_at,
-       picks:user_coupon_picks(pick_order,
-         prediction:predictions(id, game_id, market, line, pick, status, result_value,
-           player:players(id, first_name, last_name, team_id)))`,
-    )
+    .select(select)
     .eq("is_public", true)
+    .eq("sport", opts.sport)
     .order("shared_at", { ascending: false, nullsFirst: false })
     .limit(limit);
-
-  if (userIds) {
-    q = q.in("user_id", userIds);
-  }
+  if (userIds) q = q.in("user_id", userIds);
 
   const { data: couponsRaw, error } = await q;
   if (error) throw new Error(`load feed coupons: ${error.message}`);
-  const rows = (couponsRaw ?? []) as unknown as CouponRow[];
+  const rows = (couponsRaw ?? []) as unknown as Array<{ user_id: string }>;
   if (rows.length === 0) return [];
 
-  const ownerIds = Array.from(new Set(rows.map((r) => r.user_id)));
-  const { data: profiles, error: pErr } = await supabase
-    .from("profiles")
-    .select("user_id, handle, display_name, bio, avatar_url")
-    .in("user_id", ownerIds);
-  if (pErr) throw new Error(`load profiles: ${pErr.message}`);
-  const profileById = new Map<string, BroProfile>();
-  for (const p of (profiles ?? []) as BroProfile[]) {
-    profileById.set(p.user_id, p);
-  }
+  const profileById = await attachOwners(rows, supabase);
 
   return rows
     .map((row) => {
       const owner = profileById.get(row.user_id);
       if (!owner) return null;
-      return normalizeCoupon(row, owner);
+      return opts.sport === "soccer"
+        ? normalizeSoccerCoupon(row as unknown as SoccerCouponRow, owner)
+        : normalizeCoupon(row as unknown as CouponRow, owner);
     })
     .filter((c): c is SharedCoupon => c !== null);
 }
@@ -176,13 +288,19 @@ export async function loadFeedCoupons(opts: {
 export async function collectTeams(
   coupons: SharedCoupon[],
 ): Promise<Map<number, TeamLite>> {
+  // Only NBA legs carry NBA team ids; soccer legs render their own abbreviations.
   const teamIds = Array.from(
     new Set(
-      coupons.flatMap((c) =>
-        c.picks
-          .map((p) => p.prediction?.player?.team_id ?? null)
-          .filter((id): id is number => id !== null),
-      ),
+      coupons
+        .filter(
+          (c): c is Extract<SharedCoupon, { sport: "nba" }> =>
+            c.sport === "nba",
+        )
+        .flatMap((c) =>
+          c.picks
+            .map((p) => p.prediction?.player?.team_id ?? null)
+            .filter((id): id is number => id !== null),
+        ),
     ),
   );
   if (teamIds.length === 0) return new Map();
@@ -224,6 +342,7 @@ export async function loadProfileByUserId(
 
 export async function loadBroStats(
   userId: string,
+  sport: Sport,
 ): Promise<BroStatRow | null> {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
@@ -232,6 +351,7 @@ export async function loadBroStats(
       "user_id, settled, wins, losses, voids, pending, net_units, score, last_win_at, last_shared_at",
     )
     .eq("user_id", userId)
+    .eq("sport", sport)
     .maybeSingle();
   if (error) throw new Error(`load bro stats: ${error.message}`);
   return (data as BroStatRow | null) ?? null;
@@ -239,18 +359,15 @@ export async function loadBroStats(
 
 export async function loadProfileCoupons(
   userId: string,
+  sport: Sport,
 ): Promise<SharedCoupon[]> {
   const supabase = await createSupabaseServerClient();
+  const select = sport === "soccer" ? SOCCER_COUPON_SELECT : NBA_COUPON_SELECT;
   const { data: couponsRaw, error } = await supabase
     .from("user_coupons")
-    .select(
-      `id, user_id, mode, pick_count, stake, payout_multiplier, potential_payout,
-       status, result_payout, shared_at, settled_at, created_at,
-       picks:user_coupon_picks(pick_order,
-         prediction:predictions(id, game_id, market, line, pick, status, result_value,
-           player:players(id, first_name, last_name, team_id)))`,
-    )
+    .select(select)
     .eq("is_public", true)
+    .eq("sport", sport)
     .eq("user_id", userId)
     .order("shared_at", { ascending: false, nullsFirst: false })
     .limit(60);
@@ -258,8 +375,12 @@ export async function loadProfileCoupons(
 
   const profile = await loadProfileByUserId(userId);
   if (!profile) return [];
-  const rows = (couponsRaw ?? []) as unknown as CouponRow[];
-  return rows.map((row) => normalizeCoupon(row, profile));
+  const rows = (couponsRaw ?? []) as unknown as Array<{ user_id: string }>;
+  return rows.map((row) =>
+    sport === "soccer"
+      ? normalizeSoccerCoupon(row as unknown as SoccerCouponRow, profile)
+      : normalizeCoupon(row as unknown as CouponRow, profile),
+  );
 }
 
 export async function loadFollowState(
@@ -277,6 +398,7 @@ export async function loadFollowState(
 }
 
 export async function listBros(opts: {
+  sport: Sport;
   viewerUserId?: string | null;
   limit?: number;
 }): Promise<BroDirectoryEntry[]> {
@@ -285,9 +407,7 @@ export async function listBros(opts: {
 
   const { data: profiles, error } = await supabase
     .from("profiles")
-    .select(
-      "user_id, handle, display_name, bio, avatar_url, last_seen_at",
-    )
+    .select("user_id, handle, display_name, bio, avatar_url, last_seen_at")
     .order("last_seen_at", { ascending: false, nullsFirst: false })
     .limit(limit);
   if (error) throw new Error(`list bros: ${error.message}`);
@@ -302,6 +422,7 @@ export async function listBros(opts: {
     supabase
       .from("bro_stats")
       .select("user_id, wins, losses, score")
+      .eq("sport", opts.sport)
       .in("user_id", userIds),
     opts.viewerUserId
       ? supabase

@@ -13,6 +13,7 @@ import { BroAvatar } from "@/components/bros/BroAvatar";
 import { BroStatStrip } from "@/components/bros/BroStatStrip";
 import { FollowButton } from "@/components/bros/FollowButton";
 import { SharedCouponCard } from "@/components/bros/SharedCouponCard";
+import { activeSport } from "@/lib/sports/sport-cookie";
 
 export const revalidate = 30;
 
@@ -25,15 +26,15 @@ export default async function BroProfilePage({ params }: PageProps) {
   const profile = await loadProfileByHandle(handle);
   if (!profile) notFound();
 
-  const requester = await getRequester();
+  const [requester, sport] = await Promise.all([getRequester(), activeSport()]);
   const viewerUserId =
     requester?.kind === "auth" ? requester.user_id : null;
   const isSelf = viewerUserId === profile.user_id;
   const canFollow = !!viewerUserId && !isSelf;
 
   const [stats, coupons, counts, initialFollowing] = await Promise.all([
-    loadBroStats(profile.user_id),
-    loadProfileCoupons(profile.user_id),
+    loadBroStats(profile.user_id, sport),
+    loadProfileCoupons(profile.user_id, sport),
     loadFollowCounts(profile.user_id),
     viewerUserId && !isSelf
       ? loadFollowState(viewerUserId, profile.user_id)

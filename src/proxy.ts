@@ -19,16 +19,11 @@ export async function proxy(request: NextRequest) {
     });
   }
 
-  // Football is the default sport: send the bare root to /football unless the
-  // user has toggled to Basketball (cookie tmb_sport = nba). Done here so we
-  // don't render the whole NBA home just to bounce. See project_soccer_expansion.
-  if (request.nextUrl.pathname === "/") {
-    if (request.cookies.get("tmb_sport")?.value !== "nba") {
-      const dest = request.nextUrl.clone();
-      dest.pathname = "/football";
-      return NextResponse.redirect(dest);
-    }
-  }
+  // The bare root "/" → /football default-sport bounce used to live here, but
+  // a cookie set by the sport-toggle Server Action isn't visible to edge
+  // middleware on the redirect it issues, so toggling to NBA got bounced
+  // straight back to /football. The gate now lives in the root page
+  // (src/app/page.tsx), where the freshly-set cookie is reliably readable.
 
   const response = NextResponse.next({ request });
 

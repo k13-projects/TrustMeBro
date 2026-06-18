@@ -10,6 +10,11 @@ import { TeamBadge } from "@/components/TeamBadge";
 import type { TeamLite } from "@/components/types";
 import { CouponShareToggle } from "@/components/bros/CouponShareToggle";
 import { scheduleSelfHealingSettle } from "@/lib/scoring/auto-settle";
+import {
+  marketLabel as soccerMarketLabel,
+  sideLabel as soccerSideLabel,
+} from "@/lib/sports/soccer/labels";
+import type { MatchSide, SoccerMarket } from "@/lib/sports/types";
 
 export const revalidate = 30;
 
@@ -114,7 +119,7 @@ export default async function HistoryPage({ searchParams }: PageProps) {
     reader
       .from("user_coupons")
       .select(
-        `id, mode, pick_count, stake, payout_multiplier, potential_payout,
+        `id, sport, mode, pick_count, stake, payout_multiplier, potential_payout,
          status, result_payout, settled_at, created_at, is_public, shared_at,
          picks:user_coupon_picks(pick_order, prediction:predictions(id, game_id, market, line, pick,
            player:players(id, first_name, last_name, team_id),
@@ -124,6 +129,52 @@ export default async function HistoryPage({ searchParams }: PageProps) {
       .order("created_at", { ascending: false })
       .limit(100),
   ]);
+
+  // Soccer coupons keep their legs in soccer_coupon_legs (FK → soccer_predictions),
+  // so the user_coupon_picks join above comes back empty for them. Fetch those
+  // legs separately and key them by coupon id for rendering.
+  const soccerCouponIds = (couponsRaw ?? [])
+    .filter((c) => (c as { sport?: string }).sport === "soccer")
+    .map((c) => (c as { id: string }).id);
+  const { data: soccerLegsRaw } = soccerCouponIds.length
+    ? await reader
+        .from("soccer_coupon_legs")
+        .select(
+          `coupon_id, pick_order, prediction:soccer_predictions(id, market, side, line,
+             soccer_matches(
+               home:soccer_teams!soccer_matches_home_team_id_fkey(name, abbreviation),
+               away:soccer_teams!soccer_matches_away_team_id_fkey(name, abbreviation)))`,
+        )
+        .in("coupon_id", soccerCouponIds)
+    : { data: [] };
+
+  const soccerLegsByCoupon = new Map<string, SoccerLegView[]>();
+  for (const raw of (soccerLegsRaw ?? []) as unknown as RawSoccerLeg[]) {
+    const pred = Array.isArray(raw.prediction)
+      ? raw.prediction[0] ?? null
+      : raw.prediction;
+    if (!pred) continue;
+    const match = Array.isArray(pred.soccer_matches)
+      ? pred.soccer_matches[0] ?? null
+      : pred.soccer_matches;
+    const home = match ? (Array.isArray(match.home) ? match.home[0] : match.home) : null;
+    const away = match ? (Array.isArray(match.away) ? match.away[0] : match.away) : null;
+    const list = soccerLegsByCoupon.get(raw.coupon_id) ?? [];
+    list.push({
+      pick_order: raw.pick_order,
+      id: pred.id,
+      market: pred.market,
+      side: pred.side,
+      line: pred.line === null ? null : Number(pred.line),
+      home: home?.name ?? "Home",
+      away: away?.name ?? "Away",
+      home_abbr: home?.abbreviation ?? "",
+      away_abbr: away?.abbreviation ?? "",
+    });
+    soccerLegsByCoupon.set(raw.coupon_id, list);
+  }
+  for (const list of soccerLegsByCoupon.values())
+    list.sort((a, b) => a.pick_order - b.pick_order);
 
   const bets = (betsRaw ?? []).map((b: unknown) => {
     const row = b as RawUserBet & {
@@ -290,6 +341,7 @@ export default async function HistoryPage({ searchParams }: PageProps) {
                   key={c.id}
                   coupon={c}
                   teamById={teamById}
+                  soccerLegs={soccerLegsByCoupon.get(c.id) ?? []}
                   canShare={requester.kind === "auth"}
                 />
               ))}
@@ -320,8 +372,53 @@ type CouponPickPrediction = {
   game: CouponPickGameLite | CouponPickGameLite[] | null;
 };
 
+type SoccerLegView = {
+  pick_order: number;
+  id: string;
+  market: SoccerMarket;
+  side: MatchSide;
+  line: number | null;
+  home: string;
+  away: string;
+  home_abbr: string;
+  away_abbr: string;
+};
+
+type RawSoccerTeamLite = { name: string; abbreviation: string };
+
+type RawSoccerLeg = {
+  coupon_id: string;
+  pick_order: number;
+  prediction:
+    | {
+        id: string;
+        market: SoccerMarket;
+        side: MatchSide;
+        line: number | string | null;
+        soccer_matches:
+          | {
+              home: RawSoccerTeamLite | RawSoccerTeamLite[] | null;
+              away: RawSoccerTeamLite | RawSoccerTeamLite[] | null;
+            }
+          | {
+              home: RawSoccerTeamLite | RawSoccerTeamLite[] | null;
+              away: RawSoccerTeamLite | RawSoccerTeamLite[] | null;
+            }[]
+          | null;
+      }
+    | {
+        id: string;
+        market: SoccerMarket;
+        side: MatchSide;
+        line: number | string | null;
+        soccer_matches: unknown;
+      }[]
+    | null;
+};
+
 type CouponRow = {
   id: string;
+  sport: "nba" | "soccer";
   mode: "power" | "flex";
   pick_count: number;
   stake: number | string;
@@ -381,12 +478,15 @@ function TabLink({
 function CouponRowCard({
   coupon,
   teamById,
+  soccerLegs,
   canShare,
 }: {
   coupon: NormalizedCoupon;
   teamById: Map<number, TeamLite>;
+  soccerLegs: SoccerLegView[];
   canShare: boolean;
 }) {
+  const isSoccer = coupon.sport === "soccer";
   const outcomeTones = {
     pending: "bg-white/5 text-foreground/55 border-white/10",
     won: "bg-emerald-400/15 text-emerald-300 border-emerald-400/30",
@@ -418,38 +518,56 @@ function CouponRowCard({
       </header>
 
       <ul className="space-y-1.5">
-        {coupon.picks.map((p) =>
-          p.prediction && p.prediction.player ? (
-            <li
-              key={p.prediction.id}
-              className="flex items-center gap-2 text-xs flex-wrap"
-            >
-              <span className="size-1.5 rounded-full bg-amber-300/70" aria-hidden />
-              <span className="font-medium">
-                {p.prediction.player.first_name} {p.prediction.player.last_name}
-              </span>
-              <TeamBadge
-                team={
-                  p.prediction.player.team_id != null
-                    ? teamById.get(p.prediction.player.team_id) ?? null
-                    : null
-                }
-                size={14}
-              />
-              <PickSideTag side={p.prediction.pick} />
-              <span className="font-mono tabular-nums">{p.prediction.line}</span>
-              <span className="text-foreground/55">
-                {marketLabel(p.prediction.market)}
-              </span>
-              {p.prediction.game?.date ? (
-                <GameDateBadge
-                  date={p.prediction.game.date}
-                  status={p.prediction.game.status}
-                />
-              ) : null}
-            </li>
-          ) : null,
-        )}
+        {isSoccer
+          ? soccerLegs.map((leg) => (
+              <li
+                key={leg.id}
+                className="flex items-center gap-2 text-xs flex-wrap"
+              >
+                <span className="size-1.5 rounded-full bg-amber-300/70" aria-hidden />
+                <span className="font-mono uppercase text-foreground/55">
+                  {leg.home_abbr || leg.home} v {leg.away_abbr || leg.away}
+                </span>
+                <span className="font-medium text-amber-200">
+                  {soccerSideLabel(leg.market, leg.side, leg.line, leg.home, leg.away)}
+                </span>
+                <span className="text-foreground/55">
+                  {soccerMarketLabel(leg.market)}
+                </span>
+              </li>
+            ))
+          : coupon.picks.map((p) =>
+              p.prediction && p.prediction.player ? (
+                <li
+                  key={p.prediction.id}
+                  className="flex items-center gap-2 text-xs flex-wrap"
+                >
+                  <span className="size-1.5 rounded-full bg-amber-300/70" aria-hidden />
+                  <span className="font-medium">
+                    {p.prediction.player.first_name} {p.prediction.player.last_name}
+                  </span>
+                  <TeamBadge
+                    team={
+                      p.prediction.player.team_id != null
+                        ? teamById.get(p.prediction.player.team_id) ?? null
+                        : null
+                    }
+                    size={14}
+                  />
+                  <PickSideTag side={p.prediction.pick} />
+                  <span className="font-mono tabular-nums">{p.prediction.line}</span>
+                  <span className="text-foreground/55">
+                    {marketLabel(p.prediction.market)}
+                  </span>
+                  {p.prediction.game?.date ? (
+                    <GameDateBadge
+                      date={p.prediction.game.date}
+                      status={p.prediction.game.status}
+                    />
+                  ) : null}
+                </li>
+              ) : null,
+            )}
       </ul>
 
       {resultPayout !== null ? (

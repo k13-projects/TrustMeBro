@@ -9,8 +9,10 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import type { MatchSide, SoccerMarket } from "@/lib/sports/types";
 
-export type CartPick = {
+export type NbaCartPick = {
+  sport: "nba";
   prediction_id: string;
   game_id: number;
   player_id: number;
@@ -25,6 +27,25 @@ export type CartPick = {
   jersey_number: string | null;
 };
 
+export type SoccerCartPick = {
+  sport: "soccer";
+  prediction_id: string;
+  match_id: number;
+  market: SoccerMarket;
+  side: MatchSide;
+  line: number | null;
+  confidence: number;
+  best_odds: number;
+  home: string;
+  away: string;
+  home_abbr: string;
+  away_abbr: string;
+};
+
+// A coupon is single-sport (NBA player props and soccer match markets settle
+// and price differently), so picks always share one `sport` discriminator.
+export type CartPick = NbaCartPick | SoccerCartPick;
+
 export type CartMode = "power" | "flex";
 
 type CartState = {
@@ -36,6 +57,8 @@ type CartState = {
 
 type CartContextValue = CartState & {
   hydrated: boolean;
+  // The sport of the picks currently in the coupon, or null when empty.
+  sport: "nba" | "soccer" | null;
   add: (pick: CartPick) => { ok: boolean; reason?: string };
   remove: (predictionId: string) => void;
   clear: () => void;
@@ -71,8 +94,16 @@ export function CartProvider({ children }: { children: ReactNode }) {
       if (raw) {
         const parsed = JSON.parse(raw) as Partial<CartState>;
         if (Array.isArray(parsed.picks)) {
+          // Carts saved before soccer shipped have no `sport` field — they're
+          // all NBA. Backfill the discriminator so older localStorage stays
+          // valid against the new union shape.
+          const migrated = parsed.picks.map((p) =>
+            p && (p as CartPick).sport === "soccer"
+              ? (p as CartPick)
+              : ({ ...(p as object), sport: "nba" } as CartPick),
+          );
           // eslint-disable-next-line react-hooks/set-state-in-effect
-          setPicks(parsed.picks.slice(0, MAX_PICKS));
+          setPicks(migrated.slice(0, MAX_PICKS));
         }
         if (typeof parsed.stake === "number" && parsed.stake > 0) {
           setStakeState(parsed.stake);
@@ -125,6 +156,16 @@ export function CartProvider({ children }: { children: ReactNode }) {
       if (picks.length >= MAX_PICKS) {
         return { ok: false, reason: `Coupons cap at ${MAX_PICKS} picks.` };
       }
+      // A coupon can't mix sports — they price and settle on different rails.
+      if (picks.length > 0 && picks[0].sport !== pick.sport) {
+        return {
+          ok: false,
+          reason:
+            pick.sport === "soccer"
+              ? "Coupon already has NBA picks. Clear it to start a football one."
+              : "Coupon already has football picks. Clear it to start an NBA one.",
+        };
+      }
       setPicks((prev) => [...prev, pick]);
       return { ok: true };
     },
@@ -155,6 +196,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       mode,
       isOpen,
       hydrated,
+      sport: picks.length > 0 ? picks[0].sport : null,
       add,
       remove,
       clear,

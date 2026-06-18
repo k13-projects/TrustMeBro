@@ -19,6 +19,11 @@ export function Navbar({
   sport: Sport;
 }) {
   const navItems = SPORTS[sport].nav;
+  // The desktop link row only fits once there's room for every item. Soccer
+  // (few items) clears that bar at lg; the NBA's longer nav needs xl. Below the
+  // threshold the hamburger carries navigation. All three nav surfaces share
+  // this flag so the handoff happens at one breakpoint with no dead zone.
+  const dense = navItems.length > 6;
   return (
     <header className="sticky top-0 z-30">
       <div
@@ -35,13 +40,14 @@ export function Navbar({
             logo-float keyframe) is identical to the previous inline render. */}
         <LogoLink />
 
-        <NavLinks items={navItems} />
+        <NavLinks items={navItems} dense={dense} />
 
         <div className="flex items-center gap-2">
           <SportToggle active={sport} />
-          <IdentityBadge />
+          <IdentityBadge dense={dense} />
           <MobileNav
             items={navItems}
+            dense={dense}
             identity={
               identity
                 ? {

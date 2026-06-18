@@ -5,6 +5,10 @@ import { TeamBadge } from "@/components/TeamBadge";
 import type { TeamLite } from "@/components/types";
 import { BroAvatar } from "./BroAvatar";
 import type { SharedCoupon } from "@/lib/bros/types";
+import {
+  marketLabel as soccerMarketLabel,
+  sideLabel as soccerSideLabel,
+} from "@/lib/sports/soccer/labels";
 
 const OUTCOME_TONES = {
   pending: "bg-white/5 text-foreground/55 border-white/10",
@@ -80,6 +84,41 @@ export function SharedCouponCard({
         ) : null}
       </header>
 
+      {coupon.sport === "soccer" ? (
+        <ul className="space-y-1.5">
+          {coupon.picks.map((p) => {
+            if (!p.prediction) return null;
+            const st = p.prediction.status;
+            const pred = p.prediction;
+            return (
+              <li key={pred.id} className="flex items-center gap-2 text-xs">
+                <span
+                  aria-hidden
+                  className={`size-1.5 rounded-full shrink-0 ${
+                    st === "won"
+                      ? "bg-emerald-400"
+                      : st === "lost"
+                        ? "bg-rose-400"
+                        : "bg-foreground/30"
+                  }`}
+                />
+                <span className="font-mono uppercase text-foreground/55">
+                  {pred.home_abbr || pred.home} v {pred.away_abbr || pred.away}
+                </span>
+                <span className="font-medium text-amber-200">
+                  {soccerSideLabel(pred.market, pred.side, pred.line, pred.home, pred.away)}
+                </span>
+                <span className="text-foreground/55">
+                  {soccerMarketLabel(pred.market)}
+                </span>
+                <span className="ml-auto text-[10px] uppercase tracking-wide text-foreground/35">
+                  {st === "won" ? "hit" : st === "lost" ? "miss" : st === "void" ? "void" : "—"}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      ) : (
       <ul className="space-y-1.5">
         {coupon.picks.map((p) => {
           if (!p.prediction || !p.prediction.player) return null;
@@ -149,6 +188,7 @@ export function SharedCouponCard({
           );
         })}
       </ul>
+      )}
 
       {resultPayout !== null ? (
         <footer className="text-xs text-foreground/65 font-mono tabular-nums border-t border-white/8 pt-2 flex items-center justify-between">

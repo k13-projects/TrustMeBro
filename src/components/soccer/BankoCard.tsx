@@ -1,6 +1,8 @@
 import type { PredictionDetail } from "@/lib/sports/soccer/queries";
 import { marketLabel, sideLabel } from "@/lib/sports/soccer/labels";
-import { CountryFlag } from "./CountryFlag";
+import { AddToCouponButton } from "@/components/cart/AddToCouponButton";
+import { toSoccerCartPick } from "@/lib/sports/soccer/cart";
+import { MatchBanner } from "./MatchBanner";
 
 // The most-trusted single pick. Bold, gold, "lock it in" energy.
 export function BankoCard({ pick }: { pick: PredictionDetail }) {
@@ -14,17 +16,19 @@ export function BankoCard({ pick }: { pick: PredictionDetail }) {
           {Math.round(pick.confidence)}%
         </span>
       </div>
-      <h3 className="mt-3 text-lg font-black">
+      <div className="mt-3">
+        <MatchBanner
+          size="sm"
+          home={{ name: pick.home, abbreviation: pick.home_abbr, crest: pick.home_crest }}
+          away={{ name: pick.away, abbreviation: pick.away_abbr, crest: pick.away_crest }}
+        />
+      </div>
+      <h3 className="mt-2 text-lg font-black">
         {sideLabel(pick.market, pick.side, pick.line, pick.home, pick.away)}
+        <span className="ml-2 text-sm font-semibold text-foreground/45">
+          {marketLabel(pick.market)}
+        </span>
       </h3>
-      <p className="flex flex-wrap items-center gap-1.5 text-sm text-foreground/55">
-        <CountryFlag crest={pick.home_crest} abbr={pick.home_abbr} name={pick.home} size={16} />
-        <span>{pick.home}</span>
-        <span className="text-foreground/30">v</span>
-        <CountryFlag crest={pick.away_crest} abbr={pick.away_abbr} name={pick.away} size={16} />
-        <span>{pick.away}</span>
-        <span className="text-foreground/35">· {marketLabel(pick.market)}</span>
-      </p>
       <div className="mt-3 flex items-center gap-3 text-sm">
         <span className="rounded-full bg-white/8 px-2.5 py-0.5 font-bold tabular-nums">
           {pick.best_odds.toFixed(2)}
@@ -39,6 +43,9 @@ export function BankoCard({ pick }: { pick: PredictionDetail }) {
             {(pick.expected_value * 100).toFixed(0)}%
           </span>
         ) : null}
+      </div>
+      <div className="mt-4 flex">
+        <AddToCouponButton pick={toSoccerCartPick(pick)} variant="card" />
       </div>
     </div>
   );

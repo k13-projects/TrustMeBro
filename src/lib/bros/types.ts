@@ -1,4 +1,5 @@
 import type { BetStatus } from "@/lib/analysis/types";
+import type { MatchSide, SoccerMarket } from "@/lib/sports/types";
 
 export type BroProfile = {
   user_id: string;
@@ -56,7 +57,22 @@ export type SharedCouponPick = {
   } | null;
 };
 
-export type SharedCoupon = {
+export type SharedCouponSoccerPick = {
+  pick_order: number;
+  prediction: {
+    id: string;
+    market: SoccerMarket;
+    side: MatchSide;
+    line: number | null;
+    status: BetStatus;
+    home: string;
+    away: string;
+    home_abbr: string;
+    away_abbr: string;
+  } | null;
+};
+
+type SharedCouponBase = {
   id: string;
   user_id: string;
   mode: "power" | "flex";
@@ -70,5 +86,12 @@ export type SharedCoupon = {
   settled_at: string | null;
   created_at: string;
   owner: BroProfile;
-  picks: SharedCouponPick[];
 };
+
+// Discriminated by sport: NBA coupons carry player-prop legs, soccer coupons
+// carry match-market legs. The Bro Board renders the right shape per sport.
+export type SharedCoupon = SharedCouponBase &
+  (
+    | { sport: "nba"; picks: SharedCouponPick[] }
+    | { sport: "soccer"; picks: SharedCouponSoccerPick[] }
+  );

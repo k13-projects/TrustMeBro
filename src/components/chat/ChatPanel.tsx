@@ -197,15 +197,27 @@ export function ChatPanel({
       ? {
           mode: cart.mode,
           stake: cart.stake,
-          picks: cart.picks.map((p) => ({
-            prediction_id: p.prediction_id,
-            player_name: `${p.player_first_name} ${p.player_last_name}`.trim(),
-            team_abbr: p.team_abbreviation ?? null,
-            market: p.market,
-            line: p.line,
-            pick: p.pick,
-            confidence: p.confidence,
-          })),
+          picks: cart.picks.map((p) =>
+            p.sport === "soccer"
+              ? {
+                  prediction_id: p.prediction_id,
+                  player_name: `${p.home} v ${p.away}`.trim(),
+                  team_abbr: null,
+                  market: p.market,
+                  line: p.line,
+                  pick: p.side,
+                  confidence: p.confidence,
+                }
+              : {
+                  prediction_id: p.prediction_id,
+                  player_name: `${p.player_first_name} ${p.player_last_name}`.trim(),
+                  team_abbr: p.team_abbreviation ?? null,
+                  market: p.market,
+                  line: p.line,
+                  pick: p.pick,
+                  confidence: p.confidence,
+                },
+          ),
         }
       : null;
 
