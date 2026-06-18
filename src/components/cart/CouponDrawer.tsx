@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import useSWR from "swr";
+import type { Session } from "@supabase/supabase-js";
+import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { cx, focusRing } from "@/lib/design/tokens";
 import { marketLabel } from "@/components/MarketLabel";
 import { PickSideTag } from "@/components/PickSideTag";
@@ -35,6 +37,33 @@ export function CouponDrawer({ isSignedIn }: { isSignedIn: boolean }) {
   const pathname = usePathname() ?? "/";
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // `isSignedIn` is server-rendered in the root layout; right after an OAuth
+  // login there's a one-render window where the layout's getRequester() hasn't
+  // picked up the just-written session cookie yet, so the prop reads stale
+  // `false` and we'd bounce a logged-in user back to /login. The browser
+  // Supabase client (which performed the login) is the live source of truth,
+  // so we reconcile against it and re-check on auth-state changes.
+  const [liveSignedIn, setLiveSignedIn] = useState(isSignedIn);
+  useEffect(() => {
+    const supabase = createSupabaseBrowserClient();
+    let active = true;
+    supabase.auth
+      .getSession()
+      .then(({ data }: { data: { session: Session | null } }) => {
+        if (active) setLiveSignedIn(!!data.session);
+      })
+      .catch(() => {});
+    const { data: sub } = supabase.auth.onAuthStateChange(
+      (_event: string, session: Session | null) => {
+        setLiveSignedIn(!!session);
+      },
+    );
+    return () => {
+      active = false;
+      sub.subscription.unsubscribe();
+    };
+  }, []);
 
   const { data: payouts } = useSWR<PayoutMap>(
     cart.isOpen ? "/api/payout-multipliers" : null,
@@ -70,11 +99,11 @@ export function CouponDrawer({ isSignedIn }: { isSignedIn: boolean }) {
     (cart.mode === "power" ? canPower : canFlex);
 
   async function onSave() {
-    if (!isSignedIn) {
+    if (!canSubmit || activeMultiplier === null || potential === null) return;
+    if (!liveSignedIn) {
       router.push(`/login?next=${encodeURIComponent(pathname)}`);
       return;
     }
-    if (!canSubmit || activeMultiplier === null || potential === null) return;
     setSubmitting(true);
     setError(null);
     try {
@@ -90,6 +119,12 @@ export function CouponDrawer({ isSignedIn }: { isSignedIn: boolean }) {
           potential_payout: potential,
         }),
       });
+      // Safety net: if the server genuinely couldn't see the session, send the
+      // user to login (preserving where they were) instead of a dead error.
+      if (res.status === 401) {
+        router.push(`/login?next=${encodeURIComponent(pathname)}`);
+        return;
+      }
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.error ?? `Save failed (${res.status})`);
@@ -238,7 +273,7 @@ export function CouponDrawer({ isSignedIn }: { isSignedIn: boolean }) {
                     focusRing,
                   )}
                 >
-                  {submitting ? "Saving…" : isSignedIn ? "Save coupon" : "Sign in to save"}
+                  {submitting ? "Saving…" : liveSignedIn ? "Save coupon" : "Sign in to save"}
                 </button>
               </div>
             </>
