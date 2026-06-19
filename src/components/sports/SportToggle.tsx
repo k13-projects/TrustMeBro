@@ -2,7 +2,6 @@
 
 import Image from "next/image";
 import { useState } from "react";
-import { setSport } from "@/lib/sports/actions";
 import { SPORTS, SPORT_ORDER } from "@/lib/sports/registry";
 import { cx, focusRing } from "@/lib/design/tokens";
 import type { Sport } from "@/lib/sports/types";
@@ -13,14 +12,16 @@ import type { Sport } from "@/lib/sports/types";
 const TRACK_W = 72;
 const KNOB = 44;
 const OVERFLOW = 5; // how far the knob pokes past the active end
+const COOKIE_MAX_AGE = 60 * 60 * 24 * 365; // 1 year
 
 const [LEFT_SPORT] = SPORT_ORDER; // soccer sits on the left, nba on the right
 
 // The single global sport switch, rendered as a physical knob toggle. The knob
 // carries the *active* sport's logo and slides to that sport's side; the dim
-// hint on the empty side previews where a tap will take you. The form submits
-// `setSport` (cookie + redirect) so it still works with JS disabled; the
-// optimistic state just lets the knob slide before the navigation lands.
+// hint on the empty side previews where a tap will take you. We set the cookie
+// client-side (committed synchronously) and then do a full navigation, so SSR
+// and the edge proxy both read the new sport on the very next request — no
+// server-action/redirect cookie race (which used to bounce NBA → World Cup).
 export function SportToggle({ active }: { active: Sport }) {
   const [optimistic, setOptimistic] = useState<Sport>(active);
   const current = optimistic;
@@ -32,15 +33,21 @@ export function SportToggle({ active }: { active: Sport }) {
 
   const knobX = onLeft ? -OVERFLOW : TRACK_W - KNOB + OVERFLOW;
 
+  function switchSport() {
+    setOptimistic(target);
+    document.cookie = `tmb_sport=${target}; path=/; max-age=${COOKIE_MAX_AGE}; samesite=lax`;
+    window.location.assign(targetMeta.home);
+  }
+
   return (
-    <form action={setSport.bind(null, target)} className="shrink-0">
+    <div className="shrink-0">
       <button
-        type="submit"
+        type="button"
         role="switch"
         aria-checked={!onLeft}
         aria-label={`Sport: ${activeMeta.competition}. Switch to ${targetMeta.competition}`}
         title={`Switch to ${targetMeta.competition}`}
-        onClick={() => setOptimistic(target)}
+        onClick={switchSport}
         style={{ width: TRACK_W, height: KNOB }}
         className={cx(
           "group relative grid place-items-center isolate cursor-pointer",
@@ -92,6 +99,6 @@ export function SportToggle({ active }: { active: Sport }) {
           />
         </span>
       </button>
-    </form>
+    </div>
   );
 }

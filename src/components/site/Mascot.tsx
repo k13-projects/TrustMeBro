@@ -19,7 +19,7 @@ export function Mascot({
   variant = "full",
 }: Props) {
   const src =
-    variant === "full" ? "/Design/mascot-hero.png" : "/Design/Logo 2.png";
+    variant === "full" ? "/Design/mascot-hero.png" : "/Design/logo-mark.png";
   return (
     <Image
       src={src}

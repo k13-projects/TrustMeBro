@@ -114,7 +114,25 @@ function buildStatTiles(stats: EngineStats): StatTile[] {
   return tiles;
 }
 
-export function Hero({ stats }: { stats: EngineStats }) {
+type HeroCta = { href: string; label: string };
+
+// The hero is shared across sports. Wordmark + mascot + stat-ledger layout are
+// identical everywhere (brand chrome); only the eyebrow, subtitle, and the two
+// CTAs change per sport. Defaults are the NBA values so existing callers are
+// unaffected.
+export function Hero({
+  stats,
+  eyebrow = "Data. Analysis. Winners.",
+  subtitle = "Real bookmaker odds. Real expected value. Every pick graded the morning after, win or lose.",
+  primaryCta = { href: "/#picks", label: "Get Today's Picks" },
+  secondaryCta = { href: "/scorecard", label: "View Scorecard" },
+}: {
+  stats: EngineStats;
+  eyebrow?: string;
+  subtitle?: string;
+  primaryCta?: HeroCta;
+  secondaryCta?: HeroCta;
+}) {
   const tiles = buildStatTiles(stats);
 
   // Layout strategy:
@@ -149,7 +167,7 @@ export function Hero({ stats }: { stats: EngineStats }) {
           className="lg:col-start-2 lg:row-start-1 lg:justify-self-start inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.32em] text-muted-foreground"
         >
           <span className="inline-block size-1.5 rounded-full bg-primary animate-pulse" />
-          Data. Analysis. Winners.
+          {eyebrow}
         </motion.p>
 
         <h1 className="lg:col-start-2 lg:row-start-2 font-display uppercase leading-[0.95] tracking-tight text-[clamp(3rem,8.5vw,6rem)]">
@@ -175,16 +193,15 @@ export function Hero({ stats }: { stats: EngineStats }) {
         </div>
 
         <p className="lg:col-start-2 lg:row-start-3 max-w-md text-base text-foreground/70">
-          Real bookmaker odds. Real expected value. Every pick graded the
-          morning after, win or lose.
+          {subtitle}
         </p>
 
         <div className="lg:col-start-1 lg:row-start-4 lg:justify-self-start flex items-center gap-3 flex-wrap justify-center lg:justify-start">
-          <GoldButton href="/#picks" size="lg">
-            Get Today&apos;s Picks
+          <GoldButton href={primaryCta.href} size="lg">
+            {primaryCta.label}
           </GoldButton>
-          <GoldButton href="/scorecard" variant="outline" size="lg">
-            View Scorecard
+          <GoldButton href={secondaryCta.href} variant="outline" size="lg">
+            {secondaryCta.label}
           </GoldButton>
         </div>
 

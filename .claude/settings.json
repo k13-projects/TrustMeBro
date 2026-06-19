@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s -H 'Cookie: tmb_sport=soccer' http://localhost:3100/)",
+      "Bash(/usr/bin/grep -oE \"TODAY.S [A-Z]+|Today.s Football|TRUST.?ME.?BRO\")",
+      "Bash(/usr/bin/head -3)",
+      "Bash(/usr/bin/tail -30 /tmp/tmb_dev_clean.log)",
+      "Bash(/usr/bin/grep -iE 'GATE DEBUG|redirect|error|NEXT_REDIRECT|⨯')",
+      "Bash(/usr/bin/tail -12)"
+    ]
+  }
+}

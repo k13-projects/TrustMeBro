@@ -41,11 +41,11 @@ export function Footer() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 py-14 grid gap-12 md:grid-cols-[1.2fr_1fr_1fr_1fr]">
         <div className="space-y-5">
           <Image
-            src="/Design/Logo 2.png"
+            src="/Design/logo-mark.png"
             alt="TrustMeBro"
             width={120}
             height={120}
-            className="rounded-2xl logo-float motion-reduce:animate-none"
+            className="logo-float motion-reduce:animate-none"
           />
           <p className="font-display text-2xl leading-[0.95] tracking-wide uppercase">
             In Data

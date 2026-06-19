@@ -1,7 +1,5 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { activeSport } from "@/lib/sports/sport-cookie";
 import { isoDateOffset, isValidIsoDate, todayIsoDate } from "@/lib/date";
 import { teamColors } from "@/lib/sports/nba/branding";
 import { generateCombos } from "@/lib/analysis/combos";
@@ -53,14 +51,9 @@ type PageProps = {
 };
 
 export default async function HomePage({ searchParams }: PageProps) {
-  // The bare root "/" is the NBA home; football users get bounced to /football.
-  // This gate lives here (not in the edge proxy) because the sport cookie is
-  // set by a Server Action (the toggle) and a freshly-set cookie is reliably
-  // visible to `cookies()` in this render but NOT to edge middleware on the
-  // same redirect — which would strand a just-toggled NBA user back on /football.
-  if ((await activeSport()) !== "nba") {
-    redirect("/football");
-  }
+  // Default-sport routing ("/" → /football for non-NBA users) lives in the
+  // edge proxy (src/proxy.ts): a page-level redirect() here loses to the
+  // streaming layout shell and silently no-ops.
   const params = await searchParams;
   const date = isValidIsoDate(params.date) ? params.date : todayIsoDate();
   const marketFilter =

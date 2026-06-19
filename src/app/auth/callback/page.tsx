@@ -139,13 +139,12 @@ function WorkingBody() {
           className="absolute inset-0 rounded-3xl bg-primary/30 blur-2xl"
         />
         <Image
-          src="/Design/Logo 2.png"
+          src="/Design/logo-mark.png"
           alt="TrustMeBro"
           width={88}
           height={88}
           priority
-          className="relative rounded-2xl logo-float"
-          style={{ mixBlendMode: "screen" }}
+          className="relative logo-float"
         />
       </div>
       <div className="space-y-1.5">
