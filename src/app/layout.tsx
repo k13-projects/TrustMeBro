@@ -81,6 +81,7 @@ export default async function RootLayout({
   return (
     <html
       lang="en"
+      suppressHydrationWarning
       className={`dark ${geistSans.variable} ${geistMono.variable} ${anton.variable} ${archivoBlack.variable} ${permanentMarker.variable} ${bowlbyOne.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col font-sans">

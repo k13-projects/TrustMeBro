@@ -55,7 +55,7 @@ export function NavLinks({
       onMouseLeave={() => setHoverIdx(null)}
     >
       <nav
-        className="relative flex items-center gap-1 text-[12.5px]"
+        className="relative flex items-center gap-0.5 text-[12.5px]"
         aria-label="Primary"
       >
         {items.map((item, i) => {
@@ -113,7 +113,7 @@ export function NavLinks({
                     window.scrollTo({ top: 0, behavior: "smooth" });
                   }
                 }}
-                className={`relative inline-flex items-center whitespace-nowrap px-4 py-2 font-semibold uppercase tracking-[0.14em] transition-colors duration-200 ${
+                className={`relative inline-flex items-center whitespace-nowrap px-3 py-2 font-semibold uppercase tracking-[0.12em] transition-colors duration-200 ${
                   isActive
                     ? "text-primary"
                     : "text-foreground/72 hover:text-foreground"

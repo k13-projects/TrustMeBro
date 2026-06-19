@@ -23,21 +23,21 @@ export function LogoLink() {
     <Link
       href="/"
       onClick={handleClick}
-      className="group relative flex items-center gap-3"
+      className="group relative flex shrink-0 items-center gap-3"
       aria-label="TrustMeBro home"
     >
       <span
         aria-hidden
-        className="absolute inset-0 rounded-2xl bg-primary/30 blur-xl opacity-0 group-hover:opacity-80 transition-opacity duration-500 pointer-events-none"
+        className="absolute inset-0 rounded-full bg-primary/30 blur-xl opacity-0 group-hover:opacity-80 transition-opacity duration-500 pointer-events-none"
       />
       <Image
-        src="/Design/Logo 2.png"
+        src="/Design/logo-mark.png"
         alt="TrustMeBro"
-        width={84}
-        height={84}
+        width={200}
+        height={200}
         priority
-        sizes="84px"
-        className="relative rounded-2xl logo-float transition-transform duration-300 ease-out group-hover:rotate-[-5deg] group-hover:scale-[1.06] motion-reduce:transition-none motion-reduce:transform-none motion-reduce:animate-none"
+        sizes="(max-width: 640px) 72px, 116px"
+        className="relative size-[4.5rem] shrink-0 sm:size-[7.2rem] logo-float transition-transform duration-300 ease-out group-hover:rotate-[-5deg] group-hover:scale-[1.06] motion-reduce:transition-none motion-reduce:transform-none motion-reduce:animate-none"
       />
     </Link>
   );

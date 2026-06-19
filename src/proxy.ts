@@ -19,11 +19,21 @@ export async function proxy(request: NextRequest) {
     });
   }
 
-  // The bare root "/" → /football default-sport bounce used to live here, but
-  // a cookie set by the sport-toggle Server Action isn't visible to edge
-  // middleware on the redirect it issues, so toggling to NBA got bounced
-  // straight back to /football. The gate now lives in the root page
-  // (src/app/page.tsx), where the freshly-set cookie is reliably readable.
+  // Default-sport routing for the bare root "/". "/" is the NBA home; anyone
+  // whose active sport isn't NBA (the football default, or an explicit
+  // football choice) is sent to /football. This MUST live here, not in the
+  // page: a page-level redirect() loses to the already-streaming layout shell
+  // and silently no-ops, so "/" was serving NBA content under football chrome.
+  // Middleware runs before any render, so the redirect is real. The toggle
+  // sets the cookie via a Server Action then navigates to "/"; that navigation
+  // carries the freshly-set cookie, so a just-toggled NBA user is read as "nba"
+  // here and correctly stays on "/".
+  if (request.nextUrl.pathname === "/") {
+    const sport = request.cookies.get("tmb_sport")?.value;
+    if (sport !== "nba") {
+      return NextResponse.redirect(new URL("/football", request.url));
+    }
+  }
 
   const response = NextResponse.next({ request });
 

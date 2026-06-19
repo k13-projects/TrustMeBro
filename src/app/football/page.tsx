@@ -5,39 +5,68 @@ import {
   getEngineCoupons,
   getMatchesByDates,
 } from "@/lib/sports/soccer/queries";
+import { getSoccerEngineStats } from "@/lib/scoring/stats";
 import { BankoCard } from "@/components/soccer/BankoCard";
 import { CouponCard } from "@/components/soccer/CouponCard";
-import { FootballHeader } from "@/components/soccer/FootballHeader";
 import { MatchRow } from "@/components/soccer/MatchRow";
+import { Hero } from "@/components/site/Hero";
+import { PillarRow } from "@/components/site/PillarRow";
+import { SectionHeading } from "@/components/site/SectionHeading";
 
 export const dynamic = "force-dynamic";
 
+// Gold wordmark accent — same treatment the NBA home uses on its section
+// titles, so both sports read as one brand.
+const GOLD = {
+  background: "linear-gradient(180deg, #FFE066 0%, #FFB800 100%)",
+  WebkitBackgroundClip: "text",
+  backgroundClip: "text",
+  WebkitTextFillColor: "transparent",
+} as const;
+
 export default async function FootballHome() {
   const today = todayIsoDate();
-  const [matches, banko, coupons] = await Promise.all([
+  const [matches, banko, coupons, stats] = await Promise.all([
     getMatchesByDates([today]),
     getBankoPicks(),
     getEngineCoupons(),
+    getSoccerEngineStats(),
   ]);
 
-  const topBanko = banko.slice(0, 2);
+  const topBanko = banko.slice(0, 3);
   const headlineCoupons = coupons
     .filter((c) => c.target_multiplier !== null || c.kind === "surprise")
     .slice(0, 3);
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-10 space-y-12">
-      <FootballHeader title="Today's Football" mascot />
+    <div className="fade-up">
+      <Hero
+        stats={stats}
+        eyebrow="World Cup · Football"
+        subtitle="De-vigged consensus across every book, nudged by table form. Real prices, real expected value — every pick graded after the final whistle."
+        primaryCta={{ href: "/football/picks", label: "Get Today's Picks" }}
+        secondaryCta={{ href: "/football/scoreboard", label: "View Scoreboard" }}
+      />
 
       {topBanko.length > 0 ? (
-        <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="font-display uppercase text-2xl tracking-tight">🔒 BANKO — Most Trusted</h2>
-            <Link href="/football/picks" className="text-sm font-semibold text-primary">
-              All picks →
-            </Link>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
+        <section className="mx-auto max-w-7xl px-4 sm:px-6 py-12">
+          <SectionHeading
+            eyebrow="World Cup · Locks"
+            title={
+              <>
+                🔒 Most <span style={GOLD}>Trusted</span>
+              </>
+            }
+            trailing={
+              <Link
+                href="/football/picks"
+                className="text-sm font-semibold text-primary hover:text-primary-hover"
+              >
+                All picks →
+              </Link>
+            }
+          />
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {topBanko.map((p) => (
               <BankoCard key={p.id} pick={p} />
             ))}
@@ -46,8 +75,15 @@ export default async function FootballHome() {
       ) : null}
 
       {headlineCoupons.length > 0 ? (
-        <section className="space-y-4">
-          <h2 className="font-display uppercase text-2xl tracking-tight">Double · Triple · 10× Your Money</h2>
+        <section className="mx-auto max-w-7xl px-4 sm:px-6 py-12">
+          <SectionHeading
+            eyebrow="World Cup · Parlays"
+            title={
+              <>
+                Double · Triple · <span style={GOLD}>10× Your Money</span>
+              </>
+            }
+          />
           <div className="grid gap-4 md:grid-cols-3">
             {headlineCoupons.map((c) => (
               <CouponCard key={c.id} coupon={c} />
@@ -56,13 +92,23 @@ export default async function FootballHome() {
         </section>
       ) : null}
 
-      <section className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="font-display uppercase text-2xl tracking-tight">Today&apos;s Matches</h2>
-          <Link href="/football/schedule" className="text-sm font-semibold text-primary">
-            Full schedule →
-          </Link>
-        </div>
+      <section className="mx-auto max-w-7xl px-4 sm:px-6 py-12">
+        <SectionHeading
+          eyebrow="World Cup · Today"
+          title={
+            <>
+              Today&apos;s <span style={GOLD}>Matches</span>
+            </>
+          }
+          trailing={
+            <Link
+              href="/football/schedule"
+              className="text-sm font-semibold text-primary hover:text-primary-hover"
+            >
+              Full schedule →
+            </Link>
+          }
+        />
         {matches.length > 0 ? (
           <div className="space-y-2">
             {matches.map((m) => (
@@ -79,6 +125,8 @@ export default async function FootballHome() {
           </p>
         )}
       </section>
+
+      <PillarRow />
     </div>
   );
 }

@@ -72,13 +72,12 @@ function LoginForm() {
               className="absolute inset-0 rounded-3xl bg-primary/30 blur-2xl opacity-90"
             />
             <Image
-              src="/Design/Logo 2.png"
+              src="/Design/logo-mark.png"
               alt="TrustMeBro"
               width={96}
               height={96}
               priority
-              className="relative rounded-2xl"
-              style={{ mixBlendMode: "screen" }}
+              className="relative"
             />
           </div>
           <div className="space-y-1.5">

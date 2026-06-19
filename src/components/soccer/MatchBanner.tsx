@@ -80,25 +80,40 @@ export function MatchBanner({
   const done = state === "post";
   const showScore = !!score && (live || done);
 
-  const pillBase = "flex min-w-0 flex-1 items-center justify-between bg-black";
+  // Layout: flag at the outer edge of each side, country name pulled toward the
+  // centre trophy (flag · name · TROPHY/time · name · flag). The whole banner is
+  // width-capped and centred so it doesn't strand the matchup in a sea of black
+  // on wide screens. `justify-between` parks the flag at the row edge and the
+  // name beside the trophy; the inner padding is the name↔trophy breathing room.
+  // Pills hug their content (no flex-1 stretching) and the whole matchup is
+  // centred, so each side is a compact "flag · name" unit instead of being
+  // strung across the full row with a sea of black between them. gap = flag↔name
+  // padding; the inner padding (pr/pl) is the wider name↔trophy gap.
+  // Every match renders at ONE fixed width (max-w-3xl, w-full) so the black
+  // boxes are all identical regardless of name length — no more ragged rows.
+  // The pills split it 50/50 (flex-1); the flag sits at the outer edge and the
+  // name fills toward the centre, hugging the flag side (text-left/right) so the
+  // gap to the trophy grows for short names and shrinks (to the inner padding)
+  // for long ones. gap = flag↔name padding; pr/pl = minimum name↔trophy gap.
+  const pillBase = "flex min-w-0 flex-1 items-center bg-black";
   const pill = sm
-    ? `${pillBase} gap-1.5 py-1.5 text-xs`
-    : `${pillBase} gap-2 py-3 text-base sm:text-xl`;
-  const name = "truncate font-display uppercase tracking-wide text-white";
+    ? `${pillBase} gap-3 py-1.5 text-xs`
+    : `${pillBase} gap-6 py-3 text-base sm:text-xl`;
+  const name = "min-w-0 flex-1 truncate font-display uppercase tracking-wide text-white";
 
   return (
-    <div className="relative flex items-stretch">
-      {/* Home pill — name outward, flag toward center */}
+    <div className="relative mx-auto flex w-full max-w-3xl items-stretch">
+      {/* Home — flag at the outer edge, name fills toward the trophy */}
       <div
-        className={`${pill} rounded-l-full ${sm ? "rounded-r-md pl-3 pr-5" : "rounded-r-lg pl-5 pr-9 sm:pr-11"}`}
+        className={`${pill} rounded-l-full ${sm ? "rounded-r-md pl-3 pr-5" : "rounded-r-lg pl-5 pr-8"}`}
       >
-        <span className={name}>{home.name}</span>
         <FlagCell crest={home.crest} alt={home.abbreviation || home.name} sm={sm} />
+        <span className={`${name} text-left`}>{home.name}</span>
       </div>
 
       {/* Center medallion */}
       <div
-        className={`relative z-10 flex flex-col items-center justify-center ${sm ? "-mx-4" : "-mx-7 sm:-mx-8"}`}
+        className={`relative z-10 flex flex-col items-center justify-center ${sm ? "-mx-3" : "-mx-5 sm:-mx-6"}`}
       >
         <span
           className={`flex items-center justify-center rounded-full bg-black ring-2 ring-background ${
@@ -124,8 +139,8 @@ export function MatchBanner({
         ) : null}
         {!sm ? (
           <span
-            className={`mt-1 text-[10px] font-bold uppercase tracking-wide ${
-              live ? "text-primary" : "text-foreground/45"
+            className={`mt-1.5 text-xs sm:text-sm font-bold uppercase tracking-wide tabular-nums ${
+              done ? "text-foreground/55" : "text-primary"
             }`}
           >
             {live ? clock ?? "LIVE" : done ? "FT" : kickoff(datetime)}
@@ -133,12 +148,12 @@ export function MatchBanner({
         ) : null}
       </div>
 
-      {/* Away pill — flag toward center, name outward */}
+      {/* Away — name fills toward the trophy, flag at the outer edge */}
       <div
-        className={`${pill} rounded-r-full ${sm ? "rounded-l-md pr-3 pl-5" : "rounded-l-lg pr-5 pl-9 sm:pl-11"}`}
+        className={`${pill} rounded-r-full ${sm ? "rounded-l-md pr-3 pl-5" : "rounded-l-lg pr-5 pl-8"}`}
       >
-        <FlagCell crest={away.crest} alt={away.abbreviation || away.name} sm={sm} />
         <span className={`${name} text-right`}>{away.name}</span>
+        <FlagCell crest={away.crest} alt={away.abbreviation || away.name} sm={sm} />
       </div>
     </div>
   );

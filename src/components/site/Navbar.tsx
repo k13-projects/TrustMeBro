@@ -34,7 +34,7 @@ export function Navbar({
         aria-hidden
         className="absolute inset-x-0 -bottom-px h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent -z-10"
       />
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 h-20 flex items-center justify-between gap-4">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
         {/* LogoLink is a tiny client island that adds back-to-top scroll when
             the logo is clicked on /. Everything else (the hover blur, the
             logo-float keyframe) is identical to the previous inline render. */}
