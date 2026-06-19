@@ -253,8 +253,11 @@ See `.env.example`. Required keys:
 Add as needed (and update `.env.example`):
 - `ODDS_API_KEY` — The Odds API (https://the-odds-api.com). Load-bearing: `/api/cron/track-odds` needs it to pull player-prop snapshots, and `/api/cron/generate-predictions` produces zero picks without it (real odds gated). Free tier = 500 req/mo and player props cost 10x — expect to upgrade to ~$30/mo for steady-state.
 - `CRON_SECRET` — to protect `/api/cron/*` endpoints from unauthorized invocation
+- `NBA_LIGHT_MODE` — off-season toggle. `"true"` makes every NBA cron early-exit (`{skipped:true}`) via `src/app/api/cron/_light-mode.ts`. The Vercel schedule is left intact; unset to wake the NBA side. Soccer crons ignore it.
 
 ## Cron Schedule (Vercel)
+
+NBA crons (top group) early-exit while `NBA_LIGHT_MODE=true` — the season is over.
 
 | Endpoint                          | Frequency             | Purpose                                |
 | --------------------------------- | --------------------- | -------------------------------------- |
@@ -263,6 +266,7 @@ Add as needed (and update `.env.example`):
 | `/api/cron/track-odds`            | every 30 min, gameday | Capture odds snapshots                 |
 | `/api/cron/scrape-news`           | every 2h              | Magazine/social pulls                  |
 | `/api/cron/settle-bets`           | every 30 min, gameday | Settle finalized games, update score   |
+| `/api/cron/soccer/scrape-news`    | every 6h              | World Cup news → `soccer_news` (/football/news) |
 
 ## When You're Stuck
 

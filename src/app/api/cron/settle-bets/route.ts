@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { assertCronAuth } from "../_auth";
+import { nbaLightMode } from "../_light-mode";
 import { settlePending } from "@/lib/scoring/settle";
 import { settleCoupons } from "@/lib/scoring/settle-coupons";
 
@@ -9,6 +10,8 @@ export const dynamic = "force-dynamic";
 export async function GET(req: Request) {
   const unauth = assertCronAuth(req);
   if (unauth) return unauth;
+  const lm = nbaLightMode();
+  if (lm) return lm;
 
   try {
     const predictions = await settlePending();
