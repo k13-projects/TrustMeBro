@@ -19,7 +19,9 @@ const csp = [
     ? "script-src 'self' 'unsafe-inline'"
     : "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https://a.espncdn.com https://*.supabase.co",
+  // News thumbnails come from many unknown outlet/CDN hosts, so we allow any
+  // https image source for the news feed. Scripts/connect stay locked down.
+  "img-src 'self' data: blob: https:",
   "font-src 'self' data:",
   "connect-src 'self' https://*.supabase.co https://generativelanguage.googleapis.com https://api.the-odds-api.com https://api.balldontlie.io https://newsapi.org",
   "media-src 'self'",

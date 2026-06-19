@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { assertCronAuth } from "../_auth";
+import { nbaLightMode } from "../_light-mode";
 import { syncDates } from "@/lib/sports/nba/sync";
 import { isoDateOffset, isValidIsoDate, todayIsoDate } from "@/lib/date";
 
@@ -18,6 +19,8 @@ const DEFAULT_UPCOMING_DAYS = 5;
 export async function GET(req: Request) {
   const unauth = assertCronAuth(req);
   if (unauth) return unauth;
+  const lm = nbaLightMode();
+  if (lm) return lm;
 
   const url = new URL(req.url);
   const parsed = QuerySchema.safeParse(Object.fromEntries(url.searchParams));
