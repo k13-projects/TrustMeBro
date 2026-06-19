@@ -49,6 +49,16 @@ const SIDES: Record<SoccerMarket, MatchSide[]> = {
 // Cap on how far table form may move a probability (percentage points).
 const MAX_FORM_NUDGE = 0.04;
 
+// Minimum de-vigged probability for the engine to take a side. Emitting every
+// side of every market is self-defeating on a win-rate scoreboard: a 3-way
+// match_winner caps at 33% (one winner, two losers) and a 2-way total at 50%.
+// We instead back only our single best read per market, and only when it's
+// better than a coin flip. Backtest (35 settled picks, May–Jun 2026): the
+// junk sides — draws 14%, away 29%, under 29% — are what dragged the engine to
+// 40%, while its confident reads (BANKO ≥60) hit 83%. 0.50 keeps the favourites
+// and overs that actually win and drops the rest.
+const MIN_SIDE_PROBABILITY = 0.5;
+
 function round(n: number, dp = 3): number {
   const f = 10 ** dp;
   return Math.round(n * f) / f;
@@ -167,7 +177,9 @@ function buildReasoning(
   return { checks, signals };
 }
 
-// Produce one prediction per priced side of every market for a single match.
+// Produce the engine's single best pick per market for a match — the side it
+// most believes in, not one prediction per outcome. Markets where even the top
+// side is a coin flip (< MIN_SIDE_PROBABILITY) are skipped entirely.
 export function predictMatch(input: MatchEngineInput): SoccerPrediction[] {
   const out: SoccerPrediction[] = [];
   const edge = formEdge(input.home_form, input.away_form);
@@ -187,6 +199,8 @@ export function predictMatch(input: MatchEngineInput): SoccerPrediction[] {
     const { prob, bestOdds, bookCount } = consensus(marketQuotes, sides);
     if (bookCount === 0) continue;
 
+    // Score every priced side, then keep only the strongest one.
+    let top: { side: MatchSide; p: number; edgeApplies: boolean } | null = null;
     for (const side of sides) {
       const base = prob.get(side);
       const best = bestOdds.get(side);
@@ -200,22 +214,26 @@ export function predictMatch(input: MatchEngineInput): SoccerPrediction[] {
         p = Math.max(0.01, Math.min(0.99, base + dir * edge * MAX_FORM_NUDGE));
         edgeApplies = true;
       }
-
-      const ev = p * best.odds - 1;
-      out.push({
-        match_id: input.match_id,
-        market,
-        side,
-        line,
-        probability: round(p, 4),
-        confidence: round(p * 100, 1),
-        best_odds: best.odds,
-        bookmaker: best.bookmaker,
-        expected_value: round(ev, 4),
-        reasoning: buildReasoning(p, bookCount, edge, edgeApplies),
-        is_banko: false,
-      });
+      if (!top || p > top.p) top = { side, p, edgeApplies };
     }
+
+    if (!top || top.p < MIN_SIDE_PROBABILITY) continue;
+
+    const best = bestOdds.get(top.side)!;
+    const ev = top.p * best.odds - 1;
+    out.push({
+      match_id: input.match_id,
+      market,
+      side: top.side,
+      line,
+      probability: round(top.p, 4),
+      confidence: round(top.p * 100, 1),
+      best_odds: best.odds,
+      bookmaker: best.bookmaker,
+      expected_value: round(ev, 4),
+      reasoning: buildReasoning(top.p, bookCount, edge, top.edgeApplies),
+      is_banko: false,
+    });
   }
 
   return out;
