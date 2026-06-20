@@ -40,7 +40,7 @@ export type SoccerPrediction = {
   is_banko: boolean;
 };
 
-const SIDES: Record<SoccerMarket, MatchSide[]> = {
+export const SIDES: Record<SoccerMarket, MatchSide[]> = {
   match_winner: ["home", "draw", "away"],
   total_goals: ["over", "under"],
   btts: ["yes", "no"],
@@ -65,7 +65,7 @@ function round(n: number, dp = 3): number {
 }
 
 // Most common totals line across books (consensus). Ties → lower line.
-function modalLine(quotes: EngineQuote[]): number | null {
+export function modalLine(quotes: EngineQuote[]): number | null {
   const counts = new Map<number, number>();
   for (const q of quotes) {
     if (q.line === null) continue;
@@ -84,7 +84,7 @@ function modalLine(quotes: EngineQuote[]): number | null {
 
 // De-vig a single market at a single line: per book, normalize 1/odds across
 // the market's sides to remove the overround, then average across books.
-function consensus(
+export function consensus(
   quotes: EngineQuote[],
   sides: MatchSide[],
 ): {

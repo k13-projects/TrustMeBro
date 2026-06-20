@@ -58,6 +58,7 @@ export const SPORTS: Record<Sport, SportMeta> = {
       { href: "/football", label: "Home", exact: true },
       { href: "/football/schedule", label: "Schedule" },
       { href: "/football/standings", label: "Standings" },
+      { href: "/football/rates", label: "Rates" },
       { href: "/football/picks", label: "Picks" },
       { href: "/football/scoreboard", label: "Scoreboard" },
       { href: "/football/news", label: "News" },
