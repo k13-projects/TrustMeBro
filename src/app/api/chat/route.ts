@@ -4,10 +4,15 @@ import { streamChat } from "@/lib/chat/gemini";
 import { buildSystemPrompt } from "@/lib/chat/system-prompt";
 import type {
   ChatPredictionSummary,
+  ChatSport,
   ChatStreamEvent,
+  SoccerChatPredictionSummary,
 } from "@/lib/chat/types";
 import { todayIsoDate } from "@/lib/date";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { activeSport } from "@/lib/sports/sport-cookie";
+import { sideLabel } from "@/lib/sports/soccer/labels";
+import type { MatchSide, SoccerMarket } from "@/lib/sports/types";
 import type { Reasoning, PickSide, PropMarket } from "@/lib/analysis/types";
 
 export const runtime = "nodejs";
@@ -18,7 +23,7 @@ const MessageSchema = z.object({
   content: z.string().min(1).max(4000),
 });
 
-const MARKETS = [
+const NBA_MARKETS = [
   "points",
   "rebounds",
   "assists",
@@ -29,23 +34,50 @@ const MARKETS = [
   "pra",
 ] as const;
 
+const SOCCER_MARKETS = ["match_winner", "total_goals", "btts"] as const;
+const SOCCER_SIDES = [
+  "home",
+  "draw",
+  "away",
+  "over",
+  "under",
+  "yes",
+  "no",
+] as const;
+
 // Cart snapshot from the browser. We re-validate at the boundary so a
-// tampered request can't poison the prompt with arbitrary JSON.
+// tampered request can't poison the prompt with arbitrary JSON. A coupon is
+// single-sport, so picks are a discriminated union on `sport` and the
+// top-level `sport` must agree.
+const NbaPickSchema = z.object({
+  sport: z.literal("nba"),
+  prediction_id: z.string().uuid(),
+  player_name: z.string().min(1).max(80),
+  team_abbr: z.string().max(8).nullable(),
+  market: z.enum(NBA_MARKETS),
+  line: z.number(),
+  pick: z.enum(["over", "under"]),
+  confidence: z.number().min(0).max(100),
+});
+
+const SoccerPickSchema = z.object({
+  sport: z.literal("soccer"),
+  prediction_id: z.string().uuid(),
+  match: z.string().min(1).max(100),
+  market: z.enum(SOCCER_MARKETS),
+  side: z.enum(SOCCER_SIDES),
+  side_label: z.string().min(1).max(80),
+  line: z.number().nullable(),
+  confidence: z.number().min(0).max(100),
+  best_odds: z.number().nullable(),
+});
+
 const CouponSchema = z.object({
   mode: z.enum(["power", "flex"]),
   stake: z.number().nonnegative().max(100000),
+  sport: z.enum(["nba", "soccer"]),
   picks: z
-    .array(
-      z.object({
-        prediction_id: z.string().uuid(),
-        player_name: z.string().min(1).max(80),
-        team_abbr: z.string().max(8).nullable(),
-        market: z.enum(MARKETS),
-        line: z.number(),
-        pick: z.enum(["over", "under"]),
-        confidence: z.number().min(0).max(100),
-      }),
-    )
+    .array(z.discriminatedUnion("sport", [NbaPickSchema, SoccerPickSchema]))
     .min(1)
     .max(6),
 });
@@ -213,6 +245,80 @@ async function fetchTodayPredictions(
   });
 }
 
+type SoccerPredictionRow = {
+  market: SoccerMarket;
+  side: MatchSide;
+  line: number | null;
+  confidence: number;
+  best_odds: number;
+  is_banko: boolean;
+  reasoning: Reasoning;
+  soccer_matches: {
+    datetime: string | null;
+    home: { name: string } | { name: string }[] | null;
+    away: { name: string } | { name: string }[] | null;
+  } | Array<{
+    datetime: string | null;
+    home: { name: string } | { name: string }[] | null;
+    away: { name: string } | { name: string }[] | null;
+  }> | null;
+};
+
+function firstOf<T>(v: T | T[] | null | undefined): T | null {
+  return Array.isArray(v) ? (v[0] ?? null) : (v ?? null);
+}
+
+async function fetchTodaySoccerPredictions(
+  date: string,
+): Promise<SoccerChatPredictionSummary[]> {
+  const supabase = await createSupabaseServerClient();
+  const { data: matches } = await supabase
+    .from("soccer_matches")
+    .select("id")
+    .eq("date", date);
+  const matchIds = (matches ?? []).map((m) => m.id);
+  if (matchIds.length === 0) return [];
+
+  const { data: rows } = await supabase
+    .from("soccer_predictions")
+    .select(
+      "market, side, line, confidence, best_odds, is_banko, reasoning, " +
+        "soccer_matches(datetime, " +
+        "home:soccer_teams!soccer_matches_home_team_id_fkey(name), " +
+        "away:soccer_teams!soccer_matches_away_team_id_fkey(name))",
+    )
+    .in("match_id", matchIds)
+    .eq("status", "pending")
+    .order("is_banko", { ascending: false })
+    .order("confidence", { ascending: false })
+    .limit(10);
+
+  const preds = (rows ?? []) as unknown as SoccerPredictionRow[];
+  return preds.map((p): SoccerChatPredictionSummary => {
+    const match = firstOf(p.soccer_matches);
+    const home = firstOf(match?.home)?.name ?? "Home";
+    const away = firstOf(match?.away)?.name ?? "Away";
+    const line = p.line === null ? null : Number(p.line);
+    const checks = (p.reasoning?.checks ?? [])
+      .slice()
+      .sort((a, b) => b.weight - a.weight)
+      .slice(0, 3)
+      .map((c) => ({ label: c.label, passed: c.passed, weight: c.weight }));
+    return {
+      match: `${home} v ${away}`,
+      market: p.market,
+      side: p.side,
+      side_label: sideLabel(p.market, p.side, line, home, away),
+      line,
+      confidence: Number(p.confidence),
+      best_odds: Number(p.best_odds),
+      is_banko: p.is_banko,
+      kickoff: match?.datetime ?? null,
+      top_checks: checks,
+    };
+  });
+}
+
 export async function POST(req: Request) {
   const originReject = assertSameOrigin(req);
   if (originReject) return originReject;
@@ -241,18 +347,32 @@ export async function POST(req: Request) {
   }
 
   const date = todayIsoDate();
-  let predictions: ChatPredictionSummary[] = [];
+  const coupon = parsed.data.coupon ?? null;
+  // The coupon being built is the strongest signal of which sport the user is
+  // working; otherwise fall back to the active-sport cookie (the page they're
+  // on). NBA is in off-season light mode, so a football visitor must land on
+  // the soccer context or the bot is useless to them.
+  const sport: ChatSport = coupon?.sport ?? (await activeSport());
+
+  let nbaPredictions: ChatPredictionSummary[] = [];
+  let soccerPredictions: SoccerChatPredictionSummary[] = [];
   try {
-    predictions = await fetchTodayPredictions(date);
+    if (sport === "soccer") {
+      soccerPredictions = await fetchTodaySoccerPredictions(date);
+    } else {
+      nbaPredictions = await fetchTodayPredictions(date);
+    }
   } catch {
     // If DB is unreachable, fall through with no picks context;
     // the bot can still answer source/methodology questions.
   }
 
   const systemInstruction = buildSystemPrompt({
+    sport,
     date,
-    predictions,
-    coupon: parsed.data.coupon ?? null,
+    nbaPredictions,
+    soccerPredictions,
+    coupon,
   });
 
   // Hard cap: 60s per chat request. Combined with the client's req.signal so a
@@ -277,6 +397,7 @@ export async function POST(req: Request) {
         for await (const event of streamChat({
           systemInstruction,
           messages: parsed.data.messages,
+          sport,
           signal,
         })) {
           if (signal.aborted) break;

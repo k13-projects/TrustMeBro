@@ -4,6 +4,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useCart } from "@/components/cart/CartContext";
+import { sideLabel } from "@/lib/sports/soccer/labels";
+
+type Sport = "nba" | "soccer";
 
 type Role = "user" | "assistant";
 
@@ -31,16 +34,28 @@ const STORAGE_KEY = "tmb:chat:v1";
 const ARCHIVE_KEY = "tmb:chat:v1:archive";
 const FOLLOWUP_MARKER = "<<<followups>>>";
 
-const STARTER_POOL = [
-  "What's today's Bet of the Day and why?",
-  "Show me tonight's highest-confidence picks.",
-  "How are confidence scores calculated?",
-  "Where do the projections come from?",
-  "How is LeBron James doing the last 5 games?",
-  "Why is that the Bet of the Day instead of #2?",
-  "Which game has the most picks tonight?",
-  "What stats does the engine actually look at?",
-];
+const STARTER_POOL: Record<Sport, string[]> = {
+  nba: [
+    "What's today's Bet of the Day and why?",
+    "Show me tonight's highest-confidence picks.",
+    "How are confidence scores calculated?",
+    "Where do the projections come from?",
+    "How is LeBron James doing the last 5 games?",
+    "Why is that the Bet of the Day instead of #2?",
+    "Which game has the most picks tonight?",
+    "What stats does the engine actually look at?",
+  ],
+  soccer: [
+    "What are today's BANKO picks and why?",
+    "Show me today's highest-confidence picks.",
+    "How does the football engine pick a side?",
+    "Where do the odds come from?",
+    "How is Brazil doing in their group?",
+    "What does de-vigged probability mean?",
+    "Which markets does the engine bet?",
+    "Why only one pick per market?",
+  ],
+};
 
 function splitFollowups(content: string): { body: string; followups: string[] } {
   const idx = content.indexOf(FOLLOWUP_MARKER);
@@ -55,9 +70,9 @@ function splitFollowups(content: string): { body: string; followups: string[] } 
   return { body, followups };
 }
 
-function pickStarters(): string[] {
+function pickStarters(sport: Sport): string[] {
   // Shuffle pool per mount so the empty state never looks frozen.
-  const arr = [...STARTER_POOL];
+  const arr = [...STARTER_POOL[sport]];
   for (let i = arr.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [arr[i], arr[j]] = [arr[j], arr[i]];
@@ -68,9 +83,11 @@ function pickStarters(): string[] {
 export function ChatPanel({
   open,
   onClose,
+  sport = "soccer",
 }: {
   open: boolean;
   onClose: () => void;
+  sport?: Sport;
 }) {
   const cart = useCart();
   const [messages, setMessages] = useState<Message[]>([]);
@@ -193,22 +210,27 @@ export function ChatPanel({
     // Snapshot the cart so the bot can answer questions about the user's
     // current coupon ("why is X in my coupon", "what's my potential payout",
     // etc.) without the user having to paste it in.
-    const couponCtx = cart.hydrated && cart.picks.length > 0
+    const couponSport = cart.picks[0]?.sport ?? null;
+    const couponCtx = cart.hydrated && cart.picks.length > 0 && couponSport
       ? {
           mode: cart.mode,
           stake: cart.stake,
+          sport: couponSport,
           picks: cart.picks.map((p) =>
             p.sport === "soccer"
               ? {
+                  sport: "soccer" as const,
                   prediction_id: p.prediction_id,
-                  player_name: `${p.home} v ${p.away}`.trim(),
-                  team_abbr: null,
+                  match: `${p.home} v ${p.away}`.trim(),
                   market: p.market,
+                  side: p.side,
+                  side_label: sideLabel(p.market, p.side, p.line, p.home, p.away),
                   line: p.line,
-                  pick: p.side,
                   confidence: p.confidence,
+                  best_odds: p.best_odds ?? null,
                 }
               : {
+                  sport: "nba" as const,
                   prediction_id: p.prediction_id,
                   player_name: `${p.player_first_name} ${p.player_last_name}`.trim(),
                   team_abbr: p.team_abbreviation ?? null,
@@ -411,6 +433,7 @@ export function ChatPanel({
                 onPick={(q) => send(q)}
                 archivedCount={archived.length}
                 onRestore={restoreArchived}
+                sport={sport}
               />
             ) : (
               messages.map((m, i) => (
@@ -632,22 +655,24 @@ function EmptyState({
   onPick,
   archivedCount,
   onRestore,
+  sport,
 }: {
   onPick: (q: string) => void;
   archivedCount: number;
   onRestore: () => void;
+  sport: Sport;
 }) {
   // SSR must render the same content as the first client render to avoid
   // hydration mismatch — shuffle only on the client after mount. This is the
   // textbook "hydration-safe randomized initial state" pattern, so the lint
   // rule is correctly flagging-but-wrong here.
   const [starters, setStarters] = useState<string[]>(() =>
-    STARTER_POOL.slice(0, 3),
+    STARTER_POOL[sport].slice(0, 3),
   );
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- hydration-safe shuffle (see comment above)
-    setStarters(pickStarters());
-  }, []);
+    setStarters(pickStarters(sport));
+  }, [sport]);
   return (
     <div className="space-y-4 py-4 fade-up">
       <div className="flex flex-col items-start gap-2">

@@ -3,10 +3,12 @@ import "server-only";
 import { GoogleGenAI, type Part } from "@google/genai";
 import {
   LOOKUP_PLAYER_DECLARATION,
+  LOOKUP_TEAM_DECLARATION,
   runLookupPlayer,
+  runLookupTeam,
   summarizeToolResult,
 } from "./tools";
-import type { ChatMessage, ChatStreamEvent } from "./types";
+import type { ChatMessage, ChatSport, ChatStreamEvent } from "./types";
 
 const MODEL = "gemini-2.5-flash";
 const MAX_TOOL_ITERATIONS = 4;
@@ -35,6 +37,9 @@ async function runToolByName(
   if (name === "lookup_player") {
     return runLookupPlayer({ name: String(args.name ?? "") });
   }
+  if (name === "lookup_team") {
+    return runLookupTeam({ name: String(args.name ?? "") });
+  }
   return { ok: false, reason: `Unknown tool: ${name}` };
 }
 
@@ -46,12 +51,15 @@ async function runToolByName(
 export async function* streamChat(args: {
   systemInstruction: string;
   messages: ChatMessage[];
+  sport: ChatSport;
   signal?: AbortSignal;
 }): AsyncGenerator<ChatStreamEvent> {
   const ai = client();
+  const toolDeclaration =
+    args.sport === "soccer" ? LOOKUP_TEAM_DECLARATION : LOOKUP_PLAYER_DECLARATION;
   const config = {
     systemInstruction: args.systemInstruction,
-    tools: [{ functionDeclarations: [LOOKUP_PLAYER_DECLARATION] }],
+    tools: [{ functionDeclarations: [toolDeclaration] }],
     // NOTE: abort only stops us reading further chunks — Google still bills
     // tokens already generated. But it unblocks our route handler so the
     // dev server / function instance isn't held by a dead tab.

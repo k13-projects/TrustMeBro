@@ -214,10 +214,165 @@ function round1(n: number): number {
   return Math.round(n * 10) / 10;
 }
 
+export const LOOKUP_TEAM_DECLARATION: FunctionDeclaration = {
+  name: "lookup_team",
+  description:
+    "Look up a football (World Cup) team by name. Returns its latest group-standings line (played/W/D/L, goal difference, points) and its most recent finished results. Call this when the user asks about a team that is not in today's picks.",
+  parameters: {
+    type: Type.OBJECT,
+    properties: {
+      name: {
+        type: Type.STRING,
+        description:
+          "Full or partial team name (e.g. 'Brazil', 'United States', 'Korea').",
+      },
+    },
+    required: ["name"],
+  },
+};
+
+type LookupTeamResult =
+  | {
+      ok: true;
+      team: { id: number; name: string; abbreviation: string | null };
+      standing: {
+        group: string | null;
+        rank: number;
+        played: number;
+        won: number;
+        draw: number;
+        lost: number;
+        goal_diff: number;
+        points: number;
+      } | null;
+      recent: Array<{
+        date: string;
+        opponent: string;
+        home_away: "H" | "A";
+        score: string;
+        result: "W" | "D" | "L";
+      }>;
+    }
+  | { ok: false; reason: string };
+
+export async function runLookupTeam(args: {
+  name: string;
+}): Promise<LookupTeamResult> {
+  const raw = (args.name ?? "")
+    .replace(/[^\p{L}\s'\-.]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!raw) return { ok: false, reason: "Empty team name." };
+
+  const supabase = await createSupabaseServerClient();
+  const tokens = raw.split(" ").filter((t) => t.length >= 2);
+  if (tokens.length === 0)
+    return { ok: false, reason: `Couldn't parse team name "${args.name}".` };
+
+  const orExpr = tokens
+    .flatMap((t) => [`name.ilike.%${t}%`, `abbreviation.ilike.%${t}%`])
+    .join(",");
+
+  const { data: teams, error } = await supabase
+    .from("soccer_teams")
+    .select("id, name, abbreviation")
+    .or(orExpr)
+    .limit(20);
+  if (error) return { ok: false, reason: `db error: ${error.message}` };
+  if (!teams || teams.length === 0)
+    return { ok: false, reason: `No team matched "${raw}".` };
+
+  const lcTokens = tokens.map((t) => t.toLowerCase());
+  const scored = teams
+    .map((t) => {
+      const name = (t.name ?? "").toLowerCase();
+      const allTokensHit = lcTokens.every((tok) => name.includes(tok));
+      const isExact = name === raw.toLowerCase();
+      return { t, score: (isExact ? 100 : 0) + (allTokensHit ? 10 : 0) };
+    })
+    .sort((a, b) => b.score - a.score);
+  if (scored[0].score === 0)
+    return { ok: false, reason: `No team matched "${raw}".` };
+  const team = scored[0].t;
+
+  const { data: standingRows } = await supabase
+    .from("soccer_standings")
+    .select("grp, rank, played, won, draw, lost, goal_diff, points, captured_at")
+    .eq("team_id", team.id)
+    .order("captured_at", { ascending: false })
+    .limit(1);
+  const s = standingRows?.[0];
+  const standing = s
+    ? {
+        group: (s.grp as string | null) ?? null,
+        rank: Number(s.rank),
+        played: Number(s.played),
+        won: Number(s.won),
+        draw: Number(s.draw),
+        lost: Number(s.lost),
+        goal_diff: Number(s.goal_diff),
+        points: Number(s.points),
+      }
+    : null;
+
+  const { data: matchRows } = await supabase
+    .from("soccer_matches")
+    .select(
+      "date, datetime, home_team_id, away_team_id, home_score, away_score, finished, " +
+        "home:soccer_teams!soccer_matches_home_team_id_fkey(name), " +
+        "away:soccer_teams!soccer_matches_away_team_id_fkey(name)",
+    )
+    .or(`home_team_id.eq.${team.id},away_team_id.eq.${team.id}`)
+    .eq("finished", true)
+    .order("datetime", { ascending: false })
+    .limit(5);
+
+  const recent = ((matchRows ?? []) as unknown as Array<{
+    date: string;
+    home_team_id: number;
+    away_team_id: number;
+    home_score: number;
+    away_score: number;
+    home: { name: string } | { name: string }[] | null;
+    away: { name: string } | { name: string }[] | null;
+  }>).map((m) => {
+    const isHome = m.home_team_id === team.id;
+    const homeName = (Array.isArray(m.home) ? m.home[0] : m.home)?.name ?? "Home";
+    const awayName = (Array.isArray(m.away) ? m.away[0] : m.away)?.name ?? "Away";
+    const us = isHome ? m.home_score : m.away_score;
+    const them = isHome ? m.away_score : m.home_score;
+    return {
+      date: m.date,
+      opponent: isHome ? awayName : homeName,
+      home_away: (isHome ? "H" : "A") as "H" | "A",
+      score: `${us}-${them}`,
+      result: (us > them ? "W" : us < them ? "L" : "D") as "W" | "D" | "L",
+    };
+  });
+
+  return {
+    ok: true,
+    team: { id: team.id, name: team.name, abbreviation: team.abbreviation ?? null },
+    standing,
+    recent,
+  };
+}
+
 export function summarizeToolResult(
   name: string,
   result: unknown,
 ): string {
+  if (name === "lookup_team") {
+    const r = result as LookupTeamResult;
+    if (!r.ok) return r.reason;
+    const st = r.standing
+      ? `${r.standing.points} pts (${r.standing.won}-${r.standing.draw}-${r.standing.lost}, GD ${r.standing.goal_diff >= 0 ? "+" : ""}${r.standing.goal_diff})`
+      : "no standings yet";
+    const form = r.recent.length
+      ? r.recent.map((m) => m.result).join("")
+      : "no results yet";
+    return `${r.team.name} — ${st}; recent form ${form}`;
+  }
   if (name !== "lookup_player") return "Tool finished.";
   const r = result as LookupPlayerResult;
   if (!r.ok) return r.reason;
