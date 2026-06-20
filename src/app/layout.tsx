@@ -112,7 +112,7 @@ export default async function RootLayout({
               {children}
             </main>
             <Footer />
-            <ChatLauncher />
+            <ChatLauncher sport={sport} />
           </CartShell>
 
           <Toaster />

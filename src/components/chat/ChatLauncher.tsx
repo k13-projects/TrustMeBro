@@ -4,9 +4,16 @@ import { useEffect, useState } from "react";
 import { ChatPanel } from "./ChatPanel";
 import { useCart } from "@/components/cart/CartContext";
 
-export function ChatLauncher() {
+export function ChatLauncher({
+  sport = "soccer",
+}: {
+  sport?: "nba" | "soccer";
+}) {
   const [open, setOpen] = useState(false);
   const cart = useCart();
+  // A coupon being built pins the conversation to its sport; otherwise follow
+  // the page's active sport.
+  const panelSport = cart.picks[0]?.sport ?? sport;
 
   useEffect(() => {
     if (!open) return;
@@ -57,7 +64,7 @@ export function ChatLauncher() {
           </>
         )}
       </button>
-      <ChatPanel open={open} onClose={() => setOpen(false)} />
+      <ChatPanel open={open} onClose={() => setOpen(false)} sport={panelSport} />
     </>
   );
 }

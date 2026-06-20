@@ -52,7 +52,7 @@ export default async function RatesPage() {
   return (
     <div className="mx-auto max-w-3xl px-4 py-10 space-y-8">
       <div>
-        <FootballHeader title="Match Rates" />
+        <FootballHeader title="Match Odds" />
         <p className="mt-2 text-sm text-foreground/55">
           De-vigged win odds for <span className="text-foreground/80">every</span>{" "}
           game — the market&apos;s real probability per outcome, not just the
