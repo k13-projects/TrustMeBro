@@ -1,5 +1,8 @@
+import { after } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { isoDateOffset, todayIsoDate } from "@/lib/date";
+import { maybeRefresh } from "@/lib/ingest/refresh";
+import { runSoccerNewsIngest } from "@/lib/signals/news/soccer";
 import { FootballHeader } from "@/components/soccer/FootballHeader";
 import { NewsFilterBar, type NewsFilterTeam } from "@/components/soccer/NewsFilterBar";
 import {
@@ -9,6 +12,8 @@ import {
 } from "@/components/soccer/SoccerNewsCard";
 
 export const dynamic = "force-dynamic";
+// Headroom for the post-response background refresh (~4s ingest). Hobby ≤ 60s.
+export const maxDuration = 30;
 
 type PageProps = { searchParams: Promise<{ team?: string }> };
 
@@ -18,6 +23,17 @@ type TeamRow = { id: number; name: string; abbreviation: string; crest_url: stri
 export default async function FootballNewsPage({ searchParams }: PageProps) {
   const { team } = await searchParams;
   const activeTeam = team && /^\d+$/.test(team) ? Number(team) : null;
+
+  // Serve cached rows now; if the feed is older than 30 min, refresh it in the
+  // background after the response ships. Single-flight, so a crowd triggers one
+  // pull. This is why we don't need the cron to fire when nobody's around.
+  after(() =>
+    maybeRefresh({
+      key: "soccer_news",
+      staleAfterMs: 30 * 60_000,
+      run: () => runSoccerNewsIngest({ sinceHours: 24 }),
+    }),
+  );
 
   const supabase = await createSupabaseServerClient();
 

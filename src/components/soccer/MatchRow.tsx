@@ -1,5 +1,5 @@
 import type { MatchRow as Match } from "@/lib/sports/soccer/queries";
-import { MatchBanner } from "./MatchBanner";
+import { LiveMatch } from "./LiveMatch";
 import { MatchEvents } from "./MatchEvents";
 
 export function MatchRow({ match }: { match: Match }) {
@@ -14,14 +14,9 @@ export function MatchRow({ match }: { match: Match }) {
         </div>
       ) : null}
 
-      <MatchBanner
-        home={match.home}
-        away={match.away}
-        score={live || done ? { home: match.home_score, away: match.away_score } : null}
-        state={match.state}
-        clock={match.clock}
-        datetime={match.datetime}
-      />
+      {/* LiveMatch wraps the banner; it auto-updates the score while in-play
+          and otherwise renders the same static banner. */}
+      <LiveMatch match={match} />
 
       {live || done ? (
         <div className="overflow-hidden rounded-2xl border border-border/60 bg-card/40">

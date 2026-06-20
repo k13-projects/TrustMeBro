@@ -1,5 +1,8 @@
+import { after } from "next/server";
 import Link from "next/link";
 import { todayIsoDate } from "@/lib/date";
+import { maybeRefresh } from "@/lib/ingest/refresh";
+import { refreshFixturesWindow } from "@/lib/sports/soccer/live";
 import {
   getBankoPicks,
   getEngineCoupons,
@@ -25,6 +28,16 @@ const GOLD = {
 } as const;
 
 export default async function FootballHome() {
+  // Keep DB fixtures/scores fresh on visit (the sync cron only runs daily),
+  // throttled to once every 2 min and single-flight across visitors.
+  after(() =>
+    maybeRefresh({
+      key: "soccer_fixtures",
+      staleAfterMs: 2 * 60_000,
+      run: refreshFixturesWindow,
+    }),
+  );
+
   const today = todayIsoDate();
   const [matches, banko, coupons, stats] = await Promise.all([
     getMatchesByDates([today]),
