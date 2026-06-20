@@ -1,5 +1,6 @@
-import { getSoccerScore } from "@/lib/sports/soccer/queries";
+import { getSoccerScore, getSoccerScoreHistory } from "@/lib/sports/soccer/queries";
 import { FootballHeader } from "@/components/soccer/FootballHeader";
+import { ScoreChart } from "@/components/ScoreChart";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +14,10 @@ function Stat({ label, value, tone }: { label: string; value: string; tone?: str
 }
 
 export default async function ScoreboardPage() {
-  const s = await getSoccerScore();
+  const [s, history] = await Promise.all([
+    getSoccerScore(),
+    getSoccerScoreHistory(),
+  ]);
   const settled = s.wins + s.losses;
   const hitRate = settled > 0 ? Math.round((s.wins / settled) * 100) : 0;
 
@@ -38,6 +42,24 @@ export default async function ScoreboardPage() {
           {s.score}
         </div>
       </div>
+
+      {history.length >= 2 ? (
+        <div className="rounded-3xl border border-border/60 bg-card/40 px-4 py-5 sm:px-6">
+          <div className="mb-3 flex items-center justify-between">
+            <div className="text-xs uppercase tracking-[0.18em] text-foreground/55">
+              Units over time
+            </div>
+            <div className="text-[11px] text-foreground/40">
+              {history.length} settled · hover to inspect
+            </div>
+          </div>
+          <ScoreChart points={history} />
+        </div>
+      ) : (
+        <div className="rounded-3xl border border-dashed border-border/60 bg-card/20 px-6 py-10 text-center text-sm text-foreground/45">
+          The units graph appears once a couple of picks have settled.
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Stat label="Wins" value={String(s.wins)} tone="text-emerald-400" />

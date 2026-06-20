@@ -306,3 +306,27 @@ export async function getSoccerScore(): Promise<SoccerScore> {
     voids: Number(data?.voids ?? 0),
   };
 }
+
+export type SoccerScorePoint = {
+  scoreAfter: number;
+  delta: number;
+  outcome: "won" | "lost" | "void";
+  recordedAt: string;
+};
+
+// Running net-units history for the football ledger — the time series the
+// scoreboard chart plots (same shape as the NBA `system_score_history`).
+export async function getSoccerScoreHistory(): Promise<SoccerScorePoint[]> {
+  const supabase = await createSupabaseServerClient();
+  const { data } = await supabase
+    .from("soccer_system_score_history")
+    .select("delta, outcome, score_after, recorded_at")
+    .order("recorded_at", { ascending: true })
+    .limit(500);
+  return (data ?? []).map((r) => ({
+    scoreAfter: Number(r.score_after),
+    delta: Number(r.delta),
+    outcome: r.outcome as "won" | "lost" | "void",
+    recordedAt: r.recorded_at as string,
+  }));
+}
