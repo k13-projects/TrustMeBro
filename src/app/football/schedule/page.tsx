@@ -1,4 +1,7 @@
+import { after } from "next/server";
 import { isoDateOffset, todayIsoDate } from "@/lib/date";
+import { maybeRefresh } from "@/lib/ingest/refresh";
+import { refreshFixturesWindow } from "@/lib/sports/soccer/live";
 import { getMatchesByDates } from "@/lib/sports/soccer/queries";
 import { FootballHeader } from "@/components/soccer/FootballHeader";
 import { MatchRow } from "@/components/soccer/MatchRow";
@@ -17,6 +20,14 @@ function dayLabel(date: string, today: string): string {
 }
 
 export default async function SchedulePage() {
+  after(() =>
+    maybeRefresh({
+      key: "soccer_fixtures",
+      staleAfterMs: 2 * 60_000,
+      run: refreshFixturesWindow,
+    }),
+  );
+
   const today = todayIsoDate();
   // Yesterday → +6 days.
   const dates: string[] = [];

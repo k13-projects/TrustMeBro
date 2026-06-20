@@ -27,25 +27,26 @@ export async function runSoccerNewsIngest(opts?: {
     total_inserted: 0,
   };
 
-  for (const fetcher of soccerRssFetchers) {
-    try {
-      const items = await fetcher.fetch(since);
-      if (items.length === 0) {
-        out.fetchers.push({ key: fetcher.key, pulled: 0, inserted: 0 });
-        continue;
+  // Feeds run concurrently — the job is dominated by 7 sequential network
+  // round-trips otherwise (~16s → ~4s). Each feed isolates its own failure.
+  const fetched = await Promise.all(
+    soccerRssFetchers.map(async (fetcher) => {
+      try {
+        const items = await fetcher.fetch(since);
+        const inserted = items.length ? await upsertNews(items) : 0;
+        return { key: fetcher.key, pulled: items.length, inserted };
+      } catch (err) {
+        return {
+          key: fetcher.key,
+          pulled: 0,
+          inserted: 0,
+          error: err instanceof Error ? err.message : String(err),
+        };
       }
-      const inserted = await upsertNews(items);
-      out.fetchers.push({ key: fetcher.key, pulled: items.length, inserted });
-      out.total_inserted += inserted;
-    } catch (err) {
-      out.fetchers.push({
-        key: fetcher.key,
-        pulled: 0,
-        inserted: 0,
-        error: err instanceof Error ? err.message : String(err),
-      });
-    }
-  }
+    }),
+  );
+  out.fetchers = fetched;
+  out.total_inserted += fetched.reduce((sum, r) => sum + r.inserted, 0);
 
   const today = todayIsoDate();
   const weekEnd = isoDateOffset(today, 7);

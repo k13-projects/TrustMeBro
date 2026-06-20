@@ -95,70 +95,73 @@ export async function generateSoccerEngineTakes(opts: {
   }
 
   const ai = new GoogleGenAI({ apiKey });
-  const out: SoccerNewsItem[] = [];
 
-  for (const m of targets) {
-    const home = teamById.get(m.home_team_id);
-    const away = teamById.get(m.away_team_id);
-    if (!home || !away) continue;
+  // One Gemini call per match, all in flight at once — these are independent
+  // and otherwise serialise into the slowest part of the job.
+  const drafted = await Promise.all(
+    targets.map(async (m): Promise<SoccerNewsItem | null> => {
+      const home = teamById.get(m.home_team_id);
+      const away = teamById.get(m.away_team_id);
+      if (!home || !away) return null;
 
-    const topPicks = (predsByMatch.get(m.id) ?? []).slice(0, 3);
-    const picksLine = topPicks
-      .map(
-        (p) =>
-          `${sideLabel(p.market, p.side, p.line, home.name, away.name)} (${marketLabel(p.market)}, ${Math.round(p.confidence)}% confidence)`,
-      )
-      .join("; ");
+      const topPicks = (predsByMatch.get(m.id) ?? []).slice(0, 3);
+      const picksLine = topPicks
+        .map(
+          (p) =>
+            `${sideLabel(p.market, p.side, p.line, home.name, away.name)} (${marketLabel(p.market)}, ${Math.round(p.confidence)}% confidence)`,
+        )
+        .join("; ");
 
-    const prompt = [
-      "You are the TrustMeBro engine writing a one-paragraph (2–3 short sentences, ≤ 360 characters) preview for a World Cup match.",
-      "Tone: terse, data-driven, no fluff, no hype words like 'epic' or 'must-watch'.",
-      "Don't invent injuries, transfers, or news. Stick to the matchup and the picks below.",
-      "Don't quote any real journalist. This is the engine's own take.",
-      "",
-      `Match: ${home.name} vs ${away.name}`,
-      m.stage ? `Stage: ${m.stage}${m.grp ? ` (${m.grp})` : ""}` : null,
-      `Date: ${m.date}`,
-      topPicks.length > 0 ? `Top picks: ${picksLine}` : "No engine picks generated for this match yet.",
-      "",
-      "Write only the preview text. No headline, no quote marks, no attribution.",
-    ]
-      .filter(Boolean)
-      .join("\n");
+      const prompt = [
+        "You are the TrustMeBro engine writing a one-paragraph (2–3 short sentences, ≤ 360 characters) preview for a World Cup match.",
+        "Tone: terse, data-driven, no fluff, no hype words like 'epic' or 'must-watch'.",
+        "Don't invent injuries, transfers, or news. Stick to the matchup and the picks below.",
+        "Don't quote any real journalist. This is the engine's own take.",
+        "",
+        `Match: ${home.name} vs ${away.name}`,
+        m.stage ? `Stage: ${m.stage}${m.grp ? ` (${m.grp})` : ""}` : null,
+        `Date: ${m.date}`,
+        topPicks.length > 0 ? `Top picks: ${picksLine}` : "No engine picks generated for this match yet.",
+        "",
+        "Write only the preview text. No headline, no quote marks, no attribution.",
+      ]
+        .filter(Boolean)
+        .join("\n");
 
-    let text: string;
-    try {
-      const resp = await ai.models.generateContent({
-        model: MODEL,
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
-        config: { temperature: 0.4, maxOutputTokens: 220 },
-      });
-      text = (resp.text ?? "").trim();
-    } catch {
-      continue;
-    }
-    if (!text) continue;
-    if (text.length > 360) text = text.slice(0, 357).trimEnd() + "…";
+      let text: string;
+      try {
+        const resp = await ai.models.generateContent({
+          model: MODEL,
+          contents: [{ role: "user", parts: [{ text: prompt }] }],
+          config: { temperature: 0.4, maxOutputTokens: 220 },
+        });
+        text = (resp.text ?? "").trim();
+      } catch {
+        return null;
+      }
+      if (!text) return null;
+      if (text.length > 360) text = text.slice(0, 357).trimEnd() + "…";
 
-    const published = m.datetime ?? new Date(`${m.date}T12:00:00Z`).toISOString();
+      const published = m.datetime ?? new Date(`${m.date}T12:00:00Z`).toISOString();
 
-    out.push({
-      source: "engine",
-      source_id: `match:${m.id}:${m.date}`,
-      source_url: "/football",
-      outlet: "TrustMeBro Engine",
-      author: "TrustMeBro Engine",
-      headline: `${home.abbreviation} vs ${away.abbreviation} — engine preview`,
-      summary: text,
-      image_url: null,
-      match_id: m.id,
-      team_ids: [m.home_team_id, m.away_team_id],
-      player_names: [],
-      is_engine_take: true,
-      published_at: published,
-      raw: { model: MODEL, picks_seeded: topPicks.length },
-    });
-  }
+      return {
+        source: "engine",
+        source_id: `match:${m.id}:${m.date}`,
+        source_url: "/football",
+        outlet: "TrustMeBro Engine",
+        author: "TrustMeBro Engine",
+        headline: `${home.abbreviation} vs ${away.abbreviation} — engine preview`,
+        summary: text,
+        image_url: null,
+        match_id: m.id,
+        team_ids: [m.home_team_id, m.away_team_id],
+        player_names: [],
+        is_engine_take: true,
+        published_at: published,
+        raw: { model: MODEL, picks_seeded: topPicks.length },
+      };
+    }),
+  );
 
-  return out;
+  return drafted.filter((x): x is SoccerNewsItem => x !== null);
 }

@@ -266,7 +266,9 @@ NBA crons (top group) early-exit while `NBA_LIGHT_MODE=true` — the season is o
 | `/api/cron/track-odds`            | every 30 min, gameday | Capture odds snapshots                 |
 | `/api/cron/scrape-news`           | every 2h              | Magazine/social pulls                  |
 | `/api/cron/settle-bets`           | every 30 min, gameday | Settle finalized games, update score   |
-| `/api/cron/soccer/scrape-news`    | every 6h              | World Cup news → `soccer_news` (/football/news) |
+| `/api/cron/soccer/scrape-news`    | daily @ 08:00 UTC     | World Cup news → `soccer_news` (/football/news) — backstop; the page also self-refreshes on visit when >30min stale |
+
+**Hobby plan cron limits (verified 2026-06):** crons are capped at **once per day** on Hobby — sub-daily expressions (`*/30`, `0 */6`, etc.) **fail at deploy time**, so every `schedule` here must be daily. Hobby also only guarantees ±59min timing. Freshness beyond daily comes from on-visit `maybeRefresh()` (see `src/lib/ingest/refresh.ts`), not the cron. Function `maxDuration` ceiling on Hobby is 300s (Fluid Compute, on by default).
 
 ## When You're Stuck
 

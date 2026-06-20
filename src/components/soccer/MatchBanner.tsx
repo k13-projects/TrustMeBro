@@ -66,6 +66,7 @@ export function MatchBanner({
   clock = null,
   datetime = null,
   size = "lg",
+  pending = false,
 }: {
   home: TeamLite;
   away: TeamLite;
@@ -74,6 +75,8 @@ export function MatchBanner({
   clock?: string | null;
   datetime?: string | null;
   size?: "lg" | "sm";
+  /** Imminent kickoff, waiting for the first live score — shimmer the score. */
+  pending?: boolean;
 }) {
   const sm = size === "sm";
   const live = state === "in";
@@ -136,6 +139,10 @@ export function MatchBanner({
           <span className="mt-1 rounded-full bg-black px-2 py-0.5 text-sm font-black tabular-nums text-white ring-2 ring-background">
             {score.home}–{score.away}
           </span>
+        ) : !sm && pending ? (
+          <span className="mt-1 rounded-full bg-black px-3 py-1 ring-2 ring-background">
+            <span className="block h-3 w-9 animate-pulse rounded bg-white/25" />
+          </span>
         ) : null}
         {!sm ? (
           <span
@@ -143,7 +150,18 @@ export function MatchBanner({
               done ? "text-foreground/55" : "text-primary"
             }`}
           >
-            {live ? clock ?? "LIVE" : done ? "FT" : kickoff(datetime)}
+            {live ? (
+              <span className="inline-flex items-center gap-1">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
+                {clock ?? "LIVE"}
+              </span>
+            ) : done ? (
+              "FT"
+            ) : pending ? (
+              "KICKOFF"
+            ) : (
+              kickoff(datetime)
+            )}
           </span>
         ) : null}
       </div>
