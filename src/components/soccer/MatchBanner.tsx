@@ -1,11 +1,17 @@
 import Image from "next/image";
+import {
+  COMPETITIONS,
+  DEFAULT_COMPETITION,
+  type SoccerCompetition,
+} from "@/lib/sports/soccer/competitions";
 
-// Center medallion. ESPN's World Cup trophy logo (CSP-allowed). To use the
-// official FIFA 2026 "26" emblem instead, drop the file in /public and point
-// EMBLEM at e.g. "/wc26-emblem.png" — served from 'self', so allowed.
-const EMBLEM = "https://a.espncdn.com/i/leaguelogos/soccer/500/4.png";
-
-type TeamLite = { name: string; abbreviation?: string; crest: string | null };
+type TeamLite = {
+  name: string;
+  abbreviation?: string;
+  crest: string | null;
+  /** Club brand colour (hex, no '#'). Drives the pill's edge accent. */
+  color?: string | null;
+};
 
 function kickoff(datetime: string | null): string {
   if (!datetime) return "TBD";
@@ -16,33 +22,61 @@ function kickoff(datetime: string | null): string {
   });
 }
 
-function FlagCell({
+// ESPN club colours arrive as bare hex. Near-black ones vanish on the black
+// pill, so fall back to the competition silver.
+export function accentColor(hex: string | null | undefined): string | null {
+  if (!hex) return null;
+  const h = hex.replace("#", "");
+  if (!/^[0-9a-f]{6}$/i.test(h)) return null;
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  const lum = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+  if (lum < 0.14) return "#c9d3e6";
+  return `#${h}`;
+}
+
+function CrestCell({
   crest,
   alt,
   sm,
+  kind,
 }: {
   crest: string | null;
   alt: string;
   sm: boolean;
+  kind: "flag" | "crest";
 }) {
-  // The box keeps the same layout footprint, but the crest renders at ~2x and
-  // overflows it (centered) so the flag reads big and "pops" without reflowing
-  // the pill or colliding with the team name. overflow stays visible.
+  // The box keeps the same layout footprint, but the image renders at ~2x and
+  // overflows it (centered) so it reads big and "pops" without reflowing the
+  // pill or colliding with the team name. overflow stays visible.
   const box = sm ? "h-4 w-6" : "h-8 w-11";
-  const flag = sm ? "h-7 w-[2.625rem]" : "h-14 w-20";
   const place =
-    "absolute left-1/2 top-1/2 max-w-none -translate-x-1/2 -translate-y-1/2";
+    "absolute left-1/2 top-1/2 max-w-none -translate-x-1/2 -translate-y-1/2 pointer-events-none";
+  const flag = sm ? "h-7 w-[2.625rem]" : "h-14 w-20";
+  const badge = sm ? "size-8" : "size-14 sm:size-16";
   return (
     <span className={`relative shrink-0 ${box}`}>
       {crest ? (
-        <Image
-          src={crest}
-          alt={alt}
-          width={80}
-          height={56}
-          className={`${place} ${flag} rounded object-cover ring-1 ring-white/20 drop-shadow-[0_2px_8px_rgba(0,0,0,0.55)] sm:rounded-md pointer-events-none`}
-          unoptimized
-        />
+        kind === "flag" ? (
+          <Image
+            src={crest}
+            alt={alt}
+            width={80}
+            height={56}
+            className={`${place} ${flag} rounded object-cover ring-1 ring-white/20 drop-shadow-[0_2px_8px_rgba(0,0,0,0.55)] sm:rounded-md`}
+            unoptimized
+          />
+        ) : (
+          <Image
+            src={crest}
+            alt={alt}
+            width={80}
+            height={80}
+            className={`${place} ${badge} object-contain drop-shadow-[0_3px_10px_rgba(0,0,0,0.65)]`}
+            unoptimized
+          />
+        )
       ) : (
         <span
           className={`${place} ${flag} flex items-center justify-center rounded bg-white/10 text-[10px] font-bold text-white/70 ring-1 ring-white/20 sm:rounded-md`}
@@ -54,10 +88,11 @@ function FlagCell({
   );
 }
 
-// The segmented "versus" banner: two black pills (team name + flag) flanking
-// the World Cup emblem. The single matchup style used everywhere in the World
-// Cup section. `size="sm"` is the compact variant for picks/coupons (no
+// The segmented "versus" banner: two black pills (team name + crest) flanking
+// the competition emblem. The single matchup style used everywhere in the
+// football section. `size="sm"` is the compact variant for picks/coupons (no
 // score/status footer — those contexts are upcoming-match matchups).
+// Clubs get a thin brand-colour edge on their pill; national teams get flags.
 export function MatchBanner({
   home,
   away,
@@ -67,6 +102,8 @@ export function MatchBanner({
   datetime = null,
   size = "lg",
   pending = false,
+  competition = DEFAULT_COMPETITION,
+  label = null,
 }: {
   home: TeamLite;
   away: TeamLite;
@@ -77,40 +114,45 @@ export function MatchBanner({
   size?: "lg" | "sm";
   /** Imminent kickoff, waiting for the first live score — shimmer the score. */
   pending?: boolean;
+  competition?: SoccerCompetition;
+  /** Small caption under the medallion (round, leg, venue). Large size only. */
+  label?: string | null;
 }) {
   const sm = size === "sm";
   const live = state === "in";
   const done = state === "post";
   const showScore = !!score && (live || done);
+  const meta = COMPETITIONS[competition];
+  const kind: "flag" | "crest" = meta.kind === "national" ? "flag" : "crest";
+  const homeAccent = kind === "crest" ? accentColor(home.color) : null;
+  const awayAccent = kind === "crest" ? accentColor(away.color) : null;
 
-  // Layout: flag at the outer edge of each side, country name pulled toward the
-  // centre trophy (flag · name · TROPHY/time · name · flag). The whole banner is
-  // width-capped and centred so it doesn't strand the matchup in a sea of black
-  // on wide screens. `justify-between` parks the flag at the row edge and the
-  // name beside the trophy; the inner padding is the name↔trophy breathing room.
-  // Pills hug their content (no flex-1 stretching) and the whole matchup is
-  // centred, so each side is a compact "flag · name" unit instead of being
-  // strung across the full row with a sea of black between them. gap = flag↔name
-  // padding; the inner padding (pr/pl) is the wider name↔trophy gap.
   // Every match renders at ONE fixed width (max-w-3xl, w-full) so the black
-  // boxes are all identical regardless of name length — no more ragged rows.
-  // The pills split it 50/50 (flex-1); the flag sits at the outer edge and the
-  // name fills toward the centre, hugging the flag side (text-left/right) so the
-  // gap to the trophy grows for short names and shrinks (to the inner padding)
-  // for long ones. gap = flag↔name padding; pr/pl = minimum name↔trophy gap.
-  const pillBase = "flex min-w-0 flex-1 items-center bg-black";
+  // boxes are all identical regardless of name length. The pills split it
+  // 50/50 (flex-1); the crest sits at the outer edge and the name fills toward
+  // the centre. gap = crest↔name padding; pr/pl = minimum name↔emblem gap.
+  const pillBase = "relative flex min-w-0 flex-1 items-center bg-black";
+  // Phones get tighter gaps and a two-line name (clubs like "Manchester
+  // United" don't fit one line at 390px); ≥sm keeps the single-line truncate.
   const pill = sm
     ? `${pillBase} gap-3 py-1.5 text-xs`
-    : `${pillBase} gap-6 py-3 text-base sm:text-xl`;
-  const name = "min-w-0 flex-1 truncate font-display uppercase tracking-wide text-white";
+    : `${pillBase} gap-3 py-2.5 text-[13px] sm:gap-6 sm:py-3 sm:text-xl`;
+  const name = sm
+    ? "min-w-0 flex-1 truncate font-display uppercase tracking-wide text-white"
+    : "min-w-0 flex-1 font-display uppercase tracking-wide leading-[1.05] text-white line-clamp-2 sm:line-clamp-none sm:truncate";
 
   return (
     <div className="relative mx-auto flex w-full max-w-3xl items-stretch">
-      {/* Home — flag at the outer edge, name fills toward the trophy */}
+      {/* Home — crest at the outer edge, name fills toward the emblem */}
       <div
-        className={`${pill} rounded-l-full ${sm ? "rounded-r-md pl-3 pr-5" : "rounded-r-lg pl-5 pr-8"}`}
+        className={`${pill} rounded-l-full ${sm ? "rounded-r-md pl-3 pr-5" : "rounded-r-lg pl-4 pr-7 sm:pl-5 sm:pr-8"}`}
+        style={
+          homeAccent
+            ? { boxShadow: `inset ${sm ? 3 : 4}px 0 0 0 ${homeAccent}` }
+            : undefined
+        }
       >
-        <FlagCell crest={home.crest} alt={home.abbreviation || home.name} sm={sm} />
+        <CrestCell crest={home.crest} alt={home.abbreviation || home.name} sm={sm} kind={kind} />
         <span className={`${name} text-left`}>{home.name}</span>
       </div>
 
@@ -123,14 +165,14 @@ export function MatchBanner({
             sm ? "size-8" : "size-14 sm:size-16"
           }`}
         >
-          {/* ~2x the medallion's icon so the trophy overflows and pops out. */}
+          {/* ~2x the medallion's icon so the emblem overflows and pops out. */}
           <Image
-            src={EMBLEM}
-            alt="World Cup"
+            src={meta.logo}
+            alt={meta.label}
             width={80}
             height={80}
             className={`object-contain drop-shadow-[0_2px_6px_rgba(0,0,0,0.6)] ${
-              sm ? "size-10" : "size-[4.5rem] sm:size-20"
+              sm ? "size-8" : "size-[3.6rem] sm:size-16"
             }`}
             unoptimized
           />
@@ -164,14 +206,24 @@ export function MatchBanner({
             )}
           </span>
         ) : null}
+        {!sm && label ? (
+          <span className="mt-0.5 max-w-[9rem] truncate text-center text-[10px] font-semibold uppercase tracking-[0.16em] text-foreground/40">
+            {label}
+          </span>
+        ) : null}
       </div>
 
-      {/* Away — name fills toward the trophy, flag at the outer edge */}
+      {/* Away — name fills toward the emblem, crest at the outer edge */}
       <div
-        className={`${pill} rounded-r-full ${sm ? "rounded-l-md pr-3 pl-5" : "rounded-l-lg pr-5 pl-8"}`}
+        className={`${pill} rounded-r-full ${sm ? "rounded-l-md pr-3 pl-5" : "rounded-l-lg pr-4 pl-7 sm:pr-5 sm:pl-8"}`}
+        style={
+          awayAccent
+            ? { boxShadow: `inset -${sm ? 3 : 4}px 0 0 0 ${awayAccent}` }
+            : undefined
+        }
       >
         <span className={`${name} text-right`}>{away.name}</span>
-        <FlagCell crest={away.crest} alt={away.abbreviation || away.name} sm={sm} />
+        <CrestCell crest={away.crest} alt={away.abbreviation || away.name} sm={sm} kind={kind} />
       </div>
     </div>
   );

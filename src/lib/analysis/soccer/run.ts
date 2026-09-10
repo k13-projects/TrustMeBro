@@ -5,6 +5,7 @@ import {
   loadLatestSoccerOdds,
   loadTeamForm,
 } from "@/lib/sports/soccer/repo";
+import type { SoccerCompetition } from "@/lib/sports/soccer/competitions";
 import { buildCoupons } from "./coupons";
 import { predictMatch, type SoccerPrediction } from "./engine";
 
@@ -22,10 +23,12 @@ export type GenerateResult = {
   banko: number;
 };
 
-// Generate soccer predictions + engine coupons for the given LA-days.
-// Reads odds snapshots (must be populated by track-odds first) and the latest
-// standings form, runs the pure engine, then regenerates pending rows.
+// Generate soccer predictions + engine coupons for one competition over the
+// given LA-days. Reads odds snapshots (must be populated by track-odds first)
+// and the latest standings form, runs the pure engine, then regenerates that
+// competition's pending rows — other competitions' picks are never touched.
 export async function generateSoccerPredictions(
+  competition: SoccerCompetition,
   dates: string[],
 ): Promise<GenerateResult> {
   const supabase = supabaseAdmin();
@@ -34,6 +37,7 @@ export async function generateSoccerPredictions(
   const { data: matches, error: matchErr } = await supabase
     .from("soccer_matches")
     .select("id, home_team_id, away_team_id")
+    .eq("competition", competition)
     .in("date", dates)
     .eq("finished", false);
   if (matchErr) throw new Error(`load matches: ${matchErr.message}`);
@@ -42,7 +46,7 @@ export async function generateSoccerPredictions(
   const matchIds = matches.map((m) => m.id);
   const [oddsByMatch, form] = await Promise.all([
     loadLatestSoccerOdds(matchIds),
-    loadTeamForm(),
+    loadTeamForm(competition),
   ]);
 
   const predictions: SoccerPrediction[] = [];
@@ -66,14 +70,25 @@ export async function generateSoccerPredictions(
     if (bankoKeys.has(predKey(p))) p.is_banko = true;
   }
 
-  // Regenerate: drop pending coupons first (legs cascade), then pending preds.
-  await supabase.from("engine_coupons").delete().eq("sport", "soccer").eq("status", "pending");
-  await supabase.from("soccer_predictions").delete().eq("status", "pending").in("match_id", matchIds);
+  // Regenerate: drop this competition's pending coupons first (legs cascade),
+  // then its pending preds for the slate.
+  await supabase
+    .from("engine_coupons")
+    .delete()
+    .eq("sport", "soccer")
+    .eq("competition", competition)
+    .eq("status", "pending");
+  await supabase
+    .from("soccer_predictions")
+    .delete()
+    .eq("status", "pending")
+    .in("match_id", matchIds);
 
   const { data: inserted, error: insErr } = await supabase
     .from("soccer_predictions")
     .insert(
       predictions.map((p) => ({
+        competition,
         match_id: p.match_id,
         market: p.market,
         side: p.side,
@@ -104,6 +119,7 @@ export async function generateSoccerPredictions(
       .from("engine_coupons")
       .insert({
         sport: "soccer",
+        competition,
         kind: coupon.kind,
         target_multiplier: coupon.target_multiplier,
         leg_count: legIds.length,

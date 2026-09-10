@@ -1,8 +1,8 @@
 import type { Sport } from "./types";
 
-// Football is the default sport while only the World Cup is live (the NBA
-// season is over). The `tmb:sport` cookie persists the user's toggle choice;
-// absent cookie ⇒ this default. See project_soccer_expansion.
+// Football is the default sport while the NBA is in its off-season (the
+// Champions League is the live competition). The `tmb_sport` cookie persists
+// the user's toggle choice; absent cookie ⇒ this default.
 export const DEFAULT_SPORT: Sport = "soccer";
 
 // 1 year, in seconds — how long the sport choice persists in the cookie.
@@ -16,7 +16,7 @@ export type NavItem = { href: string; label: string; exact?: boolean };
 export type SportMeta = {
   sport: Sport;
   label: string; // human nav label: "Basketball" / "Football"
-  competition: string; // current competition: "NBA" / "World Cup"
+  competition: string; // umbrella label: "NBA" / "Football" (football's live competition comes from ./soccer/competitions)
   emoji: string; // 🏀 / ⚽
   logo: string; // league logo (dark-variant, for the toggle/chrome)
   /** Root section path for this sport. NBA is the legacy root; football is additive. */
@@ -49,9 +49,9 @@ export const SPORTS: Record<Sport, SportMeta> = {
   soccer: {
     sport: "soccer",
     label: "Football",
-    competition: "World Cup",
+    competition: "Football",
     emoji: "⚽",
-    logo: "https://a.espncdn.com/i/leaguelogos/soccer/500-dark/4.png",
+    logo: "https://a.espncdn.com/i/leaguelogos/soccer/500-dark/2.png",
     home: "/football",
     accent: "#FFB800",
     nav: [
@@ -78,7 +78,5 @@ export function sportMeta(sport: Sport): SportMeta {
   return SPORTS[sport];
 }
 
-// The Odds API sport keys + the ESPN soccer league slugs, keyed for the
-// (future) multi-league soccer rollout. World Cup ships first.
-export const SOCCER_LEAGUE_SLUG = "fifa.world";
-export const SOCCER_ODDS_SPORT_KEY = "soccer_fifa_world_cup";
+// Football competitions (World Cup archive, live Champions League) live in
+// ./soccer/competitions.ts — ESPN slugs, Odds API keys, logos, status.

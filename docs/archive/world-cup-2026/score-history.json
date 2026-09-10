@@ -1,0 +1,1784 @@
+[
+  {
+    "id": "1",
+    "prediction_id": "a312728a-a239-4ce0-96d1-4325f132b1c0",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-1",
+    "recorded_at": "2026-06-17T12:12:04.592Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "2",
+    "prediction_id": "641610a6-4f65-4d14-b021-bfa81e3aad23",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-2",
+    "recorded_at": "2026-06-17T12:12:04.746Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "3",
+    "prediction_id": "49aa8312-5ed3-4a3d-96d9-8edf856ce6ca",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "-1",
+    "recorded_at": "2026-06-17T12:12:05.023Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "4",
+    "prediction_id": "5cf0343b-96e6-4ee4-971f-04fc8cc5c34d",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "0",
+    "recorded_at": "2026-06-17T12:12:05.140Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "5",
+    "prediction_id": "2f1c8134-f34e-4afd-abee-776709f69928",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-1",
+    "recorded_at": "2026-06-17T12:12:05.234Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "6",
+    "prediction_id": "7b6b5885-d309-4a19-b244-b7f0e6283c64",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "0",
+    "recorded_at": "2026-06-17T12:12:05.345Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "7",
+    "prediction_id": "a1f20df8-d873-4058-83b4-166ebb4d5c34",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-1",
+    "recorded_at": "2026-06-17T12:12:05.430Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "8",
+    "prediction_id": "f0fe6944-78e3-4f34-9b8e-38e3bbbab70b",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-2",
+    "recorded_at": "2026-06-17T12:12:05.579Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "9",
+    "prediction_id": "e3514d61-4075-4ca9-992a-349a5877cfcb",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "-1",
+    "recorded_at": "2026-06-17T12:12:05.665Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "10",
+    "prediction_id": "79a3e2b9-2bb8-45e7-9ace-92345634fb3e",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-2",
+    "recorded_at": "2026-06-17T12:12:05.745Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "11",
+    "prediction_id": "13ed93e8-3378-4a85-9807-f63c3021d186",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "-1",
+    "recorded_at": "2026-06-17T12:12:05.847Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "12",
+    "prediction_id": "e8159d5b-d758-4763-b2ca-4d01a4e6c07f",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-2",
+    "recorded_at": "2026-06-17T12:12:05.922Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "13",
+    "prediction_id": "c45cc287-87b8-4161-ac16-b86ada3635e8",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-3",
+    "recorded_at": "2026-06-17T12:12:05.999Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "14",
+    "prediction_id": "055adf05-8d42-4371-861b-387d8461b83e",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "-2",
+    "recorded_at": "2026-06-17T12:12:06.073Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "15",
+    "prediction_id": "94316aa5-298d-4400-8415-eb22469a4cf0",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-3",
+    "recorded_at": "2026-06-17T12:12:06.157Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "16",
+    "prediction_id": "8d49a147-8ddf-42d8-8d4f-4292348bde59",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-4",
+    "recorded_at": "2026-06-17T20:28:48.209Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "17",
+    "prediction_id": "71e919b9-1443-43ce-a2f0-eaabe901f08e",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "-3",
+    "recorded_at": "2026-06-17T20:28:48.340Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "18",
+    "prediction_id": "b34aa49a-1012-40f3-8b7c-a628bfddfe9e",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-4",
+    "recorded_at": "2026-06-17T20:28:48.467Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "19",
+    "prediction_id": "3848d2a8-6c92-48ab-bd03-540ad0c6a249",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-5",
+    "recorded_at": "2026-06-17T20:28:48.583Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "20",
+    "prediction_id": "290af590-6d9a-4fa2-8406-67d5c46edc28",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "-4",
+    "recorded_at": "2026-06-17T20:28:48.684Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "21",
+    "prediction_id": "a114f9cb-65d0-4d39-a0d2-784fb4a8b7c6",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "-3",
+    "recorded_at": "2026-06-18T12:07:46.442Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "22",
+    "prediction_id": "251cb96d-972e-4519-a7f1-e5a45801d2ed",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-4",
+    "recorded_at": "2026-06-18T12:07:46.574Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "23",
+    "prediction_id": "c27e5f1f-d321-4837-b662-43e64e5ae196",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-5",
+    "recorded_at": "2026-06-18T12:07:46.683Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "24",
+    "prediction_id": "71ea4396-587e-480b-9405-f446ce29a871",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "-4",
+    "recorded_at": "2026-06-18T12:07:46.804Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "25",
+    "prediction_id": "e4ed5daf-30e7-4007-9220-142d7951c22d",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-5",
+    "recorded_at": "2026-06-18T12:07:46.912Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "26",
+    "prediction_id": "d8e32d46-1ff8-4ea3-a766-73f309059cbe",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "-4",
+    "recorded_at": "2026-06-18T12:07:47.019Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "27",
+    "prediction_id": "0de9b2fa-9943-48aa-acd9-eb4419ec4984",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-5",
+    "recorded_at": "2026-06-18T12:07:47.132Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "28",
+    "prediction_id": "d0ff8978-bf1c-41e6-b282-57422986f166",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-6",
+    "recorded_at": "2026-06-18T12:07:47.240Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "29",
+    "prediction_id": "83150b80-cfeb-44d3-9a74-37248bda3001",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-7",
+    "recorded_at": "2026-06-18T12:07:47.343Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "30",
+    "prediction_id": "cc526fc3-7d92-4649-9454-e0c633eaa1f2",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "-6",
+    "recorded_at": "2026-06-18T12:07:47.450Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "31",
+    "prediction_id": "632573ff-3827-4ac7-a0b2-268a9d83d159",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-7",
+    "recorded_at": "2026-06-18T12:07:47.558Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "32",
+    "prediction_id": "60224b64-4267-4c48-b50a-9d81731eab5a",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-8",
+    "recorded_at": "2026-06-18T12:07:47.672Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "33",
+    "prediction_id": "68f130d3-b3a9-47cb-8a66-947b81a031c7",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "-7",
+    "recorded_at": "2026-06-18T12:07:47.775Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "34",
+    "prediction_id": "66163d74-43cd-46e7-9367-253318e72402",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "-6",
+    "recorded_at": "2026-06-18T12:07:47.876Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "35",
+    "prediction_id": "10f6df18-6090-4a07-a95f-72e671464003",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-7",
+    "recorded_at": "2026-06-18T12:07:47.972Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "36",
+    "prediction_id": "4ea843b9-a074-4944-9081-c2d3b967d00a",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-8",
+    "recorded_at": "2026-06-19T12:16:08.594Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "37",
+    "prediction_id": "18948121-3e0d-4170-83ce-8a1ffa5456ba",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "-7",
+    "recorded_at": "2026-06-19T12:16:08.745Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "38",
+    "prediction_id": "e845c475-595d-4af2-917f-2561f8fdd4ff",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-8",
+    "recorded_at": "2026-06-19T12:16:08.892Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "39",
+    "prediction_id": "2686e9a5-19af-4461-9483-92724a878d5a",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-9",
+    "recorded_at": "2026-06-19T12:16:09.011Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "40",
+    "prediction_id": "9ce84cb6-9c34-4b2d-8df6-20e46ccc9b0d",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "-8",
+    "recorded_at": "2026-06-19T12:16:09.140Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "41",
+    "prediction_id": "d9add0fe-59a9-4e70-8d0e-1a0eeea9b23b",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "-7",
+    "recorded_at": "2026-06-19T12:16:09.247Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "42",
+    "prediction_id": "c7504907-41dd-4e7b-a15c-5df9b2741d92",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-8",
+    "recorded_at": "2026-06-19T12:16:09.333Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "43",
+    "prediction_id": "21c00785-733d-4b4c-8bfb-83053dc9c03b",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-9",
+    "recorded_at": "2026-06-19T12:16:09.416Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "44",
+    "prediction_id": "e2045814-bf11-44cd-a74e-432f6777bfc2",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "-8",
+    "recorded_at": "2026-06-19T12:16:09.502Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "45",
+    "prediction_id": "5a3a6b7c-8499-4b0c-bf51-812c493868ec",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-9",
+    "recorded_at": "2026-06-19T12:16:09.587Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "46",
+    "prediction_id": "3d222d17-3a9c-4592-8fba-dd353deb4261",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "-8",
+    "recorded_at": "2026-06-19T12:16:09.669Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "47",
+    "prediction_id": "bc117004-68a1-406d-bfed-879868e0ae55",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-9",
+    "recorded_at": "2026-06-19T12:16:09.761Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "48",
+    "prediction_id": "27d08c16-aa9e-4495-8499-09e7c0f98965",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-10",
+    "recorded_at": "2026-06-19T12:16:09.885Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "49",
+    "prediction_id": "27ed1636-e6fe-4f45-aae9-3977b66e0a2c",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-11",
+    "recorded_at": "2026-06-19T12:16:09.981Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "50",
+    "prediction_id": "a786226b-4630-4c8f-81db-accdf65feab3",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "-10",
+    "recorded_at": "2026-06-19T12:16:10.069Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "51",
+    "prediction_id": "0790d906-6a32-4a8b-ba79-88704aadf138",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-11",
+    "recorded_at": "2026-06-20T11:41:40.336Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "52",
+    "prediction_id": "3df51756-261d-4b77-b30a-a77c41ba74a5",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "-10",
+    "recorded_at": "2026-06-20T11:41:40.525Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "53",
+    "prediction_id": "ae6fddb4-c64b-4d45-9992-01a1a9a15197",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-11",
+    "recorded_at": "2026-06-20T11:41:40.632Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "54",
+    "prediction_id": "bfd12e92-2f64-4fce-8f36-4472a7b04e1e",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "-10",
+    "recorded_at": "2026-06-20T11:41:40.719Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "55",
+    "prediction_id": "9bb7f632-bab3-44ca-8247-6c29c2f41820",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "-9",
+    "recorded_at": "2026-06-20T11:41:40.799Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "56",
+    "prediction_id": "7360bdd2-9a50-4b0c-a0aa-153ff089671e",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-10",
+    "recorded_at": "2026-06-20T11:41:40.887Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "57",
+    "prediction_id": "d9f1d59f-83fd-4cd0-bdf8-bf496d215ba6",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-11",
+    "recorded_at": "2026-06-20T11:41:40.968Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "58",
+    "prediction_id": "5242e0c8-e33b-4a80-b462-be420ac4552d",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-12",
+    "recorded_at": "2026-06-20T11:41:41.048Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "59",
+    "prediction_id": "7b545a37-a3f4-4b38-9cb8-0177569c3479",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "-11",
+    "recorded_at": "2026-06-20T11:41:41.129Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "60",
+    "prediction_id": "7ff3f463-b639-4194-b15c-e40e4bbdc9e8",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-12",
+    "recorded_at": "2026-06-20T11:41:41.208Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "61",
+    "prediction_id": "b5f98510-0bb4-4168-a890-072934ad7582",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-13",
+    "recorded_at": "2026-06-20T11:41:41.278Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "62",
+    "prediction_id": "d688dda0-4907-4fbf-b649-e8e89ecf9a97",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "-12",
+    "recorded_at": "2026-06-20T11:41:41.352Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "63",
+    "prediction_id": "0a4ffadf-42e1-4b31-8a3a-11f710b6530c",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-13",
+    "recorded_at": "2026-06-20T11:41:41.428Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "64",
+    "prediction_id": "8c3cc4da-4ccd-4dca-8a9c-e61a1664341b",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "-12",
+    "recorded_at": "2026-06-20T11:41:41.502Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "65",
+    "prediction_id": "404b9a38-d85d-4799-a790-1a1ec629488e",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "-11",
+    "recorded_at": "2026-06-20T11:41:41.601Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "66",
+    "prediction_id": "bdc29095-bd94-4641-9da4-60a35c3f4e76",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-12",
+    "recorded_at": "2026-06-20T11:41:41.682Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "67",
+    "prediction_id": "454f4830-b518-4750-9cd3-1894d4841374",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-13",
+    "recorded_at": "2026-06-20T11:41:41.817Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "68",
+    "prediction_id": "3292c90f-59b5-4fde-9d30-8802de2cfa78",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-14",
+    "recorded_at": "2026-06-20T11:41:41.896Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "69",
+    "prediction_id": "bc1f29b6-3acd-481a-9931-57ca7710d6a2",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "-13",
+    "recorded_at": "2026-06-20T11:41:41.979Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "70",
+    "prediction_id": "53f4ef58-59d6-4385-99e2-1a4b28cb08db",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-14",
+    "recorded_at": "2026-06-20T11:41:42.073Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "71",
+    "prediction_id": "0b28aded-ae4b-4ade-bdf8-0be90236606f",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "-13",
+    "recorded_at": "2026-06-21T11:41:40.166Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "72",
+    "prediction_id": "52550521-9362-4220-9189-4cc0ba345e3c",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-14",
+    "recorded_at": "2026-06-21T11:41:40.334Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "73",
+    "prediction_id": "a14631e5-6ea9-41a1-873e-340cee0af96c",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-15",
+    "recorded_at": "2026-06-21T11:41:40.457Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "74",
+    "prediction_id": "51416311-824a-4f30-a300-859b64f74cb4",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "-14",
+    "recorded_at": "2026-06-21T11:41:40.554Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "75",
+    "prediction_id": "674f5eea-890d-4308-b35f-7df98595f055",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-15",
+    "recorded_at": "2026-06-21T11:41:40.657Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "76",
+    "prediction_id": "f200fcab-ab1a-4e3c-805c-d5d1274b591f",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "-14",
+    "recorded_at": "2026-06-21T11:41:40.736Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "77",
+    "prediction_id": "a97e29c9-5ca9-47ac-8777-54631a2d465e",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-15",
+    "recorded_at": "2026-06-21T11:41:40.826Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "78",
+    "prediction_id": "a084fef7-2c6f-4ad2-9769-1a392510f57a",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-16",
+    "recorded_at": "2026-06-21T11:41:40.911Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "79",
+    "prediction_id": "6c9296e9-d131-4108-9120-a6e3e2da83c8",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "-15",
+    "recorded_at": "2026-06-21T11:41:40.993Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "80",
+    "prediction_id": "74ef0627-4062-493f-baf6-08640099b051",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-16",
+    "recorded_at": "2026-06-21T11:41:41.084Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "81",
+    "prediction_id": "2171ffd9-8a58-4957-9fc2-3c72c7566f25",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-17",
+    "recorded_at": "2026-06-21T11:41:41.155Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "82",
+    "prediction_id": "e9f5e269-50f3-4edf-90c6-3527d8c958a2",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "-16",
+    "recorded_at": "2026-06-21T11:41:41.231Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "83",
+    "prediction_id": "398b8b99-a2ef-4295-929a-f2feaa6580ad",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-17",
+    "recorded_at": "2026-06-21T11:41:41.304Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "84",
+    "prediction_id": "713306c7-a14b-4071-a930-ce69f1668a88",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-18",
+    "recorded_at": "2026-06-21T11:41:41.378Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "85",
+    "prediction_id": "8a61a309-7745-4546-8272-a7476d097bf4",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "-17",
+    "recorded_at": "2026-06-21T11:41:41.452Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "86",
+    "prediction_id": "8d8a4dd1-5af9-4252-ad11-c627ac0edd43",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "-16",
+    "recorded_at": "2026-06-22T11:41:40.104Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "87",
+    "prediction_id": "8f0c6a25-229b-4be6-99ee-bb38444bcc77",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "-15",
+    "recorded_at": "2026-06-22T11:41:40.261Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "88",
+    "prediction_id": "d01bd55b-4cad-4920-a7f7-4bb9c7a4550f",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-16",
+    "recorded_at": "2026-06-22T11:41:40.411Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "89",
+    "prediction_id": "d46ba5bd-436b-4bfd-bf3c-65dbcfeab315",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-17",
+    "recorded_at": "2026-06-22T11:41:40.499Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "90",
+    "prediction_id": "52c1d16c-3cb6-420d-ab29-47f2e966fbc8",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-18",
+    "recorded_at": "2026-06-22T11:41:40.592Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "91",
+    "prediction_id": "3acf0644-89be-4da8-9aeb-d3493fcc1815",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-19",
+    "recorded_at": "2026-06-22T11:41:40.670Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "92",
+    "prediction_id": "cb3416f6-5ae3-4af6-b859-535f1ea5c733",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "-18",
+    "recorded_at": "2026-06-22T11:41:40.744Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "93",
+    "prediction_id": "af782ccd-3ef9-4584-b8c1-981a94439e86",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-19",
+    "recorded_at": "2026-06-22T11:41:40.824Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "94",
+    "prediction_id": "e405d00a-9141-4502-9d20-f8dc1b58dfc9",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "-18",
+    "recorded_at": "2026-06-23T11:41:40.098Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "95",
+    "prediction_id": "376c7633-d903-48ca-8ce9-7956f61f59af",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "-17",
+    "recorded_at": "2026-06-23T11:41:40.265Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "96",
+    "prediction_id": "24d0c8e2-936b-4780-b4da-8926cc023e72",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "-16",
+    "recorded_at": "2026-06-23T11:41:40.370Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "97",
+    "prediction_id": "12222e97-2d5f-418c-a66d-a3a4a4e0b41d",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-17",
+    "recorded_at": "2026-06-23T11:41:40.511Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "98",
+    "prediction_id": "3732e6ea-59cd-4eba-9a1b-87b89fff1aeb",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "-16",
+    "recorded_at": "2026-06-23T11:41:40.617Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "99",
+    "prediction_id": "1cd0465a-0752-4201-9ede-44756c190c08",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "-15",
+    "recorded_at": "2026-06-23T11:41:40.735Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "100",
+    "prediction_id": "ebf19640-361a-4998-a4b7-8f40acfe6392",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "-14",
+    "recorded_at": "2026-06-23T11:41:40.856Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "101",
+    "prediction_id": "36e7d6ba-41df-499e-99fc-2376182f1101",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "-13",
+    "recorded_at": "2026-06-24T11:41:40.009Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "102",
+    "prediction_id": "6d61ffac-3cdc-42d7-9248-46c8c8351cb9",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-14",
+    "recorded_at": "2026-06-24T11:41:40.162Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "103",
+    "prediction_id": "b64ce299-3eb4-4c80-9054-d22fb9bbed16",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-15",
+    "recorded_at": "2026-06-24T11:41:40.261Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "104",
+    "prediction_id": "8647adec-7fce-4354-8603-3a77ff98630e",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-16",
+    "recorded_at": "2026-06-24T11:41:40.351Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "105",
+    "prediction_id": "3a284d60-2fd5-4219-a604-da93345c3b9b",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "-15",
+    "recorded_at": "2026-06-24T11:41:40.458Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "106",
+    "prediction_id": "dcfc2604-b87b-49bb-b733-99076d5a06e1",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-16",
+    "recorded_at": "2026-06-24T11:41:40.549Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "107",
+    "prediction_id": "33807163-3137-41c4-8def-5c445b54652f",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "-15",
+    "recorded_at": "2026-06-24T11:41:40.658Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "108",
+    "prediction_id": "83eef6e0-3421-4a5f-9ace-863631fe6b47",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "-14",
+    "recorded_at": "2026-06-24T11:41:40.781Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "109",
+    "prediction_id": "6a15b401-7db9-4df4-a418-4a4b79716a52",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-15",
+    "recorded_at": "2026-06-25T11:41:39.843Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "110",
+    "prediction_id": "30973aeb-29b9-4d18-9514-1306de17a0e1",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "-14",
+    "recorded_at": "2026-06-25T11:41:40.005Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "111",
+    "prediction_id": "92ba4e00-ffbe-4fe1-80f3-0eebb85c710b",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-15",
+    "recorded_at": "2026-06-25T11:41:40.141Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "112",
+    "prediction_id": "0e60eae8-862b-4126-bdb3-4b56fb192bea",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "-14",
+    "recorded_at": "2026-06-25T11:41:40.272Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "113",
+    "prediction_id": "4f653092-93b3-43cc-b9c3-da81449044a2",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "-13",
+    "recorded_at": "2026-06-25T11:41:40.397Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "114",
+    "prediction_id": "642cc190-762a-4953-aafa-e70badcc7fdb",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "-12",
+    "recorded_at": "2026-06-25T11:41:40.525Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "115",
+    "prediction_id": "9d3ad739-9255-4b65-9b92-e3365dd2dc77",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-13",
+    "recorded_at": "2026-06-25T11:41:40.628Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "116",
+    "prediction_id": "2ecafb90-0a8b-45f1-8e9a-4c00198a684f",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-14",
+    "recorded_at": "2026-06-25T11:41:40.734Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "117",
+    "prediction_id": "492a62c9-b65a-4d15-bdb7-a04b68dcf535",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "-13",
+    "recorded_at": "2026-06-25T11:41:40.832Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "118",
+    "prediction_id": "bea337c0-8e7f-42af-866a-c3f218d279a4",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "-12",
+    "recorded_at": "2026-06-26T11:41:40.187Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "119",
+    "prediction_id": "2616658d-411c-46f5-9e45-949a1ecdd963",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "-11",
+    "recorded_at": "2026-06-26T11:41:40.364Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "120",
+    "prediction_id": "ef714464-0ba3-430c-8294-935e1bbd58c8",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-12",
+    "recorded_at": "2026-06-26T11:41:40.522Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "121",
+    "prediction_id": "6ac55b15-a018-42a0-b0f6-2327938cbc82",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "-11",
+    "recorded_at": "2026-06-26T11:41:40.681Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "122",
+    "prediction_id": "4abfc328-3822-4d81-b4f8-27fadaff0587",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-12",
+    "recorded_at": "2026-06-26T11:41:40.801Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "123",
+    "prediction_id": "d7558190-f724-43f2-a219-3ae31fc49cd5",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-13",
+    "recorded_at": "2026-06-26T11:41:40.883Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "124",
+    "prediction_id": "5a0b6674-0ed9-4577-bb55-f77bb2f2dadb",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "-12",
+    "recorded_at": "2026-06-26T11:41:40.971Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "125",
+    "prediction_id": "41202953-b8d8-42be-b470-607899d54425",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-13",
+    "recorded_at": "2026-06-26T11:41:41.074Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "126",
+    "prediction_id": "854a38b3-30e2-46b1-8ed6-327b3e5b8bf0",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-14",
+    "recorded_at": "2026-06-26T11:41:41.155Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "127",
+    "prediction_id": "319f5e3d-c51d-490e-8823-3b1dbf57d071",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-15",
+    "recorded_at": "2026-06-26T11:41:41.235Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "128",
+    "prediction_id": "04832dc4-009f-488c-bd50-bfecd65e2f16",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "-14",
+    "recorded_at": "2026-06-26T11:41:41.315Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "129",
+    "prediction_id": "0857e8d1-32f5-4c04-9b8d-0d1d1a16e72b",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-15",
+    "recorded_at": "2026-06-27T11:50:04.359Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "130",
+    "prediction_id": "98f0d83b-476b-4bcf-917f-5d892af99f78",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "-14",
+    "recorded_at": "2026-06-27T11:50:04.475Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "131",
+    "prediction_id": "586b434f-9258-4507-af0f-44b5822f8ca8",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-15",
+    "recorded_at": "2026-06-27T11:50:04.606Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "132",
+    "prediction_id": "9b943a36-6ef6-43ed-b30c-21e3820bdeed",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "-14",
+    "recorded_at": "2026-06-27T11:50:04.716Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "133",
+    "prediction_id": "952c27ec-d190-4abf-823b-b57dc3a4fca0",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "-13",
+    "recorded_at": "2026-06-27T11:50:04.810Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "134",
+    "prediction_id": "192686b9-aa03-4088-b94f-8d52d44f6dec",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "-12",
+    "recorded_at": "2026-06-27T11:50:04.904Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "135",
+    "prediction_id": "311fe84d-740b-495e-949a-441f306d31ba",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "-11",
+    "recorded_at": "2026-06-27T11:50:04.988Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "136",
+    "prediction_id": "c38b51b5-963b-4656-a180-29a7dfa34d8f",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "-10",
+    "recorded_at": "2026-06-27T11:50:05.096Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "137",
+    "prediction_id": "61b28ac1-11e9-47be-8891-6064d35e17a4",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "-9",
+    "recorded_at": "2026-06-27T11:50:05.209Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "138",
+    "prediction_id": "edba5b63-c0d1-4595-a3c5-820db3477a55",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "-8",
+    "recorded_at": "2026-06-27T11:50:05.298Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "139",
+    "prediction_id": "376ea501-cf2a-4e3b-a9a4-c3b62710a424",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "-7",
+    "recorded_at": "2026-06-28T11:50:04.210Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "140",
+    "prediction_id": "b9665ecd-ef6e-4138-94f1-1f2434be3601",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "-6",
+    "recorded_at": "2026-06-28T11:50:04.307Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "141",
+    "prediction_id": "36fc4769-477d-428b-82a2-823fdc3773f1",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "-5",
+    "recorded_at": "2026-06-28T11:50:04.394Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "142",
+    "prediction_id": "a39eafe1-bf4c-4939-9d00-635d25afa251",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-6",
+    "recorded_at": "2026-06-28T11:50:04.486Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "143",
+    "prediction_id": "ea155457-f148-4c96-bcb0-af636a827ab4",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "-5",
+    "recorded_at": "2026-06-28T11:50:04.561Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "144",
+    "prediction_id": "1c2a19e2-eb8b-47e9-b7db-dc795b9efe4a",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-6",
+    "recorded_at": "2026-06-28T11:50:04.641Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "145",
+    "prediction_id": "d4205f59-289d-4647-b850-9feb3a6d16fc",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "-5",
+    "recorded_at": "2026-06-28T11:50:04.723Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "146",
+    "prediction_id": "029ac29e-697f-4789-8f73-36292d7f1746",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "-4",
+    "recorded_at": "2026-06-28T11:50:04.793Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "147",
+    "prediction_id": "94836453-1609-4d06-a6d1-942ee2da69e1",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-5",
+    "recorded_at": "2026-06-28T11:50:04.930Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "148",
+    "prediction_id": "e90545c2-14e7-4ec2-bf1a-5afe66247531",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "-4",
+    "recorded_at": "2026-06-29T11:50:04.182Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "149",
+    "prediction_id": "2956cc2b-270c-4596-a47e-585f8101600b",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "-3",
+    "recorded_at": "2026-06-29T11:50:04.321Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "150",
+    "prediction_id": "c66ad592-79e0-4c78-bb58-44e2d888fca3",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "-2",
+    "recorded_at": "2026-06-30T11:50:04.521Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "151",
+    "prediction_id": "4ef56cf8-6b79-4170-b710-b8914de919e4",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-3",
+    "recorded_at": "2026-06-30T11:50:04.672Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "152",
+    "prediction_id": "d83cb2c3-cebc-4544-8dba-8dded1661f6c",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-4",
+    "recorded_at": "2026-06-30T11:50:04.777Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "153",
+    "prediction_id": "085be882-5fb8-43b5-9f0c-041aabdc04d9",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-5",
+    "recorded_at": "2026-06-30T11:50:04.862Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "154",
+    "prediction_id": "315111f8-ae79-4d8d-8ae5-e811c088070d",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "-4",
+    "recorded_at": "2026-06-30T11:50:04.948Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "155",
+    "prediction_id": "9cd8fed9-c31b-454e-9ebc-aa884ef2c15e",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "-3",
+    "recorded_at": "2026-07-01T11:50:04.062Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "156",
+    "prediction_id": "24646406-01d6-4f2a-b9ef-93b1fa02e3ec",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "-2",
+    "recorded_at": "2026-07-01T11:50:04.207Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "157",
+    "prediction_id": "c7611a1f-b6c2-4f2e-8f98-69c08259eaa9",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "-1",
+    "recorded_at": "2026-07-01T11:50:04.325Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "158",
+    "prediction_id": "c44aa66e-53e7-451e-b5de-c729d6e4e258",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "0",
+    "recorded_at": "2026-07-01T11:50:04.431Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "159",
+    "prediction_id": "f913fd56-e277-4f4f-aff7-f5a06e258ef3",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "1",
+    "recorded_at": "2026-07-02T11:50:04.719Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "160",
+    "prediction_id": "53f058c1-f228-4bbc-b902-7bbd3c78ca76",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "0",
+    "recorded_at": "2026-07-02T11:50:04.896Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "161",
+    "prediction_id": "f1580b50-2946-464b-806a-36d16b921166",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "-1",
+    "recorded_at": "2026-07-02T11:50:05.053Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "162",
+    "prediction_id": "74b62864-0cee-4cac-94da-308962659028",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "0",
+    "recorded_at": "2026-07-03T11:50:04.109Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "163",
+    "prediction_id": "cae9820b-0dec-4e07-bc5a-aabc37829507",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "1",
+    "recorded_at": "2026-07-03T11:50:04.300Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "164",
+    "prediction_id": "7327a3af-d77e-43ec-b19a-dcb8fa83ced9",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "2",
+    "recorded_at": "2026-07-03T11:50:04.458Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "165",
+    "prediction_id": "56120b3f-4ea4-4e65-96c8-347ca2904e65",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "3",
+    "recorded_at": "2026-07-03T11:50:04.599Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "166",
+    "prediction_id": "1ec75464-f8a6-47b2-bf69-b8102f8087d1",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "4",
+    "recorded_at": "2026-07-03T11:50:04.751Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "167",
+    "prediction_id": "3a88e036-0101-460e-ab09-57236ebcd38f",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "5",
+    "recorded_at": "2026-07-03T11:50:04.904Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "168",
+    "prediction_id": "c5ee35fd-14ec-43cf-8609-0aeca638e04f",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "6",
+    "recorded_at": "2026-07-04T11:50:04.190Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "169",
+    "prediction_id": "0aadec34-374c-4dfe-b508-2dac901b2866",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "7",
+    "recorded_at": "2026-07-04T11:50:04.337Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "170",
+    "prediction_id": "ced8806b-37a7-47cd-a0c2-7419102dcd64",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "8",
+    "recorded_at": "2026-07-04T11:50:04.461Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "171",
+    "prediction_id": "25ed08b2-bec5-4488-b3e2-a832b7e28bd8",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "9",
+    "recorded_at": "2026-07-04T11:50:04.590Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "172",
+    "prediction_id": "08e1dc86-168f-4bb2-bc52-3b6f9928b6be",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "10",
+    "recorded_at": "2026-07-04T11:50:04.716Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "173",
+    "prediction_id": "287c8c00-9a74-4b7f-874b-97e159096baf",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "11",
+    "recorded_at": "2026-07-05T11:50:04.136Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "174",
+    "prediction_id": "f9183364-e532-46d1-93d4-0d0cfc195ef8",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "10",
+    "recorded_at": "2026-07-05T11:50:04.271Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "175",
+    "prediction_id": "babd0c7a-cd6c-4d3f-b3d4-7a2ee75096ff",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "11",
+    "recorded_at": "2026-07-05T11:50:04.403Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "176",
+    "prediction_id": "3d12cd95-6216-4a00-8b49-13de2c7a01d4",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "10",
+    "recorded_at": "2026-07-05T11:50:04.527Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "177",
+    "prediction_id": "3fe4111d-87cf-4b04-afc8-71df0a64e13a",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "9",
+    "recorded_at": "2026-07-06T11:50:04.139Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "178",
+    "prediction_id": "eee1fbbe-6259-4ac0-8251-80c426c95ff2",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "10",
+    "recorded_at": "2026-07-06T11:50:04.319Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "179",
+    "prediction_id": "5fc8a8a1-ff60-4316-8b8a-b93e10cda004",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "9",
+    "recorded_at": "2026-07-06T11:50:04.495Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "180",
+    "prediction_id": "4cd28cb0-8f75-446f-a200-1e0b94e77b9d",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "10",
+    "recorded_at": "2026-07-07T11:50:04.268Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "181",
+    "prediction_id": "f94ed0ad-38da-4cc8-958b-49aa822fc5b9",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "9",
+    "recorded_at": "2026-07-07T11:50:04.428Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "182",
+    "prediction_id": "c06f09eb-e421-40c9-8d86-e26ab16356dd",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "10",
+    "recorded_at": "2026-07-07T11:50:04.564Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "183",
+    "prediction_id": "4b599164-5daa-4c5b-a30f-41201ba951e2",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "11",
+    "recorded_at": "2026-07-08T11:50:04.109Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "184",
+    "prediction_id": "30b067cd-277c-4bd7-8be1-8f4377ff7aae",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "10",
+    "recorded_at": "2026-07-08T11:50:04.267Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "185",
+    "prediction_id": "90da5b51-f46f-432b-9e15-cf7eef489088",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "11",
+    "recorded_at": "2026-07-08T11:50:04.420Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "186",
+    "prediction_id": "679da244-3559-4538-8cd0-485e38cc4f0c",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "12",
+    "recorded_at": "2026-07-10T11:50:03.990Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "187",
+    "prediction_id": "3e8e883b-30a4-4d20-9cfb-38ad94df44d5",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "13",
+    "recorded_at": "2026-07-10T11:50:04.182Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "188",
+    "prediction_id": "d6a35df3-bffc-4c46-bc4b-514e5d40f9de",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "14",
+    "recorded_at": "2026-07-11T11:50:02.521Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "189",
+    "prediction_id": "d1339b43-9cff-443c-930f-ec95f95d5295",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "15",
+    "recorded_at": "2026-07-11T11:50:02.667Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "190",
+    "prediction_id": "73ac78fa-9033-43a1-8200-597fe0c8cc1d",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "16",
+    "recorded_at": "2026-07-12T11:50:03.867Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "191",
+    "prediction_id": "2785bbb1-3103-4ac6-9723-f735a4994573",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "17",
+    "recorded_at": "2026-07-12T11:50:03.991Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "192",
+    "prediction_id": "8170f216-8d68-4acd-a325-2d874e56ec86",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "18",
+    "recorded_at": "2026-07-12T11:50:04.082Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "193",
+    "prediction_id": "c5150a99-baaf-4068-a429-acccbe51636c",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "17",
+    "recorded_at": "2026-07-12T11:50:04.195Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "194",
+    "prediction_id": "dd88f1f9-3a0a-466a-a0bc-44ed594f86e4",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "18",
+    "recorded_at": "2026-07-15T11:50:04.163Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "195",
+    "prediction_id": "a55bbab1-0bf2-434d-b92b-53fd58c27c8c",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "17",
+    "recorded_at": "2026-07-16T11:50:03.995Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "196",
+    "prediction_id": "9321a38d-e1ed-478f-aa02-6f0f06376adf",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "16",
+    "recorded_at": "2026-07-19T11:50:03.703Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "197",
+    "prediction_id": "fc259e17-54d6-4269-9149-2e71e75e2086",
+    "delta": "-1",
+    "outcome": "lost",
+    "score_after": "15",
+    "recorded_at": "2026-07-19T11:50:03.878Z",
+    "competition": "fifa.world"
+  },
+  {
+    "id": "198",
+    "prediction_id": "59d41de3-2fcc-4c47-bad6-d6bab38974c7",
+    "delta": "1",
+    "outcome": "won",
+    "score_after": "16",
+    "recorded_at": "2026-07-20T11:50:03.113Z",
+    "competition": "fifa.world"
+  }
+]

@@ -14,9 +14,14 @@ type IdentityLite = {
 export function Navbar({
   identity,
   sport,
+  competitionLogo,
+  competitionLabel,
 }: {
   identity: IdentityLite;
   sport: Sport;
+  /** Football's active competition (the toggle knob shows its logo). */
+  competitionLogo?: string;
+  competitionLabel?: string;
 }) {
   const navItems = SPORTS[sport].nav;
   // The desktop link row only fits once there's room for every item. Soccer
@@ -43,7 +48,11 @@ export function Navbar({
         <NavLinks items={navItems} dense={dense} />
 
         <div className="flex items-center gap-2">
-          <SportToggle active={sport} />
+          <SportToggle
+            active={sport}
+            competitionLogo={competitionLogo}
+            competitionLabel={competitionLabel}
+          />
           <IdentityBadge dense={dense} />
           <MobileNav
             items={navItems}

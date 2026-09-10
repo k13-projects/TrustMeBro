@@ -22,14 +22,31 @@ const [LEFT_SPORT] = SPORT_ORDER; // soccer sits on the left, nba on the right
 // client-side (committed synchronously) and then do a full navigation, so SSR
 // and the edge proxy both read the new sport on the very next request — no
 // server-action/redirect cookie race (which used to bounce NBA → World Cup).
-export function SportToggle({ active }: { active: Sport }) {
+export function SportToggle({
+  active,
+  competitionLogo,
+  competitionLabel,
+}: {
+  active: Sport;
+  /** Football's live competition — its logo rides the football side. */
+  competitionLogo?: string;
+  competitionLabel?: string;
+}) {
   const [optimistic, setOptimistic] = useState<Sport>(active);
   const current = optimistic;
   const onLeft = current === LEFT_SPORT;
   const target = onLeft ? SPORT_ORDER[1] : SPORT_ORDER[0];
 
-  const activeMeta = SPORTS[current];
-  const targetMeta = SPORTS[target];
+  const withCompetition = (meta: (typeof SPORTS)[Sport]) =>
+    meta.sport === "soccer"
+      ? {
+          ...meta,
+          logo: competitionLogo ?? meta.logo,
+          competition: competitionLabel ?? meta.competition,
+        }
+      : meta;
+  const activeMeta = withCompetition(SPORTS[current]);
+  const targetMeta = withCompetition(SPORTS[target]);
 
   const knobX = onLeft ? -OVERFLOW : TRACK_W - KNOB + OVERFLOW;
 

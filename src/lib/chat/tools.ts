@@ -4,6 +4,7 @@ import { Type, type FunctionDeclaration } from "@google/genai";
 import { computeFeatures } from "@/lib/analysis/features";
 import type { PlayerGameStatLine, PropMarket } from "@/lib/analysis/types";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { activeCompetition } from "@/lib/sports/soccer/competition-cookie";
 
 export const LOOKUP_PLAYER_DECLARATION: FunctionDeclaration = {
   name: "lookup_player",
@@ -217,14 +218,14 @@ function round1(n: number): number {
 export const LOOKUP_TEAM_DECLARATION: FunctionDeclaration = {
   name: "lookup_team",
   description:
-    "Look up a football (World Cup) team by name. Returns its latest group-standings line (played/W/D/L, goal difference, points) and its most recent finished results. Call this when the user asks about a team that is not in today's picks.",
+    "Look up a football team (club or country) by name in the active competition. Returns its latest table line (played/W/D/L, goal difference, points) and its most recent finished results. Call this when the user asks about a team that is not in today's picks.",
   parameters: {
     type: Type.OBJECT,
     properties: {
       name: {
         type: Type.STRING,
         description:
-          "Full or partial team name (e.g. 'Brazil', 'United States', 'Korea').",
+          "Full or partial team name (e.g. 'Real Madrid', 'Arsenal', 'Brazil').",
       },
     },
     required: ["name"],
@@ -265,6 +266,7 @@ export async function runLookupTeam(args: {
   if (!raw) return { ok: false, reason: "Empty team name." };
 
   const supabase = await createSupabaseServerClient();
+  const competition = await activeCompetition();
   const tokens = raw.split(" ").filter((t) => t.length >= 2);
   if (tokens.length === 0)
     return { ok: false, reason: `Couldn't parse team name "${args.name}".` };
@@ -298,6 +300,7 @@ export async function runLookupTeam(args: {
   const { data: standingRows } = await supabase
     .from("soccer_standings")
     .select("grp, rank, played, won, draw, lost, goal_diff, points, captured_at")
+    .eq("competition", competition)
     .eq("team_id", team.id)
     .order("captured_at", { ascending: false })
     .limit(1);
@@ -322,6 +325,7 @@ export async function runLookupTeam(args: {
         "home:soccer_teams!soccer_matches_home_team_id_fkey(name), " +
         "away:soccer_teams!soccer_matches_away_team_id_fkey(name)",
     )
+    .eq("competition", competition)
     .or(`home_team_id.eq.${team.id},away_team_id.eq.${team.id}`)
     .eq("finished", true)
     .order("datetime", { ascending: false })

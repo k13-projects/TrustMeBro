@@ -34,6 +34,7 @@ Karar log'u — değiştirilirse buraya tarih + sebep ekle:
 - **2026-05-14**: Dashboard renk kodu: sezon avg / önceki maç / ondan önceki maç farklı renk; son 5 ayrı + son 10 ortalama yan yana.
 - **2026-05-14**: History: kullanıcı tek tıkla "ben bu beti oynadım" işaretler, sonucu kaydeder.
 - **2026-05-14**: Pattern engine: anomalileri/döngüleri yakalamalı (örn. "her 6 maçta sıfırlanma"). Sapma alert'i: "ortalama 8 ama önceki maç 5 yaptı".
+- **2026-09-09**: Champions League added as the live football competition; World Cup 2026 archived (frozen, browsable, exportable). Per-competition ledgers. See "Football competitions" below.
 - **2026-05-14**: Canonical timezone = **America/Los_Angeles**. NBA maçları US saatinde oynanıyor ve PT gece yarısı sleyt'in en geç kapanma anı, dolayısıyla "bugün" tüm sayfa/cron/chat için LA günü demektir. `todayIsoDate()` LA tarihini döndürür; sabit `PROJECT_TIMEZONE` ifadesi [src/lib/date.ts](src/lib/date.ts)'te.
 
 ## Stack
@@ -255,6 +256,43 @@ Add as needed (and update `.env.example`):
 - `CRON_SECRET` — to protect `/api/cron/*` endpoints from unauthorized invocation
 - `NBA_LIGHT_MODE` — off-season toggle. `"true"` makes every NBA cron early-exit (`{skipped:true}`) via `src/app/api/cron/_light-mode.ts`. The Vercel schedule is left intact; unset to wake the NBA side. Soccer crons ignore it.
 
+## Football competitions (World Cup archive · Champions League live) — 2026-09-09
+
+Football is multi-competition. Every soccer table carries a `competition`
+column (ESPN league slug: `fifa.world`, `uefa.champions`) and the engine ledger
+is one row per competition in `soccer_ledgers` (migration 0022). The registry
+is [src/lib/sports/soccer/competitions.ts](src/lib/sports/soccer/competitions.ts):
+label, season, `status: live | archived`, ESPN slugs (main + qualifying), Odds
+API key, logo, theme.
+
+- **Switching.** Cookie `tmb_competition` (1 year), read by `activeCompetition()`;
+  absent ⇒ `DEFAULT_COMPETITION` (Champions League). The switcher lives in the
+  `CompetitionBar` at the top of every `/football/*` page. Same URL tree serves
+  both competitions.
+- **Archived = frozen, not deleted.** The World Cup 2026 record (92 matches, 198
+  graded picks, ledger +16 / 107W–91L, final tables, 11k news rows) stays in
+  Postgres exactly as it finished and is fully browsable under the switcher.
+  No cron pulls for an archived competition (`liveCompetitions()` gates them),
+  no on-visit refresh, no odds credits. A JSON copy is committed at
+  `docs/archive/world-cup-2026/` (`scripts/export-competition-archive.mjs`).
+  To bring a competition back live: flip `status` in the registry.
+- **Theming.** The football layout stamps `data-competition` on a wrapper; the
+  Champions League scope re-tokens `--primary` (sky blue `#4FA6FF`, hue 212 —
+  blue, not indigo), surfaces (midnight navy), and `--font-display` (Barlow
+  Condensed, standing in for UEFA's "Champions" face) in `globals.css`. Club
+  crests render contained (not flag-cropped) and each match pill gets a thin
+  edge in the club's ESPN brand colour. The master gold stays on global chrome.
+- **Rounds.** League-phase matchdays aren't in the ESPN payload; they're derived
+  from the ISO week of the fixture (one matchday per week) in
+  `groupIntoRounds()`. Qualifying rounds come from the `uefa.champions_qual`
+  feed and are stored under the same competition with their stage slug.
+- **Odds matching.** Bookmaker names ≠ ESPN names for clubs ("Slavia Praha" vs
+  "Slavia Prague"). `team-match.ts` reconciles them (aliases + token overlap,
+  both sides must clear the bar, ties refuse to guess); `track-odds` reports
+  `unmatched` per run — check it after each matchday's first pull.
+- **Cron cost.** One Odds API call per live competition per day (4 credits) ⇒
+  ~120/month of the 500 free.
+
 ## Cron Schedule (Vercel)
 
 NBA crons (top group) early-exit while `NBA_LIGHT_MODE=true` — the season is over.
@@ -266,7 +304,11 @@ NBA crons (top group) early-exit while `NBA_LIGHT_MODE=true` — the season is o
 | `/api/cron/track-odds`            | every 30 min, gameday | Capture odds snapshots                 |
 | `/api/cron/scrape-news`           | every 2h              | Magazine/social pulls                  |
 | `/api/cron/settle-bets`           | every 30 min, gameday | Settle finalized games, update score   |
-| `/api/cron/soccer/scrape-news`    | daily @ 08:00 UTC     | World Cup news → `soccer_news` (/football/news) — backstop; the page also self-refreshes on visit when >30min stale |
+| `/api/cron/soccer/sync-fixtures`  | daily @ 09:00 UTC     | Fixtures + scores + standings for every **live** football competition (`?competition=&from=&to=` to backfill) |
+| `/api/cron/soccer/track-odds`     | daily @ 13:30 UTC     | Real bookmaker odds per live competition (4 credits each); skips days with no unfinished matches |
+| `/api/cron/soccer/generate-predictions` | daily @ 15:00 UTC | Engine picks + coupons per live competition |
+| `/api/cron/soccer/settle-bets`    | daily @ 11:30 UTC     | Grade finished matches → that competition's ledger |
+| `/api/cron/soccer/scrape-news`    | daily @ 08:00 UTC     | News → `soccer_news` per live competition (/football/news) — backstop; the page also self-refreshes on visit when >30min stale |
 
 **Hobby plan cron limits (verified 2026-06):** crons are capped at **once per day** on Hobby — sub-daily expressions (`*/30`, `0 */6`, etc.) **fail at deploy time**, so every `schedule` here must be daily. Hobby also only guarantees ±59min timing. Freshness beyond daily comes from on-visit `maybeRefresh()` (see `src/lib/ingest/refresh.ts`), not the cron. Function `maxDuration` ceiling on Hobby is 300s (Fluid Compute, on by default).
 

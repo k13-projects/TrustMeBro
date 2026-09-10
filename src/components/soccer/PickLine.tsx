@@ -12,8 +12,9 @@ export function PickLine({ pick }: { pick: PredictionDetail }) {
     <div className="space-y-1.5 py-2.5">
       <MatchBanner
         size="sm"
-        home={{ name: pick.home, abbreviation: pick.home_abbr, crest: pick.home_crest }}
-        away={{ name: pick.away, abbreviation: pick.away_abbr, crest: pick.away_crest }}
+        competition={pick.competition}
+        home={{ name: pick.home, abbreviation: pick.home_abbr, crest: pick.home_crest, color: pick.home_color }}
+        away={{ name: pick.away, abbreviation: pick.away_abbr, crest: pick.away_crest, color: pick.away_color }}
       />
       <div className="flex items-center justify-between gap-3">
         <span className="truncate text-sm font-semibold">

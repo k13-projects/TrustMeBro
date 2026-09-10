@@ -2,6 +2,11 @@ import "server-only";
 
 import { GoogleGenAI } from "@google/genai";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import {
+  COMPETITIONS,
+  stageLabel,
+  type SoccerCompetition,
+} from "@/lib/sports/soccer/competitions";
 import { marketLabel, sideLabel } from "@/lib/sports/soccer/labels";
 import type { MatchSide, SoccerMarket } from "@/lib/sports/types";
 import type { SoccerNewsItem } from "./types";
@@ -30,10 +35,11 @@ type PredictionRow = {
 
 /**
  * Soccer mirror of ../engine-take.ts. Writes a labelled engine preview for each
- * upcoming World Cup match in the window that has no writer coverage yet.
+ * upcoming match of the competition in the window that has no writer coverage.
  * Gated by GOOGLE_API_KEY — no key = no-op, cron stays green.
  */
 export async function generateSoccerEngineTakes(opts: {
+  competition: SoccerCompetition;
   startDate: string;
   endDate: string;
   maxMatches?: number;
@@ -46,6 +52,7 @@ export async function generateSoccerEngineTakes(opts: {
   const { data: matches } = await supabase
     .from("soccer_matches")
     .select("id, date, datetime, stage, grp, home_team_id, away_team_id")
+    .eq("competition", opts.competition)
     .gte("date", opts.startDate)
     .lte("date", opts.endDate)
     .eq("finished", false)
@@ -95,6 +102,7 @@ export async function generateSoccerEngineTakes(opts: {
   }
 
   const ai = new GoogleGenAI({ apiKey });
+  const compName = COMPETITIONS[opts.competition].fullName;
 
   // One Gemini call per match, all in flight at once — these are independent
   // and otherwise serialise into the slowest part of the job.
@@ -113,13 +121,13 @@ export async function generateSoccerEngineTakes(opts: {
         .join("; ");
 
       const prompt = [
-        "You are the TrustMeBro engine writing a one-paragraph (2–3 short sentences, ≤ 360 characters) preview for a World Cup match.",
+        `You are the TrustMeBro engine writing a one-paragraph (2–3 short sentences, ≤ 360 characters) preview for a ${compName} match.`,
         "Tone: terse, data-driven, no fluff, no hype words like 'epic' or 'must-watch'.",
         "Don't invent injuries, transfers, or news. Stick to the matchup and the picks below.",
         "Don't quote any real journalist. This is the engine's own take.",
         "",
         `Match: ${home.name} vs ${away.name}`,
-        m.stage ? `Stage: ${m.stage}${m.grp ? ` (${m.grp})` : ""}` : null,
+        m.stage ? `Stage: ${stageLabel(m.stage)}${m.grp ? ` (${m.grp})` : ""}` : null,
         `Date: ${m.date}`,
         topPicks.length > 0 ? `Top picks: ${picksLine}` : "No engine picks generated for this match yet.",
         "",
@@ -145,6 +153,7 @@ export async function generateSoccerEngineTakes(opts: {
       const published = m.datetime ?? new Date(`${m.date}T12:00:00Z`).toISOString();
 
       return {
+        competition: opts.competition,
         source: "engine",
         source_id: `match:${m.id}:${m.date}`,
         source_url: "/football",

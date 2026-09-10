@@ -2,21 +2,32 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { assertCronAuth } from "../../_auth";
 import { isoDateOffset, isValidIsoDate, todayIsoDate } from "@/lib/date";
-import { soccerProvider } from "@/lib/sports/soccer";
-import { insertStandings, upsertMatches } from "@/lib/sports/soccer/repo";
+import {
+  isCompetition,
+  liveCompetitions,
+  type SoccerCompetition,
+} from "@/lib/sports/soccer/competitions";
+import { syncCompetition } from "@/lib/sports/soccer/live";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 120;
 
 const QuerySchema = z.object({
+  competition: z.string().optional(),
   date: z.string().optional(),
-  ahead: z.coerce.number().int().min(0).max(10).optional(),
-  back: z.coerce.number().int().min(0).max(3).optional(),
+  from: z.string().optional(),
+  to: z.string().optional(),
+  ahead: z.coerce.number().int().min(0).max(400).optional(),
+  back: z.coerce.number().int().min(0).max(400).optional(),
 });
 
-// Pulls World Cup fixtures + scores for a date window (default: yesterday →
-// +3 days, so finished games settle and upcoming games are ready for odds)
-// and a full standings snapshot. ESPN soccer API is free — no credit cost.
+// Pulls fixtures + scores for every LIVE competition over a date window
+// (default: yesterday → +3 days, so finished games settle and upcoming games
+// are ready for odds) and a standings snapshot. `from`/`to` (or `back`/`ahead`)
+// widen the window for a backfill; `competition=` targets one competition,
+// including an archived one if you ever need to re-pull its record. ESPN's
+// soccer API is free — no credit cost.
 export async function GET(req: Request) {
   const unauth = assertCronAuth(req);
   if (unauth) return unauth;
@@ -30,35 +41,35 @@ export async function GET(req: Request) {
       { status: 400 },
     );
   }
+  const q = parsed.data;
 
   const today = todayIsoDate();
-  let dates: string[];
-  if (parsed.data.date && isValidIsoDate(parsed.data.date)) {
-    dates = [parsed.data.date];
+  let from: string;
+  let to: string;
+  if (q.date && isValidIsoDate(q.date)) {
+    from = to = q.date;
+  } else if (q.from && q.to && isValidIsoDate(q.from) && isValidIsoDate(q.to)) {
+    from = q.from;
+    to = q.to;
   } else {
-    const back = parsed.data.back ?? 1;
-    const ahead = parsed.data.ahead ?? 3;
-    dates = [];
-    for (let i = -back; i <= ahead; i++) dates.push(isoDateOffset(today, i));
+    from = isoDateOffset(today, -(q.back ?? 1));
+    to = isoDateOffset(today, q.ahead ?? 3);
   }
 
-  const provider = soccerProvider();
-  const matches = await provider.listMatches({ dates });
-  await upsertMatches(matches);
-
-  let standingsCount = 0;
-  try {
-    const standings = await provider.listStandings(Number(today.slice(0, 4)));
-    await insertStandings(standings);
-    standingsCount = standings.length;
-  } catch {
-    // Standings can be unavailable pre-tournament; fixtures still sync.
+  let competitions: SoccerCompetition[];
+  if (q.competition) {
+    if (!isCompetition(q.competition)) {
+      return NextResponse.json({ error: "unknown competition" }, { status: 400 });
+    }
+    competitions = [q.competition];
+  } else {
+    competitions = liveCompetitions();
   }
 
-  return NextResponse.json({
-    ok: true,
-    dates,
-    matches_synced: matches.length,
-    standings_synced: standingsCount,
-  });
+  const results: Record<string, unknown> = {};
+  for (const competition of competitions) {
+    results[competition] = await syncCompetition({ competition, from, to });
+  }
+
+  return NextResponse.json({ ok: true, from, to, competitions: results });
 }

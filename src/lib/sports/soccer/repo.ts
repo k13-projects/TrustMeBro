@@ -3,6 +3,7 @@ import "server-only";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import type { EngineQuote, TeamForm } from "@/lib/analysis/soccer/engine";
 import type { MatchSide, SoccerMarket } from "@/lib/sports/types";
+import type { SoccerCompetition } from "./competitions";
 import type { Match, SoccerStanding, SoccerTeam } from "./provider";
 
 export async function upsertTeams(teams: SoccerTeam[]): Promise<void> {
@@ -14,6 +15,8 @@ export async function upsertTeams(teams: SoccerTeam[]): Promise<void> {
     abbreviation: t.abbreviation,
     country: t.country,
     crest_url: t.crest_url,
+    color: t.color,
+    alt_color: t.alt_color,
     updated_at: new Date().toISOString(),
   }));
   const { error } = await supabase.from("soccer_teams").upsert(rows);
@@ -33,6 +36,8 @@ export async function upsertMatches(matches: Match[]): Promise<void> {
   const supabase = supabaseAdmin();
   const rows = matches.map((m) => ({
     id: m.id,
+    competition: m.competition,
+    league_slug: m.league_slug,
     date: m.date,
     datetime: m.datetime,
     season: m.season,
@@ -42,6 +47,7 @@ export async function upsertMatches(matches: Match[]): Promise<void> {
     clock: m.clock,
     stage: m.stage,
     grp: m.group,
+    venue: m.venue,
     home_team_id: m.home_team.id,
     away_team_id: m.away_team.id,
     home_score: m.home_score,
@@ -54,6 +60,7 @@ export async function upsertMatches(matches: Match[]): Promise<void> {
 }
 
 export async function insertStandings(
+  competition: SoccerCompetition,
   standings: SoccerStanding[],
 ): Promise<void> {
   if (standings.length === 0) return;
@@ -62,6 +69,7 @@ export async function insertStandings(
   const supabase = supabaseAdmin();
   const captured_at = new Date().toISOString();
   const rows = standings.map((s) => ({
+    competition,
     team_id: s.team.id,
     grp: s.group,
     rank: s.rank,
@@ -156,13 +164,17 @@ export async function loadLatestSoccerOdds(
   return out;
 }
 
-// Most recent standings snapshot per team → form.
-export async function loadTeamForm(): Promise<Map<number, TeamForm>> {
+// Most recent standings snapshot per team within a competition → form.
+export async function loadTeamForm(
+  competition: SoccerCompetition,
+): Promise<Map<number, TeamForm>> {
   const supabase = supabaseAdmin();
   const { data, error } = await supabase
     .from("soccer_standings")
     .select("team_id, points, goal_diff, played, captured_at")
-    .order("captured_at", { ascending: false });
+    .eq("competition", competition)
+    .order("captured_at", { ascending: false })
+    .limit(2000);
   if (error) throw new Error(`soccer_standings read: ${error.message}`);
 
   const out = new Map<number, TeamForm>();

@@ -1,3 +1,8 @@
+import {
+  COMPETITIONS,
+  type SoccerCompetition,
+} from "@/lib/sports/soccer/competitions";
+
 /**
  * Static FAQ injected into the chatbot system prompt. Captures the "Source
  * Decisions" log from CLAUDE.md in chatbot-friendly prose so the bot can
@@ -71,22 +76,31 @@ Legal posture:
 `.trim();
 
 /**
- * Soccer / World Cup variant of the FAQ. The football side of the app runs a
- * separate engine (match markets, not player props) with its own ledger, so
- * the methodology differs enough to warrant its own prompt block. Surfaced
- * when the active sport is soccer. Keep in sync with the soccer engine
+ * Football variant of the FAQ, per competition. The football side of the app
+ * runs a separate engine (match markets, not player props) with one ledger per
+ * competition (World Cup archive, live Champions League), so the methodology
+ * differs enough to warrant its own prompt block. Surfaced when the active
+ * sport is soccer. Keep in sync with the soccer engine
  * (src/lib/analysis/soccer/engine.ts) and CLAUDE.md's soccer notes.
  */
-export const SOCCER_SOURCE_FAQ = `
-TrustMeBro — Football (World Cup) Source & Methodology FAQ
+export function soccerSourceFaq(competition: SoccerCompetition): string {
+  const meta = COMPETITIONS[competition];
+  return `
+TrustMeBro — Football (${meta.fullName}) Source & Methodology FAQ
+
+Competitions:
+  - Each football competition has its own fixtures, table, picks and ledger.
+    The World Cup 2026 record is archived (frozen, fully browsable); the UEFA
+    Champions League ${meta.id === "uefa.champions" ? "is the live competition (league phase: one 36-team table, eight matchdays; top 8 → Round of 16, 9–24 → knockout play-offs, 25–36 out)" : "is the live competition"}.
 
 "Today" everywhere in the app means today in America/Los_Angeles. Kickoff
 times shown to you are in that frame unless stated otherwise.
 
 Data sources:
   - Match schedule, scores, and standings: ESPN's public soccer API.
-  - Odds: bookmaker player/market odds via The Odds API, captured into
-    snapshots. Confidence is built from those odds, not guessed.
+  - Odds: real bookmaker match odds (about forty UK/EU books) via The Odds
+    API, captured into snapshots. Confidence is built from those odds, not
+    guessed.
   - We never "search the internet" — every number is pinned to a source.
 
 Scope:
@@ -118,7 +132,7 @@ Confidence reasoning (the checks you can cite):
   - "Table form edge" (weight 0.1) — only on match result, when standings
     favor one side.
 
-System reward/penalty (football has its own ledger, separate from NBA):
+System reward/penalty (each competition has its own ledger, separate from NBA):
   - Won pick: +1.0. Lost pick: −1.0. Void / push: no change.
   - Engine coupons (BANKO / multiplier / surprise parlays) combine legs; a
     coupon needs every leg to land.
@@ -127,3 +141,4 @@ Legal posture:
   - This is an analysis + education tool. We present projections; we do not
     integrate with bookmakers and do not accept wagers.
 `.trim();
+}

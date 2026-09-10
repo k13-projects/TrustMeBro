@@ -102,7 +102,7 @@ export function Footer() {
       <div className="border-t border-border/70">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 py-5 flex items-center justify-between text-xs text-muted-foreground flex-wrap gap-3">
           <p>© 2026 TrustMeBro. All rights reserved.</p>
-          <p>Data: ESPN · NBA only (more sports coming)</p>
+          <p>Data: ESPN · The Odds API · balldontlie</p>
         </div>
       </div>
     </footer>

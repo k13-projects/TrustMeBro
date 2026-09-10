@@ -18,18 +18,20 @@ const ICON: Record<Ev["kind"], string> = {
 };
 
 // Google surfaces a rich match panel (score, timeline, stats, lineups) for a
-// "<home> vs <away> world cup" query — reliable and deep-linkable per match.
-const matchFactsUrl = (home: string, away: string) =>
-  `https://www.google.com/search?q=${encodeURIComponent(`${home} vs ${away} world cup`)}`;
+// "<home> vs <away> <competition>" query — reliable and deep-linkable per match.
+const matchFactsUrl = (home: string, away: string, competition: string) =>
+  `https://www.google.com/search?q=${encodeURIComponent(`${home} vs ${away} ${competition}`)}`;
 
 export function MatchEvents({
   matchId,
   home,
   away,
+  competitionName = "football",
 }: {
   matchId: number;
   home: string;
   away: string;
+  competitionName?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [events, setEvents] = useState<Ev[] | null>(null);
@@ -100,7 +102,7 @@ export function MatchEvents({
           )}
 
           <a
-            href={matchFactsUrl(home, away)}
+            href={matchFactsUrl(home, away, competitionName)}
             target="_blank"
             rel="noopener noreferrer"
             className="mt-3 flex items-center justify-center gap-1.5 rounded-full border border-border/60 bg-white/5 py-1.5 text-xs font-semibold text-foreground/70 hover:bg-white/10 hover:text-foreground transition-colors"

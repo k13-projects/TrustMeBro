@@ -46,14 +46,14 @@ const STARTER_POOL: Record<Sport, string[]> = {
     "What stats does the engine actually look at?",
   ],
   soccer: [
-    "What are today's BANKO picks and why?",
-    "Show me today's highest-confidence picks.",
+    "What are this matchday's BANKO picks and why?",
+    "Show me the highest-confidence Champions League picks.",
     "How does the football engine pick a side?",
     "Where do the odds come from?",
-    "How is Brazil doing in their group?",
+    "How is Real Madrid doing in the league phase?",
     "What does de-vigged probability mean?",
     "Which markets does the engine bet?",
-    "Why only one pick per market?",
+    "Who's in the top eight right now?",
   ],
 };
 

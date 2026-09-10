@@ -3,18 +3,25 @@ import { z } from "zod";
 import { assertCronAuth } from "../../_auth";
 import { isoDateOffset, isValidIsoDate, todayIsoDate } from "@/lib/date";
 import { generateSoccerPredictions } from "@/lib/analysis/soccer/run";
+import {
+  isCompetition,
+  liveCompetitions,
+  type SoccerCompetition,
+} from "@/lib/sports/soccer/competitions";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const QuerySchema = z.object({
+  competition: z.string().optional(),
   date: z.string().optional(),
   ahead: z.coerce.number().int().min(0).max(7).optional(),
 });
 
-// Runs the soccer engine over matches with odds in the date window, writing
-// fresh predictions + BANKO flags + engine coupons (2×/3×/5×/10× + surprise).
-// Depends on track-odds having populated soccer_odds_snapshots first.
+// Runs the soccer engine over each LIVE competition's matches with odds in the
+// date window, writing fresh predictions + BANKO flags + engine coupons
+// (2×/3×/5×/10× + surprise). Depends on track-odds having populated
+// soccer_odds_snapshots first.
 export async function GET(req: Request) {
   const unauth = assertCronAuth(req);
   if (unauth) return unauth;
@@ -39,6 +46,19 @@ export async function GET(req: Request) {
     for (let i = 1; i <= ahead; i++) dates.push(isoDateOffset(today, i));
   }
 
-  const result = await generateSoccerPredictions(dates);
-  return NextResponse.json({ ok: true, dates, ...result });
+  let competitions: SoccerCompetition[];
+  if (parsed.data.competition) {
+    if (!isCompetition(parsed.data.competition)) {
+      return NextResponse.json({ error: "unknown competition" }, { status: 400 });
+    }
+    competitions = [parsed.data.competition];
+  } else {
+    competitions = liveCompetitions();
+  }
+
+  const results: Record<string, unknown> = {};
+  for (const competition of competitions) {
+    results[competition] = await generateSoccerPredictions(competition, dates);
+  }
+  return NextResponse.json({ ok: true, dates, competitions: results });
 }

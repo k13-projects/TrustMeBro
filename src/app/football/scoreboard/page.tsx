@@ -1,3 +1,5 @@
+import { activeCompetition } from "@/lib/sports/soccer/competition-cookie";
+import { COMPETITIONS } from "@/lib/sports/soccer/competitions";
 import { getSoccerScore, getSoccerScoreHistory } from "@/lib/sports/soccer/queries";
 import { FootballHeader } from "@/components/soccer/FootballHeader";
 import { ScoreChart } from "@/components/ScoreChart";
@@ -14,25 +16,31 @@ function Stat({ label, value, tone }: { label: string; value: string; tone?: str
 }
 
 export default async function ScoreboardPage() {
+  const competition = await activeCompetition();
+  const meta = COMPETITIONS[competition];
   const [s, history] = await Promise.all([
-    getSoccerScore(),
-    getSoccerScoreHistory(),
+    getSoccerScore(competition),
+    getSoccerScoreHistory(competition),
   ]);
   const settled = s.wins + s.losses;
   const hitRate = settled > 0 ? Math.round((s.wins / settled) * 100) : 0;
+  const archived = meta.status === "archived";
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-10 space-y-8">
+    <div className="mx-auto max-w-3xl space-y-8 px-4 py-10">
       <div>
-        <FootballHeader title="Engine Scoreboard" />
+        <FootballHeader title="Engine Scoreboard" competition={competition} />
         <p className="mt-2 text-sm text-foreground/55">
-          Football&apos;s own ledger — separate from the NBA engine. +1 per win,
-          −1 per loss.
+          {archived
+            ? `The ${meta.fullName} ledger, frozen at the final whistle. +1 per win, −1 per loss.`
+            : `${meta.label}'s own ledger — separate from the World Cup and the NBA. +1 per win, −1 per loss.`}
         </p>
       </div>
 
       <div className="rounded-3xl border border-primary/40 bg-gradient-to-br from-primary/15 to-transparent px-6 py-8 text-center">
-        <div className="text-xs uppercase tracking-wide text-foreground/55">Net Units</div>
+        <div className="text-xs uppercase tracking-wide text-foreground/55">
+          {archived ? "Final net units" : "Net Units"}
+        </div>
         <div
           className={`mt-1 text-6xl font-black tabular-nums ${
             s.score > 0 ? "text-emerald-400" : s.score < 0 ? "text-rose-400" : ""
@@ -57,7 +65,9 @@ export default async function ScoreboardPage() {
         </div>
       ) : (
         <div className="rounded-3xl border border-dashed border-border/60 bg-card/20 px-6 py-10 text-center text-sm text-foreground/45">
-          The units graph appears once a couple of picks have settled.
+          {archived
+            ? "No graded picks were recorded for this competition."
+            : "The units graph appears once a couple of picks have settled — the first Champions League picks grade after the next matchday."}
         </div>
       )}
 

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import {
   Anton,
   Archivo_Black,
+  Barlow_Condensed,
   Bowlby_One,
   Geist,
   Geist_Mono,
@@ -20,6 +21,8 @@ import { getRequester } from "@/lib/identity";
 import { getEngineStats, getSoccerEngineStats } from "@/lib/scoring/stats";
 import { touchProfilePresence } from "@/lib/bros/presence";
 import { activeSport } from "@/lib/sports/sport-cookie";
+import { activeCompetition } from "@/lib/sports/soccer/competition-cookie";
+import { COMPETITIONS } from "@/lib/sports/soccer/competitions";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -55,6 +58,14 @@ const bowlbyOne = Bowlby_One({
   subsets: ["latin"],
 });
 
+// Champions League display face — condensed geometric, standing in for the
+// competition's proprietary lettering. Only applied inside the UCL scope.
+const barlowCondensed = Barlow_Condensed({
+  variable: "--font-ucl",
+  weight: ["500", "600", "700"],
+  subsets: ["latin", "latin-ext"],
+});
+
 export const metadata: Metadata = {
   title: "TrustMeBro — In Data We Trust",
   description:
@@ -66,11 +77,19 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const [requester, sport] = await Promise.all([getRequester(), activeSport()]);
-  // Engine stats follow the active sport so the marquee never shows NBA numbers
-  // on football pages (and vice versa). Ledgers are fully separate.
+  const [requester, sport, competition] = await Promise.all([
+    getRequester(),
+    activeSport(),
+    activeCompetition(),
+  ]);
+  // Engine stats follow the active sport (and, for football, the active
+  // competition) so the marquee never shows NBA numbers on football pages or
+  // World Cup numbers on Champions League pages. Ledgers are fully separate.
   const engineStats =
-    sport === "soccer" ? await getSoccerEngineStats() : await getEngineStats();
+    sport === "soccer"
+      ? await getSoccerEngineStats(competition)
+      : await getEngineStats();
+  const competitionMeta = COMPETITIONS[competition];
   const isSignedIn = !!requester;
 
   if (requester?.kind === "auth") {
@@ -82,7 +101,8 @@ export default async function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={`dark ${geistSans.variable} ${geistMono.variable} ${anton.variable} ${archivoBlack.variable} ${permanentMarker.variable} ${bowlbyOne.variable} h-full antialiased`}
+      data-scroll-behavior="smooth"
+      className={`dark ${geistSans.variable} ${geistMono.variable} ${anton.variable} ${archivoBlack.variable} ${permanentMarker.variable} ${bowlbyOne.variable} ${barlowCondensed.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col font-sans">
         <a
@@ -94,9 +114,15 @@ export default async function RootLayout({
 
         <TooltipProvider delay={150}>
           <ScrollProgress />
-          <MarqueeTicker stats={engineStats} sport={sport} />
+          <MarqueeTicker
+            stats={engineStats}
+            sport={sport}
+            competitionLabel={competitionMeta.fullName}
+          />
           <Navbar
             sport={sport}
+            competitionLogo={competitionMeta.logo}
+            competitionLabel={competitionMeta.label}
             identity={
               requester
                 ? {

@@ -23,7 +23,11 @@ const MARKET_LABEL: Record<string, string> = {
 // design review flagged. These items lean on *events* (latest BotD,
 // tracking start, slate cadence) so the marquee complements rather than
 // duplicates the hero.
-function buildItems(stats: EngineStats, sport: Sport): Item[] {
+function buildItems(
+  stats: EngineStats,
+  sport: Sport,
+  competitionLabel: string,
+): Item[] {
   const items: Item[] = [];
 
   // Latest BotD with outcome — the most editorially interesting line.
@@ -83,7 +87,7 @@ function buildItems(stats: EngineStats, sport: Sport): Item[] {
     Icon: Trophy,
     text:
       sport === "soccer"
-        ? "WORLD CUP LIVE · DE-VIGGED CONSENSUS ODDS"
+        ? `${competitionLabel.toUpperCase()} · DE-VIGGED CONSENSUS ODDS`
         : "NBA TODAY · MORE SPORTS COMING",
   });
 
@@ -93,11 +97,13 @@ function buildItems(stats: EngineStats, sport: Sport): Item[] {
 export function MarqueeTicker({
   stats,
   sport,
+  competitionLabel = "Football",
 }: {
   stats: EngineStats;
   sport: Sport;
+  competitionLabel?: string;
 }) {
-  const items = buildItems(stats, sport);
+  const items = buildItems(stats, sport, competitionLabel);
   const rendered = [...items, ...items];
   return (
     <div className="relative overflow-hidden border-y border-primary/25 bg-gradient-to-r from-background via-[#1a1408] to-background">

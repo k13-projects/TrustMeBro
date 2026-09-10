@@ -1,4 +1,4 @@
-export { soccerProvider } from "./espn";
+export { soccerProvider, soccerProviders } from "./espn";
 export { countryCrestUrl } from "./branding";
 export type {
   Match,

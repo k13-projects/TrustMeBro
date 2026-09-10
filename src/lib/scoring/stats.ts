@@ -2,6 +2,10 @@ import "server-only";
 
 import { cache } from "react";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import {
+  DEFAULT_COMPETITION,
+  type SoccerCompetition,
+} from "@/lib/sports/soccer/competitions";
 
 export type EngineStats = {
   /** wins + losses + voids + pending */
@@ -219,14 +223,18 @@ async function _getEngineStats(): Promise<EngineStats> {
 }
 
 /**
- * Soccer engine performance — same shape as getEngineStats but sourced from the
- * separate soccer ledger (soccer_system_score / soccer_predictions /
- * soccer_system_score_history). Keeps football's numbers fully isolated from
- * NBA. No Bet-of-the-Day concept for soccer yet, so recent_botds is empty.
+ * Soccer engine performance for one competition — same shape as getEngineStats
+ * but sourced from that competition's ledger (soccer_ledgers /
+ * soccer_predictions / soccer_system_score_history). Keeps football's numbers
+ * fully isolated from NBA, and the World Cup archive isolated from the live
+ * Champions League. No Bet-of-the-Day concept for soccer, so recent_botds is
+ * empty.
  */
 export const getSoccerEngineStats = cache(_getSoccerEngineStats);
 
-async function _getSoccerEngineStats(): Promise<EngineStats> {
+async function _getSoccerEngineStats(
+  competition: SoccerCompetition = DEFAULT_COMPETITION,
+): Promise<EngineStats> {
   const supabase = supabaseAdmin();
 
   const [
@@ -236,20 +244,31 @@ async function _getSoccerEngineStats(): Promise<EngineStats> {
     { data: history7d },
     { data: recentSettlements },
   ] = await Promise.all([
-    supabase.from("soccer_system_score").select("score, wins, losses, voids").eq("id", true).maybeSingle(),
-    supabase.from("soccer_predictions").select("*", { count: "exact", head: true }).eq("status", "pending"),
+    supabase
+      .from("soccer_ledgers")
+      .select("score, wins, losses, voids")
+      .eq("competition", competition)
+      .maybeSingle(),
+    supabase
+      .from("soccer_predictions")
+      .select("*", { count: "exact", head: true })
+      .eq("competition", competition)
+      .eq("status", "pending"),
     supabase
       .from("soccer_predictions")
       .select("generated_at")
+      .eq("competition", competition)
       .order("generated_at", { ascending: true })
       .limit(1),
     supabase
       .from("soccer_system_score_history")
       .select("delta, recorded_at")
+      .eq("competition", competition)
       .gte("recorded_at", new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString()),
     supabase
       .from("soccer_system_score_history")
       .select("outcome, recorded_at")
+      .eq("competition", competition)
       .order("recorded_at", { ascending: false })
       .limit(50),
   ]);

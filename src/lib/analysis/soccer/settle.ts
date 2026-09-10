@@ -1,6 +1,7 @@
 import "server-only";
 
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import type { SoccerCompetition } from "@/lib/sports/soccer/competitions";
 import type { MatchSide, SoccerMarket } from "@/lib/sports/types";
 
 type BetStatus = "pending" | "won" | "lost" | "void";
@@ -36,7 +37,11 @@ export type SettleResult = {
   score_delta: number;
 };
 
-export async function settleSoccer(): Promise<SettleResult> {
+// Grades one competition's pending picks against finished matches and moves
+// that competition's ledger (soccer_ledgers) — never another's.
+export async function settleSoccer(
+  competition: SoccerCompetition,
+): Promise<SettleResult> {
   const supabase = supabaseAdmin();
 
   // Pending predictions whose match has finished.
@@ -45,6 +50,7 @@ export async function settleSoccer(): Promise<SettleResult> {
     .select(
       "id, match_id, market, side, line, status, soccer_matches!inner(home_score, away_score, finished)",
     )
+    .eq("competition", competition)
     .eq("status", "pending")
     .eq("soccer_matches.finished", true);
   if (error) throw new Error(`load pending predictions: ${error.message}`);
@@ -81,19 +87,16 @@ export async function settleSoccer(): Promise<SettleResult> {
     if (status !== "void") {
       const delta = status === "won" ? 1 : -1;
       const { data: scoreRow } = await supabase
-        .from("soccer_system_score")
+        .from("soccer_ledgers")
         .select("score")
-        .eq("id", true)
-        .single();
+        .eq("competition", competition)
+        .maybeSingle();
       const scoreAfter = Number(scoreRow?.score ?? 0) + delta;
       await supabase
-        .from("soccer_system_score")
-        .update({
-          score: scoreAfter,
-          updated_at: now,
-        })
-        .eq("id", true);
+        .from("soccer_ledgers")
+        .upsert({ competition, score: scoreAfter, updated_at: now });
       await supabase.from("soccer_system_score_history").insert({
+        competition,
         prediction_id: r.id,
         delta,
         outcome: status,
@@ -104,21 +107,19 @@ export async function settleSoccer(): Promise<SettleResult> {
 
   // Bump aggregate win/loss/void counts.
   const { data: agg } = await supabase
-    .from("soccer_system_score")
+    .from("soccer_ledgers")
     .select("wins, losses, voids")
-    .eq("id", true)
-    .single();
-  await supabase
-    .from("soccer_system_score")
-    .update({
-      wins: Number(agg?.wins ?? 0) + wins,
-      losses: Number(agg?.losses ?? 0) + losses,
-      voids: Number(agg?.voids ?? 0) + voids,
-      updated_at: now,
-    })
-    .eq("id", true);
+    .eq("competition", competition)
+    .maybeSingle();
+  await supabase.from("soccer_ledgers").upsert({
+    competition,
+    wins: Number(agg?.wins ?? 0) + wins,
+    losses: Number(agg?.losses ?? 0) + losses,
+    voids: Number(agg?.voids ?? 0) + voids,
+    updated_at: now,
+  });
 
-  const couponsSettled = await settleCoupons();
+  const couponsSettled = await settleCoupons(competition);
 
   return {
     predictions_settled: rows.length,
@@ -129,12 +130,13 @@ export async function settleSoccer(): Promise<SettleResult> {
 
 // A coupon resolves once all its legs are decided: any leg lost → lost;
 // all legs won → won; all void → void. Mixed pending → leave pending.
-async function settleCoupons(): Promise<number> {
+async function settleCoupons(competition: SoccerCompetition): Promise<number> {
   const supabase = supabaseAdmin();
   const { data: coupons, error } = await supabase
     .from("engine_coupons")
     .select("id, engine_coupon_legs(soccer_prediction_id)")
     .eq("sport", "soccer")
+    .eq("competition", competition)
     .eq("status", "pending");
   if (error) throw new Error(`load coupons: ${error.message}`);
   if (!coupons || coupons.length === 0) return 0;

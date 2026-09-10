@@ -13,7 +13,13 @@ const POLL_MS = 25_000;
 // /api/soccer/live. Polls only while a match is in-play (or about to kick off),
 // so finished/distant matches add no client work. SSR values seed the initial
 // state, so there's no empty flash — the numbers update in place.
-export function LiveMatch({ match }: { match: MatchRow }) {
+export function LiveMatch({
+  match,
+  label = null,
+}: {
+  match: MatchRow;
+  label?: string | null;
+}) {
   const [v, setV] = useState<Volatile>({
     state: match.state,
     clock: match.clock,
@@ -33,7 +39,10 @@ export function LiveMatch({ match }: { match: MatchRow }) {
     let active = true;
     const tick = async () => {
       try {
-        const res = await fetch("/api/soccer/live", { cache: "no-store" });
+        const res = await fetch(
+          `/api/soccer/live?competition=${encodeURIComponent(match.competition)}`,
+          { cache: "no-store" },
+        );
         if (!res.ok) return;
         const data = (await res.json()) as { matches?: LiveScore[] };
         const me = data.matches?.find((m) => m.id === match.id);
@@ -55,18 +64,20 @@ export function LiveMatch({ match }: { match: MatchRow }) {
       active = false;
       clearInterval(id);
     };
-  }, [match.id, match.datetime, v.state]);
+  }, [match.id, match.datetime, match.competition, v.state]);
 
   const showScore = v.state === "in" || v.state === "post";
 
   return (
     <MatchBanner
+      competition={match.competition}
       home={match.home}
       away={match.away}
       score={showScore ? { home: v.home_score, away: v.away_score } : null}
       state={v.state}
       clock={v.clock}
       datetime={match.datetime}
+      label={label}
     />
   );
 }

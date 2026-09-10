@@ -10,52 +10,40 @@ import {
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { fetchSoccerOdds } from "@/lib/signals/odds/soccer";
 import {
+  COMPETITIONS,
+  isCompetition,
+  liveCompetitions,
+  type SoccerCompetition,
+} from "@/lib/sports/soccer/competitions";
+import {
   insertSoccerOdds,
   pruneSoccerOdds,
   type SoccerOddsRow,
 } from "@/lib/sports/soccer/repo";
+import { resolveMatch } from "@/lib/sports/soccer/team-match";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const QuerySchema = z.object({
+  competition: z.string().optional(),
   date: z.string().optional(),
   ahead: z.coerce.number().int().min(0).max(7).optional(),
 });
 
-// ESPN and The Odds API name some countries differently. Map both spellings to
-// a single canonical token so the team-name join matches. Keyed by the
-// already-normalized form.
-const COUNTRY_ALIASES: Record<string, string> = {
-  "dr congo": "congo dr",
-  "democratic republic of the congo": "congo dr",
-  "congo democratic republic": "congo dr",
-  "south korea": "korea republic",
-  "north korea": "korea dr",
-  "ivory coast": "cote divoire",
-  "cape verde": "cabo verde",
-  "ir iran": "iran",
-  turkiye: "turkey",
-  "united states": "usa",
-  "united states of america": "usa",
-  "republic of ireland": "ireland",
-  "czechia": "czech republic",
+type CompetitionOddsResult = {
+  events_returned: number;
+  quotes_collected: number;
+  snapshots_inserted: number;
+  unmatched: string[];
+  credits: unknown;
+  skipped?: string;
 };
 
-function normalize(name: string): string {
-  const base = name
-    .toLowerCase()
-    .normalize("NFKD")
-    .replace(/\p{Diacritic}/gu, "")
-    .replace(/[.'’]/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
-  return COUNTRY_ALIASES[base] ?? base;
-}
-
-// Pulls World Cup match odds (1X2 + totals) from The Odds API and stores a
-// snapshot per (match, market, side, bookmaker). Resolves Odds-API events to
-// our matches by normalized team name + LA-day. No ODDS_API_KEY ⇒ no-op.
+// Pulls match odds (1X2 + totals) from The Odds API for every LIVE competition
+// and stores a snapshot per (match, market, side, bookmaker). Bookmaker events
+// are resolved to our ESPN-keyed matches by fuzzy team name on the same LA-day
+// (see team-match.ts). No ODDS_API_KEY ⇒ no-op. 4 credits per competition.
 export async function GET(req: Request) {
   const unauth = assertCronAuth(req);
   if (unauth) return unauth;
@@ -89,75 +77,101 @@ export async function GET(req: Request) {
     });
   }
 
+  let competitions: SoccerCompetition[];
+  if (parsed.data.competition) {
+    if (!isCompetition(parsed.data.competition)) {
+      return NextResponse.json({ error: "unknown competition" }, { status: 400 });
+    }
+    competitions = [parsed.data.competition];
+  } else {
+    competitions = liveCompetitions();
+  }
+
   const supabase = supabaseAdmin();
-  const { data: matches, error } = await supabase
-    .from("soccer_matches")
-    .select("id, date, home_team_id, away_team_id")
-    .in("date", dates);
-  if (error) {
-    return NextResponse.json(
-      { ok: false, error: `load matches: ${error.message}` },
-      { status: 500 },
-    );
-  }
-  if (!matches || matches.length === 0) {
-    return NextResponse.json({ ok: true, skipped: true, reason: "no matches", dates });
-  }
+  const results: Record<string, CompetitionOddsResult> = {};
 
-  const teamIds = new Set<number>();
-  for (const m of matches) {
-    teamIds.add(m.home_team_id);
-    teamIds.add(m.away_team_id);
-  }
-  const { data: teams } = await supabase
-    .from("soccer_teams")
-    .select("id, name")
-    .in("id", [...teamIds]);
-  const idByName = new Map<string, number>();
-  for (const t of teams ?? []) idByName.set(normalize(t.name), t.id);
-
-  const { data: events, credits } = await fetchSoccerOdds();
-
-  const rows: SoccerOddsRow[] = [];
-  const unmatched: string[] = [];
-  for (const ev of events) {
-    if (!dates.includes(isoDateInProjectTz(ev.commence_time))) continue;
-    const homeId = idByName.get(normalize(ev.home_team));
-    const awayId = idByName.get(normalize(ev.away_team));
-    if (homeId == null || awayId == null) {
-      unmatched.push(`${ev.away_team} @ ${ev.home_team}`);
+  for (const competition of competitions) {
+    const { data: matches, error } = await supabase
+      .from("soccer_matches")
+      .select(
+        "id, date, home:soccer_teams!soccer_matches_home_team_id_fkey(name), away:soccer_teams!soccer_matches_away_team_id_fkey(name)",
+      )
+      .eq("competition", competition)
+      .in("date", dates)
+      .eq("finished", false);
+    if (error) {
+      return NextResponse.json(
+        { ok: false, error: `load matches: ${error.message}` },
+        { status: 500 },
+      );
+    }
+    const candidates = ((matches ?? []) as unknown as Array<{
+      id: number;
+      date: string;
+      home: { name: string } | { name: string }[] | null;
+      away: { name: string } | { name: string }[] | null;
+    }>).map((m) => ({
+      match: { id: m.id, date: m.date },
+      home: (Array.isArray(m.home) ? m.home[0] : m.home)?.name ?? "",
+      away: (Array.isArray(m.away) ? m.away[0] : m.away)?.name ?? "",
+    }));
+    if (candidates.length === 0) {
+      results[competition] = {
+        events_returned: 0,
+        quotes_collected: 0,
+        snapshots_inserted: 0,
+        unmatched: [],
+        credits: null,
+        skipped: "no unfinished matches in window — no credits spent",
+      };
       continue;
     }
-    const match = matches.find(
-      (m) => m.home_team_id === homeId && m.away_team_id === awayId,
+
+    const { data: events, credits } = await fetchSoccerOdds(
+      COMPETITIONS[competition].oddsKey,
     );
-    if (!match) {
-      unmatched.push(`${ev.away_team} @ ${ev.home_team} (no DB match)`);
-      continue;
+
+    const rows: SoccerOddsRow[] = [];
+    const unmatched: string[] = [];
+    for (const ev of events) {
+      const day = isoDateInProjectTz(ev.commence_time);
+      if (!dates.includes(day)) continue;
+      const match = resolveMatch(
+        ev,
+        candidates.filter((c) => c.match.date === day),
+      );
+      if (!match) {
+        unmatched.push(`${ev.home_team} v ${ev.away_team} (${day})`);
+        continue;
+      }
+      for (const q of ev.quotes) {
+        rows.push({
+          match_id: match.id,
+          market: q.market,
+          side: q.side,
+          line: q.line,
+          bookmaker: q.bookmaker,
+          odds: q.odds,
+        });
+      }
     }
-    for (const q of ev.quotes) {
-      rows.push({
-        match_id: match.id,
-        market: q.market,
-        side: q.side,
-        line: q.line,
-        bookmaker: q.bookmaker,
-        odds: q.odds,
-      });
-    }
+
+    const { inserted } = await insertSoccerOdds(rows);
+    results[competition] = {
+      events_returned: events.length,
+      quotes_collected: rows.length,
+      snapshots_inserted: inserted,
+      unmatched,
+      credits,
+    };
   }
 
-  const { inserted } = await insertSoccerOdds(rows);
   const { deleted } = await pruneSoccerOdds();
 
   return NextResponse.json({
     ok: true,
     dates,
-    events_returned: events.length,
-    quotes_collected: rows.length,
-    snapshots_inserted: inserted,
+    competitions: results,
     snapshots_pruned: deleted,
-    unmatched,
-    credits,
   });
 }
