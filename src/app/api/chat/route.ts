@@ -11,6 +11,8 @@ import type {
 import { todayIsoDate } from "@/lib/date";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { activeSport } from "@/lib/sports/sport-cookie";
+import { activeCompetition } from "@/lib/sports/soccer/competition-cookie";
+import type { SoccerCompetition } from "@/lib/sports/soccer/competitions";
 import { sideLabel } from "@/lib/sports/soccer/labels";
 import type { MatchSide, SoccerMarket } from "@/lib/sports/types";
 import type { Reasoning, PickSide, PropMarket } from "@/lib/analysis/types";
@@ -268,15 +270,26 @@ function firstOf<T>(v: T | T[] | null | undefined): T | null {
   return Array.isArray(v) ? (v[0] ?? null) : (v ?? null);
 }
 
+// The competition's open picks: today's slate when there is one, otherwise the
+// next matchday's — Champions League rounds are weeks apart, so "today" alone
+// would leave the bot blind between matchdays.
 async function fetchTodaySoccerPredictions(
   date: string,
+  competition: SoccerCompetition,
 ): Promise<SoccerChatPredictionSummary[]> {
   const supabase = await createSupabaseServerClient();
   const { data: matches } = await supabase
     .from("soccer_matches")
-    .select("id")
-    .eq("date", date);
-  const matchIds = (matches ?? []).map((m) => m.id);
+    .select("id, date")
+    .eq("competition", competition)
+    .eq("finished", false)
+    .gte("date", date)
+    .order("date", { ascending: true })
+    .limit(40);
+  const firstDate = matches?.[0]?.date;
+  const matchIds = (matches ?? [])
+    .filter((m) => m.date === firstDate)
+    .map((m) => m.id);
   if (matchIds.length === 0) return [];
 
   const { data: rows } = await supabase
@@ -353,12 +366,13 @@ export async function POST(req: Request) {
   // on). NBA is in off-season light mode, so a football visitor must land on
   // the soccer context or the bot is useless to them.
   const sport: ChatSport = coupon?.sport ?? (await activeSport());
+  const competition = await activeCompetition();
 
   let nbaPredictions: ChatPredictionSummary[] = [];
   let soccerPredictions: SoccerChatPredictionSummary[] = [];
   try {
     if (sport === "soccer") {
-      soccerPredictions = await fetchTodaySoccerPredictions(date);
+      soccerPredictions = await fetchTodaySoccerPredictions(date, competition);
     } else {
       nbaPredictions = await fetchTodayPredictions(date);
     }
@@ -369,6 +383,7 @@ export async function POST(req: Request) {
 
   const systemInstruction = buildSystemPrompt({
     sport,
+    competition,
     date,
     nbaPredictions,
     soccerPredictions,

@@ -1,8 +1,12 @@
 import "server-only";
 
 import { isoDateInProjectTz } from "@/lib/date";
-import { SOCCER_LEAGUE_SLUG } from "@/lib/sports/registry";
 import { countryCrestUrl } from "./branding";
+import {
+  COMPETITIONS,
+  DEFAULT_COMPETITION,
+  type SoccerCompetition,
+} from "./competitions";
 import type {
   Match,
   MatchEvent,
@@ -12,8 +16,8 @@ import type {
 } from "./provider";
 
 // Scoreboard / summary live on the site API; standings on the web API.
-const SITE_BASE = `https://site.api.espn.com/apis/site/v2/sports/soccer/${SOCCER_LEAGUE_SLUG}`;
-const WEB_BASE = `https://site.web.api.espn.com/apis/v2/sports/soccer/${SOCCER_LEAGUE_SLUG}`;
+const SITE_ROOT = "https://site.api.espn.com/apis/site/v2/sports/soccer";
+const WEB_ROOT = "https://site.web.api.espn.com/apis/v2/sports/soccer";
 
 type FetchOpts = { revalidate?: number };
 
@@ -51,16 +55,22 @@ type EspnTeam = {
   name?: string;
   location?: string;
   logo?: string;
+  logos?: Array<{ href?: string }>;
+  color?: string;
+  alternateColor?: string;
 };
 
-function teamFrom(t: EspnTeam): SoccerTeam {
+function teamFrom(t: EspnTeam, national: boolean): SoccerTeam {
   const abbreviation = t.abbreviation ?? "";
+  const logo = t.logo ?? t.logos?.[0]?.href ?? null;
   return {
     id: Number(t.id),
     name: t.displayName ?? t.name ?? t.location ?? "",
     abbreviation,
     country: t.location ?? t.displayName ?? "",
-    crest_url: t.logo ?? countryCrestUrl(abbreviation),
+    crest_url: logo ?? (national ? countryCrestUrl(abbreviation) : null),
+    color: national ? null : (t.color ?? null),
+    alt_color: national ? null : (t.alternateColor ?? null),
   };
 }
 
@@ -82,40 +92,9 @@ type EspnEvent = {
     }>;
     status?: EspnEvent["status"];
     notes?: Array<{ headline?: string }>;
+    venue?: { fullName?: string };
   }>;
 };
-
-function matchFrom(ev: EspnEvent): Match | null {
-  const comp = ev.competitions?.[0];
-  if (!comp) return null;
-  const home = comp.competitors?.find((c) => c.homeAway === "home");
-  const away = comp.competitors?.find((c) => c.homeAway === "away");
-  if (!home || !away) return null;
-
-  const status = ev.status ?? comp.status;
-  const state = (status?.type?.state as Match["state"]) ?? "pre";
-  // ESPN puts the group/round in the season slug; the competition note often
-  // carries the human label ("Group A", "Round of 16").
-  const note = comp.notes?.[0]?.headline ?? null;
-
-  return {
-    id: Number(ev.id),
-    date: isoDateInProjectTz(ev.date),
-    datetime: ev.date,
-    season: ev.season?.year ?? 0,
-    status: status?.type?.description ?? "",
-    state,
-    period: status?.period ?? 0,
-    clock: status?.displayClock ?? null,
-    stage: ev.season?.slug ?? null,
-    group: note,
-    home_team: teamFrom(home.team),
-    away_team: teamFrom(away.team),
-    home_score: Number(home.score) || 0,
-    away_score: Number(away.score) || 0,
-    finished: status?.type?.completed ?? false,
-  };
-}
 
 type EspnStandingEntry = {
   team: EspnTeam;
@@ -134,13 +113,66 @@ function statValue(entry: EspnStandingEntry, name: string): number {
   return typeof s?.value === "number" ? s.value : 0;
 }
 
+// One provider per ESPN league slug. A competition may span several slugs
+// (the Champions League's qualifying rounds live under uefa.champions_qual);
+// each provider stamps its rows with the owning competition + its own slug so
+// the summary/events endpoints can be re-resolved per match later.
 export class EspnSoccerProvider implements SoccerProvider {
+  readonly competition: SoccerCompetition;
+  readonly slug: string;
+  private readonly national: boolean;
+  private readonly siteBase: string;
+  private readonly webBase: string;
+
+  constructor(competition: SoccerCompetition, slug: string) {
+    this.competition = competition;
+    this.slug = slug;
+    this.national = COMPETITIONS[competition].kind === "national";
+    this.siteBase = `${SITE_ROOT}/${slug}`;
+    this.webBase = `${WEB_ROOT}/${slug}`;
+  }
+
+  private matchFrom(ev: EspnEvent): Match | null {
+    const comp = ev.competitions?.[0];
+    if (!comp) return null;
+    const home = comp.competitors?.find((c) => c.homeAway === "home");
+    const away = comp.competitors?.find((c) => c.homeAway === "away");
+    if (!home || !away) return null;
+
+    const status = ev.status ?? comp.status;
+    const state = (status?.type?.state as Match["state"]) ?? "pre";
+    // ESPN puts the round in the season slug; the competition note carries the
+    // human label ("Group A" for the World Cup, "1st Leg" for two-legged ties).
+    const note = comp.notes?.[0]?.headline ?? null;
+
+    return {
+      id: Number(ev.id),
+      competition: this.competition,
+      league_slug: this.slug,
+      date: isoDateInProjectTz(ev.date),
+      datetime: ev.date,
+      season: ev.season?.year ?? 0,
+      status: status?.type?.description ?? "",
+      state,
+      period: status?.period ?? 0,
+      clock: status?.displayClock ?? null,
+      stage: ev.season?.slug ?? null,
+      group: note,
+      venue: comp.venue?.fullName ?? null,
+      home_team: teamFrom(home.team, this.national),
+      away_team: teamFrom(away.team, this.national),
+      home_score: Number(home.score) || 0,
+      away_score: Number(away.score) || 0,
+      finished: status?.type?.completed ?? false,
+    };
+  }
+
   async listTeams(): Promise<SoccerTeam[]> {
     const data = await fetchJson<{
       sports?: Array<{ leagues?: Array<{ teams?: Array<{ team: EspnTeam }> }> }>;
-    }>(SITE_BASE, "/teams", { limit: "100" }, { revalidate: 60 * 60 * 24 });
+    }>(this.siteBase, "/teams", { limit: "100" }, { revalidate: 60 * 60 * 24 });
     return (data.sports?.[0]?.leagues?.[0]?.teams ?? []).map((t) =>
-      teamFrom(t.team),
+      teamFrom(t.team, this.national),
     );
   }
 
@@ -148,15 +180,30 @@ export class EspnSoccerProvider implements SoccerProvider {
     const out: Match[] = [];
     for (const date of dates) {
       const data = await fetchJson<{ events?: EspnEvent[] }>(
-        SITE_BASE,
+        this.siteBase,
         "/scoreboard",
         { dates: ymd(date) },
         { revalidate: 30 },
       );
       for (const ev of data.events ?? []) {
-        const m = matchFrom(ev);
+        const m = this.matchFrom(ev);
         if (m) out.push(m);
       }
+    }
+    return out;
+  }
+
+  async listMatchesInRange(from: string, to: string): Promise<Match[]> {
+    const data = await fetchJson<{ events?: EspnEvent[] }>(
+      this.siteBase,
+      "/scoreboard",
+      { dates: `${ymd(from)}-${ymd(to)}`, limit: "500" },
+      { revalidate: 60 },
+    );
+    const out: Match[] = [];
+    for (const ev of data.events ?? []) {
+      const m = this.matchFrom(ev);
+      if (m) out.push(m);
     }
     return out;
   }
@@ -164,12 +211,12 @@ export class EspnSoccerProvider implements SoccerProvider {
   async getMatch(id: number): Promise<Match | null> {
     try {
       const data = await fetchJson<{ header?: EspnEvent }>(
-        SITE_BASE,
+        this.siteBase,
         "/summary",
         { event: String(id) },
         { revalidate: 30 },
       );
-      return data.header ? matchFrom(data.header) : null;
+      return data.header ? this.matchFrom(data.header) : null;
     } catch {
       return null;
     }
@@ -192,7 +239,7 @@ export class EspnSoccerProvider implements SoccerProvider {
       keyEvents?: KeyEvent[];
     };
     try {
-      data = await fetchJson(SITE_BASE, "/summary", { event: String(id) }, { revalidate: 30 });
+      data = await fetchJson(this.siteBase, "/summary", { event: String(id) }, { revalidate: 30 });
     } catch {
       return [];
     }
@@ -230,7 +277,7 @@ export class EspnSoccerProvider implements SoccerProvider {
 
   async listStandings(season?: number): Promise<SoccerStanding[]> {
     const data = await fetchJson<EspnStandings>(
-      WEB_BASE,
+      this.webBase,
       "/standings",
       season ? { season: String(season) } : {},
       { revalidate: 60 * 10 },
@@ -239,7 +286,7 @@ export class EspnSoccerProvider implements SoccerProvider {
     for (const group of data.children ?? []) {
       for (const entry of group.standings?.entries ?? []) {
         out.push({
-          team: teamFrom(entry.team),
+          team: teamFrom(entry.team, this.national),
           group: group.name ?? null,
           rank: statValue(entry, "rank"),
           played: statValue(entry, "gamesPlayed"),
@@ -257,9 +304,26 @@ export class EspnSoccerProvider implements SoccerProvider {
   }
 }
 
-let _provider: SoccerProvider | null = null;
+const providers = new Map<string, SoccerProvider>();
 
-export function soccerProvider(): SoccerProvider {
-  if (!_provider) _provider = new EspnSoccerProvider();
-  return _provider;
+// Provider for a competition's main phase (default) or for a specific ESPN
+// slug within it (e.g. the qualifying feed).
+export function soccerProvider(
+  competition: SoccerCompetition = DEFAULT_COMPETITION,
+  slug: string = COMPETITIONS[competition].espnSlugs[0],
+): SoccerProvider {
+  const key = `${competition}:${slug}`;
+  let p = providers.get(key);
+  if (!p) {
+    p = new EspnSoccerProvider(competition, slug);
+    providers.set(key, p);
+  }
+  return p;
+}
+
+// Every provider that feeds a competition (main phase first, then qualifying).
+export function soccerProviders(competition: SoccerCompetition): SoccerProvider[] {
+  return COMPETITIONS[competition].espnSlugs.map((slug) =>
+    soccerProvider(competition, slug),
+  );
 }

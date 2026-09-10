@@ -1,14 +1,14 @@
 import "server-only";
 
 import type { MatchSide, SoccerMarket } from "@/lib/sports/types";
-import { SOCCER_ODDS_SPORT_KEY } from "@/lib/sports/registry";
 import type { RequestCredits } from "./types";
 
 const BASE_URL = "https://api.the-odds-api.com/v4";
 
-// World Cup books are thickest in UK/EU. We request only the cheap bulk
-// markets (h2h = 1X2, totals = O/U goals); BTTS is an "additional market" that
-// needs the per-event endpoint + higher tier, deferred per the frugality note.
+// European club + national books are thickest in UK/EU. We request only the
+// cheap bulk markets (h2h = 1X2, totals = O/U goals); BTTS is an "additional
+// market" that needs the per-event endpoint + higher tier, deferred per the
+// frugality note. One call = markets × regions = 4 credits.
 const SOCCER_MARKETS = ["h2h", "totals"] as const;
 const REGIONS = "uk,eu";
 
@@ -103,11 +103,12 @@ function parseEvent(ev: RawBulkEvent): SoccerOddsEvent {
   };
 }
 
-export async function fetchSoccerOdds(): Promise<{
+// Bulk odds for one Odds-API sport key (e.g. soccer_uefa_champs_league).
+export async function fetchSoccerOdds(sportKey: string): Promise<{
   data: SoccerOddsEvent[];
   credits: RequestCredits;
 }> {
-  const url = new URL(`${BASE_URL}/sports/${SOCCER_ODDS_SPORT_KEY}/odds`);
+  const url = new URL(`${BASE_URL}/sports/${sportKey}/odds`);
   url.searchParams.set("apiKey", getApiKey());
   url.searchParams.set("regions", REGIONS);
   url.searchParams.set("markets", SOCCER_MARKETS.join(","));
@@ -118,7 +119,7 @@ export async function fetchSoccerOdds(): Promise<{
   if (!res.ok) {
     const body = await res.text().catch(() => "");
     throw new Error(
-      `the-odds-api ${res.status} ${res.statusText} on soccer odds: ${body.slice(0, 200)}`,
+      `the-odds-api ${res.status} ${res.statusText} on ${sportKey}: ${body.slice(0, 200)}`,
     );
   }
   const raw = (await res.json()) as RawBulkEvent[];

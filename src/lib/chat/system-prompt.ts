@@ -1,10 +1,15 @@
+import {
+  COMPETITIONS,
+  DEFAULT_COMPETITION,
+  type SoccerCompetition,
+} from "@/lib/sports/soccer/competitions";
 import type {
   ChatCouponContext,
   ChatPredictionSummary,
   ChatSport,
   SoccerChatPredictionSummary,
 } from "./types";
-import { SOURCE_FAQ, SOCCER_SOURCE_FAQ } from "./source-faq";
+import { SOURCE_FAQ, soccerSourceFaq } from "./source-faq";
 import { marketLabel } from "@/components/MarketLabel";
 import { marketLabel as soccerMarketLabel } from "@/lib/sports/soccer/labels";
 import {
@@ -83,9 +88,16 @@ Follow-ups:
 `.trim();
 }
 
-function soccerPersona(): string {
+function soccerPersona(competition: SoccerCompetition): string {
+  const meta = COMPETITIONS[competition];
+  const scope =
+    meta.status === "archived"
+      ? `The ${meta.fullName} is over; the user is browsing its archived record (every pick already graded). Speak in the past tense about it.`
+      : `The live competition is the ${meta.fullName} (${meta.seasonLabel}, ${meta.phaseLabel}). Matchdays are weeks apart, so "the next slate" may be days away.`;
   return `
-You are the TrustMeBro analyst — a sports betting assistant embedded in a football / World Cup stats dashboard.
+You are the TrustMeBro analyst — a sports betting assistant embedded in a football stats dashboard covering the ${meta.fullName}.
+
+${scope}
 
 Football is match-level: there are no player props here. The markets are Match Result (home / draw / away), Total Goals (over/under a line), and Both Teams To Score (yes/no). Talk in those terms — never reference points, rebounds, assists, or any NBA prop.
 
@@ -160,6 +172,7 @@ function soccerPicksBlock(
 
 export function buildSystemPrompt(args: {
   sport: ChatSport;
+  competition?: SoccerCompetition;
   date: string;
   nbaPredictions?: ChatPredictionSummary[];
   soccerPredictions?: SoccerChatPredictionSummary[];
@@ -168,11 +181,12 @@ export function buildSystemPrompt(args: {
   const { sport, date, coupon } = args;
   const isSoccer = sport === "soccer";
 
-  const persona = isSoccer ? soccerPersona() : nbaPersona();
+  const competition = args.competition ?? DEFAULT_COMPETITION;
+  const persona = isSoccer ? soccerPersona(competition) : nbaPersona();
   const picksBlock = isSoccer
     ? soccerPicksBlock(date, args.soccerPredictions ?? [])
     : nbaPicksBlock(date, args.nbaPredictions ?? []);
-  const faq = isSoccer ? SOCCER_SOURCE_FAQ : SOURCE_FAQ;
+  const faq = isSoccer ? soccerSourceFaq(competition) : SOURCE_FAQ;
 
   const couponBlock =
     coupon && coupon.picks.length > 0 ? renderCoupon(coupon) : "";

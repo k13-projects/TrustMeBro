@@ -21,7 +21,7 @@ export function NewsFilterBar({
   activeTeam: number | null;
 }) {
   return (
-    <div className="-mx-4 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+    <div className="-mx-4 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [mask-image:linear-gradient(90deg,#000_0,#000_calc(100%-3rem),transparent)]">
       <div className="flex w-max items-center gap-2">
         <Pill href="/football/news" active={activeTeam === null}>
           <span className="text-sm font-semibold">All</span>

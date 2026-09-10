@@ -51,7 +51,7 @@ export function SoccerNewsCard({
   const isExternal = item.source_url?.startsWith("http");
 
   return (
-    <article className="card-tmb flex gap-4 p-4 transition-transform hover:-translate-y-0.5 sm:p-5">
+    <article className="card-tmb flex min-w-0 gap-4 p-4 transition-transform hover:-translate-y-0.5 sm:p-5">
       <Thumb item={item} lead={lead} />
 
       <div className="min-w-0 flex-1 space-y-2">
@@ -80,11 +80,11 @@ export function SoccerNewsCard({
         </div>
 
         {item.headline ? (
-          <h3 className="font-display text-base uppercase leading-snug tracking-tight sm:text-lg">
+          <h3 className="break-words font-display text-base uppercase leading-snug tracking-tight sm:text-lg">
             {item.headline}
           </h3>
         ) : null}
-        <p className="text-sm leading-relaxed text-foreground/85">{item.summary}</p>
+        <p className="break-words [overflow-wrap:anywhere] text-sm leading-relaxed text-foreground/85">{item.summary}</p>
 
         {teams.length > 0 || item.player_names.length > 0 ? (
           <div className="flex flex-wrap items-center gap-2 pt-1">

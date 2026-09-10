@@ -1,12 +1,17 @@
 import "server-only";
 
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import {
+  COMPETITIONS,
+  type SoccerCompetition,
+} from "@/lib/sports/soccer/competitions";
 import type { SoccerNewsFetcher, SoccerNewsItem } from "./types";
 
 /**
  * Soccer mirror of the NBA RSS fetcher (../rss.ts). Same regex extraction —
  * RSS is regular enough that a parser dependency isn't worth the surface area.
- * Differences: tags subjects against the World Cup country teams + a curated
+ * Differences: tags subjects against the competition's teams (World Cup
+ * countries, or the clubs in this season's Champions League) + a curated
  * star-player name list (no soccer players table), and pulls a thumbnail.
  */
 type RssItem = {
@@ -22,17 +27,23 @@ type RssItem = {
 const USER_AGENT =
   "TrustMeBro/0.1 (+https://github.com/k13-projects/TrustMeBro)";
 
-function decodeEntities(s: string): string {
-  return s
-    .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
-    .replace(/<[^>]+>/g, "")
+const stripTags = (s: string) => s.replace(/<[^>]+>/g, "");
+
+const unescape = (s: string) =>
+  s
     .replace(/&nbsp;/g, " ")
     .replace(/&amp;/g, "&")
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
     .replace(/&apos;/g, "'")
     .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
+    .replace(/&gt;/g, ">");
+
+// Google News (and some Turkish desks) ship the description as entity-encoded
+// HTML (`&lt;a href=…&gt;`), so a single strip-then-decode pass would leave a
+// literal <a href="…"> in the summary. Strip, decode, strip again.
+function decodeEntities(s: string): string {
+  return stripTags(unescape(stripTags(s.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1"))))
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -87,11 +98,26 @@ function trimToSentences(text: string, max = 3): string {
 
 type TeamRow = { id: number; name: string; abbreviation: string };
 
-async function loadTeams(): Promise<TeamRow[]> {
+// Teams that actually play in the competition — derived from its fixtures so
+// a club that shows up in the Champions League feed is tagged, and a World Cup
+// country never gets tagged onto a Champions League story.
+async function loadTeams(competition: SoccerCompetition): Promise<TeamRow[]> {
   const supabase = supabaseAdmin();
+  const { data: matches } = await supabase
+    .from("soccer_matches")
+    .select("home_team_id, away_team_id")
+    .eq("competition", competition)
+    .limit(2000);
+  const ids = new Set<number>();
+  for (const m of matches ?? []) {
+    ids.add(m.home_team_id);
+    ids.add(m.away_team_id);
+  }
+  if (ids.size === 0) return [];
   const { data } = await supabase
     .from("soccer_teams")
-    .select("id, name, abbreviation");
+    .select("id, name, abbreviation")
+    .in("id", [...ids]);
   return (data ?? []) as TeamRow[];
 }
 
@@ -107,6 +133,78 @@ const TEAM_ALIASES: Record<string, string[]> = {
   "Cape Verde": ["Cabo Verde"],
   Czechia: ["Czech Republic", "Czech"],
   Netherlands: ["Dutch", "Holland"],
+};
+
+// Club nicknames / short forms the press uses that won't substring-match the
+// ESPN name. Keyed by soccer_teams.name (ESPN spelling).
+const CLUB_ALIASES: Record<string, string[]> = {
+  Internazionale: ["Inter Milan", "Inter"],
+  "Paris Saint-Germain": ["PSG", "Paris SG"],
+  "Manchester United": ["Man United", "Man Utd", "United"],
+  "Manchester City": ["Man City", "City"],
+  "Tottenham Hotspur": ["Tottenham", "Spurs"],
+  "Bayern Munich": ["Bayern", "Bayern München"],
+  "Borussia Dortmund": ["Dortmund", "BVB"],
+  "Bayer Leverkusen": ["Leverkusen"],
+  "Atlético Madrid": ["Atletico Madrid", "Atlético", "Atletico"],
+  "Real Madrid": ["Madrid", "Los Blancos"],
+  Barcelona: ["Barça", "Barca"],
+  "Sporting CP": ["Sporting Lisbon", "Sporting"],
+  "FC Porto": ["Porto"],
+  "PSV Eindhoven": ["PSV"],
+  "Feyenoord Rotterdam": ["Feyenoord"],
+  "Club Brugge": ["Brugge", "Bruges"],
+  Fenerbahce: ["Fenerbahçe", "Fener"],
+  Galatasaray: ["Gala", "Cimbom"],
+  "Slavia Prague": ["Slavia Praha", "Slavia"],
+  "Shakhtar Donetsk": ["Shakhtar"],
+  "Bodo/Glimt": ["Bodø/Glimt", "Bodo Glimt", "Bodø"],
+  "VfB Stuttgart": ["Stuttgart"],
+  "RB Leipzig": ["Leipzig"],
+  "AS Roma": ["Roma"],
+  Napoli: ["SSC Napoli"],
+  "Aston Villa": ["Villa"],
+  "Real Betis": ["Betis"],
+  "AEK Athens": ["AEK"],
+  "LASK Linz": ["LASK"],
+  "Viking FK": ["Viking"],
+  "Sabah FK": ["Sabah"],
+  "Slovan Bratislava": ["Slovan"],
+  "Union St.-Gilloise": ["Union Saint-Gilloise", "Union SG", "USG"],
+  "Red Star Belgrade": ["Crvena Zvezda", "Red Star"],
+  Olympiacos: ["Olympiakos"],
+  "Dinamo Zagreb": ["Dinamo"],
+  "Sparta Prague": ["Sparta Praha", "Sparta"],
+  Celtic: ["Celtic FC", "the Hoops"],
+  Lyon: ["Olympique Lyonnais", "OL"],
+};
+
+// Curated club stars (best-effort; transfers move them). When a star is
+// mentioned we tag their club too. Keyed by soccer_teams.name (ESPN spelling).
+const CLUB_STARS: Record<string, string[]> = {
+  "Real Madrid": ["Mbappe", "Mbappé", "Bellingham", "Vinicius", "Vinícius", "Rodrygo", "Valverde", "Courtois", "Arda Güler", "Arda Guler", "Xabi Alonso"],
+  Barcelona: ["Lamine Yamal", "Yamal", "Pedri", "Raphinha", "Lewandowski", "Gavi", "Flick"],
+  "Manchester City": ["Haaland", "Rodri", "Foden", "Guardiola", "Bernardo Silva", "Cherki"],
+  "Manchester United": ["Bruno Fernandes", "Amorim", "Cunha", "Mbeumo", "Sesko"],
+  Liverpool: ["Salah", "Van Dijk", "Wirtz", "Isak", "Ekitike", "Slot", "Alisson"],
+  Arsenal: ["Saka", "Ødegaard", "Odegaard", "Gyökeres", "Gyokeres", "Arteta", "Rice", "Havertz"],
+  "Paris Saint-Germain": ["Dembele", "Dembélé", "Hakimi", "Vitinha", "Kvaratskhelia", "Donnarumma", "Luis Enrique", "Doue", "Doué"],
+  "Bayern Munich": ["Harry Kane", "Kane", "Musiala", "Olise", "Kompany", "Neuer", "Luis Díaz", "Luis Diaz"],
+  "Borussia Dortmund": ["Guirassy", "Adeyemi", "Brandt"],
+  Internazionale: ["Lautaro", "Thuram", "Barella", "Calhanoglu", "Çalhanoğlu", "Chivu"],
+  Napoli: ["De Bruyne", "McTominay", "Lukaku", "Conte", "Osimhen"],
+  "AS Roma": ["Dybala", "Gasperini"],
+  "Atlético Madrid": ["Griezmann", "Julián Álvarez", "Julian Alvarez", "Simeone"],
+  "Aston Villa": ["Emery", "Watkins", "Rogers"],
+  Galatasaray: ["Osimhen", "Icardi", "Sané", "Sane", "Barış Alper", "Baris Alper", "Okan Buruk"],
+  Fenerbahce: ["Mourinho", "Tedesco", "Talisca", "Kerem Aktürkoğlu", "Kerem Akturkoglu", "En-Nesyri"],
+  "Sporting CP": ["Trincão", "Trincao", "Gyökeres"],
+  "Club Brugge": ["Vanaken"],
+  "PSV Eindhoven": ["Bosz"],
+  "RB Leipzig": ["Openda", "Šeško", "Sesko"],
+  "VfB Stuttgart": ["Undav"],
+  Villarreal: ["Marcelino"],
+  "Shakhtar Donetsk": ["Turan"],
 };
 
 // Curated stars per side (no soccer players table). When a star is mentioned we
@@ -146,18 +244,24 @@ function containsWord(lowered: string, needle: string): boolean {
 function tagMentions(
   text: string,
   teams: TeamRow[],
+  kind: "national" | "club",
 ): { team_ids: number[]; player_names: string[] } {
   const lowered = text.toLowerCase();
   const team_ids = new Set<number>();
   const player_names = new Set<string>();
+  const aliasTable = kind === "club" ? CLUB_ALIASES : TEAM_ALIASES;
+  const starTable = kind === "club" ? CLUB_STARS : STAR_PLAYERS;
   for (const t of teams) {
-    const aliases = [t.name, ...(TEAM_ALIASES[t.name] ?? [])];
-    if (
-      aliases.some((a) => a.length >= 4 && lowered.includes(a.toLowerCase()))
-    ) {
-      team_ids.add(t.id);
-    }
-    for (const star of STAR_PLAYERS[t.name] ?? []) {
+    const aliases = [t.name, ...(aliasTable[t.name] ?? [])];
+    // Countries match on substring so adjective forms land ("Portuguese").
+    // Clubs match on whole words: "Como" must not fire inside "become", and
+    // "City" / "United" only count as the full name.
+    const hit =
+      kind === "club"
+        ? aliases.some((a) => a.length >= 3 && containsWord(lowered, a))
+        : aliases.some((a) => a.length >= 4 && lowered.includes(a.toLowerCase()));
+    if (hit) team_ids.add(t.id);
+    for (const star of starTable[t.name] ?? []) {
       if (containsWord(lowered, star)) {
         player_names.add(star);
         team_ids.add(t.id);
@@ -183,11 +287,12 @@ export type SoccerRssFeed = {
   source: string;
 };
 
-// English anchors + Google News query feeds (EN + TR) + Turkish sports. These
-// are mixed-sport master feeds; the country/star tag-match below drops anything
-// that doesn't reference a World Cup side, so non-WC items fall away on their
-// own. A dead feed only fails its own pull — runSoccerNewsIngest isolates each.
-export const SOCCER_FEEDS: SoccerRssFeed[] = [
+// English anchors + Turkish sports desks (shared), plus a Google News query
+// feed pair (EN + TR) per competition. These are mixed-sport master feeds; the
+// team/star tag-match below drops anything that doesn't reference one of the
+// competition's sides, so off-topic items fall away on their own. A dead feed
+// only fails its own pull — runSoccerNewsIngest isolates each.
+const SHARED_FEEDS: SoccerRssFeed[] = [
   { url: "https://www.espn.com/espn/rss/soccer/news", outlet: "ESPN", source: "rss:espnfc" },
   {
     url: "https://feeds.bbci.co.uk/sport/football/rss.xml",
@@ -195,14 +300,9 @@ export const SOCCER_FEEDS: SoccerRssFeed[] = [
     source: "rss:bbc",
   },
   {
-    url: "https://news.google.com/rss/search?q=FIFA+World+Cup&hl=en-US&gl=US&ceid=US:en",
-    outlet: "Google News",
-    source: "rss:gnews-en",
-  },
-  {
-    url: "https://news.google.com/rss/search?q=D%C3%BCnya+Kupas%C4%B1&hl=tr&gl=TR&ceid=TR:tr",
-    outlet: "Google Haberler",
-    source: "rss:gnews-tr",
+    url: "https://www.theguardian.com/football/rss",
+    outlet: "The Guardian",
+    source: "rss:guardian",
   },
   {
     url: "https://www.hurriyet.com.tr/rss/spor",
@@ -221,8 +321,42 @@ export const SOCCER_FEEDS: SoccerRssFeed[] = [
   },
 ];
 
+const COMPETITION_FEEDS: Record<SoccerCompetition, SoccerRssFeed[]> = {
+  "fifa.world": [
+    {
+      url: "https://news.google.com/rss/search?q=FIFA+World+Cup&hl=en-US&gl=US&ceid=US:en",
+      outlet: "Google News",
+      source: "rss:gnews-en",
+    },
+    {
+      url: "https://news.google.com/rss/search?q=D%C3%BCnya+Kupas%C4%B1&hl=tr&gl=TR&ceid=TR:tr",
+      outlet: "Google Haberler",
+      source: "rss:gnews-tr",
+    },
+  ],
+  "uefa.champions": [
+    {
+      url: "https://news.google.com/rss/search?q=%22Champions+League%22&hl=en-GB&gl=GB&ceid=GB:en",
+      outlet: "Google News",
+      source: "rss:gnews-ucl-en",
+    },
+    {
+      url: "https://news.google.com/rss/search?q=%C5%9Eampiyonlar+Ligi&hl=tr&gl=TR&ceid=TR:tr",
+      outlet: "Google Haberler",
+      source: "rss:gnews-ucl-tr",
+    },
+  ],
+};
+
+export function soccerFeedsFor(competition: SoccerCompetition): SoccerRssFeed[] {
+  return [...SHARED_FEEDS, ...COMPETITION_FEEDS[competition]];
+}
+
 export class SoccerRssNewsFetcher implements SoccerNewsFetcher {
-  constructor(private feed: SoccerRssFeed) {}
+  constructor(
+    private feed: SoccerRssFeed,
+    private competition: SoccerCompetition,
+  ) {}
 
   get key(): string {
     return this.feed.source;
@@ -245,7 +379,8 @@ export class SoccerRssNewsFetcher implements SoccerNewsFetcher {
     const items = parseRss(xml);
     if (items.length === 0) return [];
 
-    const teams = await loadTeams();
+    const teams = await loadTeams(this.competition);
+    const kind = COMPETITIONS[this.competition].kind;
     const out: SoccerNewsItem[] = [];
 
     for (const it of items) {
@@ -254,15 +389,16 @@ export class SoccerRssNewsFetcher implements SoccerNewsFetcher {
       if (published < since) continue;
 
       const text = `${it.title}. ${it.description}`;
-      const tags = tagMentions(text, teams);
-      // Drop items that don't reference a World Cup side — generic football
-      // (transfers, domestic leagues) isn't what this feed is for.
+      const tags = tagMentions(text, teams, kind);
+      // Drop items that don't reference one of the competition's sides —
+      // generic football (transfers, domestic leagues) isn't what this is for.
       if (tags.team_ids.length === 0) continue;
 
       const summary = trimToSentences(it.description || it.title, 3);
       if (!summary) continue;
 
       out.push({
+        competition: this.competition,
         source: this.feed.source,
         source_id: it.guid || it.link,
         source_url: it.link || null,
@@ -283,6 +419,10 @@ export class SoccerRssNewsFetcher implements SoccerNewsFetcher {
   }
 }
 
-export const soccerRssFetchers: SoccerNewsFetcher[] = SOCCER_FEEDS.map(
-  (f) => new SoccerRssNewsFetcher(f),
-);
+export function soccerRssFetchers(
+  competition: SoccerCompetition,
+): SoccerNewsFetcher[] {
+  return soccerFeedsFor(competition).map(
+    (f) => new SoccerRssNewsFetcher(f, competition),
+  );
+}

@@ -1,26 +1,47 @@
 import type { MatchRow as Match } from "@/lib/sports/soccer/queries";
+import { COMPETITIONS } from "@/lib/sports/soccer/competitions";
 import { LiveMatch } from "./LiveMatch";
 import { MatchEvents } from "./MatchEvents";
 
-export function MatchRow({ match }: { match: Match }) {
+// One fixture: the versus banner (live-updating), an optional caption above
+// (group / round / leg), and the expandable goals-and-cards timeline once the
+// match has kicked off.
+export function MatchRow({
+  match,
+  caption,
+}: {
+  match: Match;
+  /** Text above the banner: "Group A", "Play-off Round · 2nd Leg", venue… */
+  caption?: string | null;
+}) {
   const live = match.state === "in";
   const done = match.state === "post";
+  // Default caption: leg/group plus venue ("Play-off Round · 2nd Leg" comes
+  // from the page; here it's "1st Leg · Signal Iduna Park"). Kept above the
+  // banner so the medallion stays score + status only.
+  const heading =
+    caption === undefined
+      ? [match.group, match.venue].filter(Boolean).join(" · ") || null
+      : caption;
 
   return (
     <div className="space-y-1.5">
-      {match.group ? (
-        <div className="text-center text-[10px] font-semibold uppercase tracking-wide text-foreground/40">
-          {match.group}
+      {heading ? (
+        <div className="text-center text-[10px] font-semibold uppercase tracking-[0.18em] text-foreground/40">
+          {heading}
         </div>
       ) : null}
 
-      {/* LiveMatch wraps the banner; it auto-updates the score while in-play
-          and otherwise renders the same static banner. */}
       <LiveMatch match={match} />
 
       {live || done ? (
         <div className="overflow-hidden rounded-2xl border border-border/60 bg-card/40">
-          <MatchEvents matchId={match.id} home={match.home.name} away={match.away.name} />
+          <MatchEvents
+            matchId={match.id}
+            home={match.home.name}
+            away={match.away.name}
+            competitionName={COMPETITIONS[match.competition].label}
+          />
         </div>
       ) : null}
     </div>

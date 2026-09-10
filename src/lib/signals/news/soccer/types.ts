@@ -1,4 +1,7 @@
+import type { SoccerCompetition } from "@/lib/sports/soccer/competitions";
+
 export type SoccerNewsItem = {
+  competition: SoccerCompetition;
   source: string;
   source_id: string;
   source_url: string | null;
@@ -10,7 +13,7 @@ export type SoccerNewsItem = {
   /** Card thumbnail; null → the page falls back to the tagged country flag. */
   image_url: string | null;
   match_id: number | null;
-  /** soccer_teams ids — the subject countries. */
+  /** soccer_teams ids — the subject countries / clubs. */
   team_ids: number[];
   /** Curated star names mentioned (no soccer players table to FK against). */
   player_names: string[];

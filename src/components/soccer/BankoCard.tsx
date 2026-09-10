@@ -19,8 +19,9 @@ export function BankoCard({ pick }: { pick: PredictionDetail }) {
       <div className="mt-3">
         <MatchBanner
           size="sm"
-          home={{ name: pick.home, abbreviation: pick.home_abbr, crest: pick.home_crest }}
-          away={{ name: pick.away, abbreviation: pick.away_abbr, crest: pick.away_crest }}
+          competition={pick.competition}
+          home={{ name: pick.home, abbreviation: pick.home_abbr, crest: pick.home_crest, color: pick.home_color }}
+          away={{ name: pick.away, abbreviation: pick.away_abbr, crest: pick.away_crest, color: pick.away_color }}
         />
       </div>
       <h3 className="mt-2 text-lg font-black">
