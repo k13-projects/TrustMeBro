@@ -27,7 +27,13 @@ export function MobileNav({
   identity,
   items,
   dense = false,
-}: { identity?: Identity; items?: ReadonlyArray<Item>; dense?: boolean } = {}) {
+  ultra = false,
+}: {
+  identity?: Identity;
+  items?: ReadonlyArray<Item>;
+  dense?: boolean;
+  ultra?: boolean;
+} = {}) {
   const ITEMS = items ?? DEFAULT_ITEMS;
   const pathname = usePathname() ?? "/";
   const [open, setOpen] = useState(false);
@@ -63,7 +69,10 @@ export function MobileNav({
   }, [pathname]);
 
   return (
-    <div ref={containerRef} className={cx(dense ? "xl:hidden" : "lg:hidden", "relative")}>
+    <div
+      ref={containerRef}
+      className={cx(ultra ? "2xl:hidden" : dense ? "xl:hidden" : "lg:hidden", "relative")}
+    >
       <button
         type="button"
         aria-label={open ? "Close menu" : "Open menu"}
@@ -103,7 +112,7 @@ export function MobileNav({
         <div
           id={menuId}
           role="menu"
-          className="absolute right-0 top-11 z-40 w-56 glass-strong rounded-2xl p-2 space-y-1 shadow-[0_20px_60px_rgba(0,0,0,0.45)]"
+          className="absolute right-0 top-11 z-40 w-56 rounded-2xl border border-white/10 bg-[#0b0d14] p-2 space-y-1 shadow-[0_20px_60px_rgba(0,0,0,0.6)]"
         >
           {ITEMS.map((item) => {
             const active = item.exact

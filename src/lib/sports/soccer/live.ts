@@ -1,9 +1,11 @@
 import "server-only";
 
 import { isoDateOffset, todayIsoDate } from "@/lib/date";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 import { COMPETITIONS, type SoccerCompetition } from "./competitions";
-import { soccerProviders } from "./espn";
+import { soccerProvider, soccerProviders } from "./espn";
 import { insertStandings, upsertMatches } from "./repo";
+import type { Match } from "./provider";
 
 // Minimal shape the live poller needs — just the volatile bits of a match.
 export type LiveScore = {
@@ -51,6 +53,38 @@ export async function refreshFixturesWindow(
   return matches.length;
 }
 
+// Self-healing sweep: any match that kicked off more than three hours ago and
+// is still not marked finished (a day the cron missed, a refresh that fired
+// mid-match) is re-read one by one from ESPN's summary endpoint and upserted.
+// Without this a match can sit at "Halftime" forever and its picks never grade.
+export async function refreshStaleMatches(
+  competition: SoccerCompetition,
+  limit = 40,
+): Promise<number> {
+  const supabase = supabaseAdmin();
+  const cutoff = new Date(Date.now() - 3 * 3600 * 1000).toISOString();
+  const { data } = await supabase
+    .from("soccer_matches")
+    .select("id, league_slug")
+    .eq("competition", competition)
+    .eq("finished", false)
+    .lt("datetime", cutoff)
+    .order("datetime", { ascending: false })
+    .limit(limit);
+  const stale = data ?? [];
+  if (stale.length === 0) return 0;
+
+  const refreshed: Match[] = [];
+  await Promise.all(
+    stale.map(async (row) => {
+      const m = await soccerProvider(competition, row.league_slug).getMatch(row.id);
+      if (m) refreshed.push(m);
+    }),
+  );
+  await upsertMatches(refreshed);
+  return refreshed.length;
+}
+
 // Full sync for a competition over a date range: every feed (main + qualifying)
 // plus a standings snapshot. Used by the daily cron and the one-time backfill.
 export async function syncCompetition(opts: {
@@ -68,6 +102,8 @@ export async function syncCompetition(opts: {
     matchCount += matches.length;
     feeds.push(`${provider.slug}:${matches.length}`);
   }
+
+  await refreshStaleMatches(opts.competition);
 
   let standingsCount = 0;
   if (opts.standings !== false) {

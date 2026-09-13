@@ -15,7 +15,7 @@ export const dynamic = "force-dynamic";
 const QuerySchema = z.object({
   competition: z.string().optional(),
   date: z.string().optional(),
-  ahead: z.coerce.number().int().min(0).max(7).optional(),
+  ahead: z.coerce.number().int().min(0).max(14).optional(),
 });
 
 // Runs the soccer engine over each LIVE competition's matches with odds in the
@@ -41,7 +41,8 @@ export async function GET(req: Request) {
   if (parsed.data.date && isValidIsoDate(parsed.data.date)) {
     dates = [parsed.data.date];
   } else {
-    const ahead = parsed.data.ahead ?? 1;
+    // Match the odds window so a matchday's picks exist as soon as it's priced.
+    const ahead = parsed.data.ahead ?? 8;
     dates = [today];
     for (let i = 1; i <= ahead; i++) dates.push(isoDateOffset(today, i));
   }

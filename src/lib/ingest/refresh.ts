@@ -52,12 +52,21 @@ export async function maybeRefresh(opts: {
 
   try {
     await run();
-    return "ran";
-  } finally {
     const done = new Date().toISOString();
     await supabase
       .from("ingest_state")
       .update({ running: false, last_run_at: done, updated_at: done })
       .eq("key", key);
+    return "ran";
+  } catch (err) {
+    // Release the lock but leave last_run_at alone, so a failed pull (an
+    // upstream 403, a timeout) is retried on the next visit instead of being
+    // treated as fresh for the whole stale window.
+    await supabase
+      .from("ingest_state")
+      .update({ running: false, updated_at: new Date().toISOString() })
+      .eq("key", key);
+    console.error(`[refresh:${key}]`, err instanceof Error ? err.message : err);
+    return "error";
   }
 }

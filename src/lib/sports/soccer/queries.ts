@@ -25,6 +25,7 @@ export type MatchRow = {
   home_score: number;
   away_score: number;
   finished: boolean;
+  winner_team_id: number | null;
 };
 
 export type TeamLite = {
@@ -57,6 +58,7 @@ type RawMatch = {
   home_score: number;
   away_score: number;
   finished: boolean;
+  winner_team_id: number | null;
   home: RawTeam | RawTeam[] | null;
   away: RawTeam | RawTeam[] | null;
 };
@@ -92,12 +94,13 @@ function toMatchRow(m: RawMatch): MatchRow {
     home_score: m.home_score,
     away_score: m.away_score,
     finished: m.finished,
+    winner_team_id: m.winner_team_id ?? null,
   };
 }
 
 const TEAM_COLS = "id, name, abbreviation, crest_url, color";
 const MATCH_SELECT =
-  "id, competition, date, datetime, state, status, clock, stage, grp, venue, home_score, away_score, finished, " +
+  "id, competition, date, datetime, state, status, clock, stage, grp, venue, home_score, away_score, finished, winner_team_id, " +
   `home:soccer_teams!soccer_matches_home_team_id_fkey(${TEAM_COLS}), ` +
   `away:soccer_teams!soccer_matches_away_team_id_fkey(${TEAM_COLS})`;
 
@@ -572,4 +575,313 @@ export async function getFinalMatch(
     .limit(1);
   const row = (data ?? [])[0] as unknown as RawMatch | undefined;
   return row ? toMatchRow(row) : null;
+}
+
+// ---------------------------------------------------------------------------
+// Match page
+// ---------------------------------------------------------------------------
+export async function getMatchById(id: number): Promise<MatchRow | null> {
+  const supabase = await createSupabaseServerClient();
+  const { data } = await supabase
+    .from("soccer_matches")
+    .select(MATCH_SELECT)
+    .eq("id", id)
+    .maybeSingle();
+  return data ? toMatchRow(data as unknown as RawMatch) : null;
+}
+
+// Every engine pick on a match, pending or graded, strongest first.
+export async function getPredictionsForMatch(matchId: number): Promise<PredictionDetail[]> {
+  const supabase = await createSupabaseServerClient();
+  const { data } = await supabase
+    .from("soccer_predictions")
+    .select(PREDICTION_SELECT)
+    .eq("match_id", matchId)
+    .order("confidence", { ascending: false });
+  return ((data ?? []) as unknown as RawPrediction[]).map(toPredictionDetail);
+}
+
+export type OddsPoint = {
+  market: SoccerMarket;
+  side: MatchSide;
+  line: number | null;
+  prob: number;
+  bestOdds: number | null;
+  bookCount: number;
+  capturedAt: string;
+};
+
+// The movement series: one consensus point per (market, side) per odds pull,
+// oldest first. Empty until the match has been priced at least once.
+export async function getOddsHistory(matchId: number): Promise<OddsPoint[]> {
+  const supabase = await createSupabaseServerClient();
+  const { data } = await supabase
+    .from("soccer_odds_history")
+    .select("market, side, line, prob, best_odds, book_count, captured_at")
+    .eq("match_id", matchId)
+    .order("captured_at", { ascending: true })
+    .limit(600);
+  return (data ?? []).map((r) => ({
+    market: r.market as SoccerMarket,
+    side: r.side as MatchSide,
+    line: r.line === null ? null : Number(r.line),
+    prob: Number(r.prob),
+    bestOdds: r.best_odds === null ? null : Number(r.best_odds),
+    bookCount: Number(r.book_count),
+    capturedAt: r.captured_at as string,
+  }));
+}
+
+// Previous meetings between two clubs that we have on record (any competition).
+export async function getHeadToHead(
+  teamA: number,
+  teamB: number,
+  excludeMatchId?: number,
+): Promise<MatchRow[]> {
+  const supabase = await createSupabaseServerClient();
+  const { data } = await supabase
+    .from("soccer_matches")
+    .select(MATCH_SELECT)
+    .or(
+      `and(home_team_id.eq.${teamA},away_team_id.eq.${teamB}),and(home_team_id.eq.${teamB},away_team_id.eq.${teamA})`,
+    )
+    .eq("finished", true)
+    .order("datetime", { ascending: false })
+    .limit(10);
+  return ((data ?? []) as unknown as RawMatch[])
+    .map(toMatchRow)
+    .filter((m) => m.id !== excludeMatchId);
+}
+
+export type NewsLite = {
+  id: number;
+  source_url: string | null;
+  outlet: string;
+  headline: string | null;
+  summary: string;
+  image_url: string | null;
+  is_engine_take: boolean;
+  published_at: string;
+};
+
+const NEWS_COLS =
+  "id, source_url, outlet, headline, summary, image_url, is_engine_take, published_at";
+
+export async function getNewsForMatch(
+  matchId: number,
+  teamIds: number[],
+  limit = 8,
+): Promise<NewsLite[]> {
+  const supabase = await createSupabaseServerClient();
+  const { data } = await supabase
+    .from("soccer_news")
+    .select(NEWS_COLS)
+    .or(`match_id.eq.${matchId},team_ids.ov.{${teamIds.join(",")}}`)
+    .order("published_at", { ascending: false })
+    .limit(limit);
+  return (data ?? []) as NewsLite[];
+}
+
+export async function getNewsForTeam(teamId: number, limit = 10): Promise<NewsLite[]> {
+  const supabase = await createSupabaseServerClient();
+  const { data } = await supabase
+    .from("soccer_news")
+    .select(NEWS_COLS)
+    .contains("team_ids", [teamId])
+    .order("published_at", { ascending: false })
+    .limit(limit);
+  return (data ?? []) as NewsLite[];
+}
+
+// ---------------------------------------------------------------------------
+// Club page
+// ---------------------------------------------------------------------------
+export type TeamRow = TeamLite & { country: string; alt_color: string | null };
+
+export async function getTeamById(id: number): Promise<TeamRow | null> {
+  const supabase = await createSupabaseServerClient();
+  const { data } = await supabase
+    .from("soccer_teams")
+    .select("id, name, abbreviation, country, crest_url, color, alt_color")
+    .eq("id", id)
+    .maybeSingle();
+  if (!data) return null;
+  return {
+    id: data.id,
+    name: data.name,
+    abbreviation: data.abbreviation,
+    country: data.country,
+    crest: data.crest_url,
+    color: data.color,
+    alt_color: data.alt_color,
+  };
+}
+
+// A club's fixtures + results on record across every competition we track,
+// newest first.
+export async function getMatchesForTeam(teamId: number, limit = 60): Promise<MatchRow[]> {
+  const supabase = await createSupabaseServerClient();
+  const { data } = await supabase
+    .from("soccer_matches")
+    .select(MATCH_SELECT)
+    .or(`home_team_id.eq.${teamId},away_team_id.eq.${teamId}`)
+    .order("datetime", { ascending: false })
+    .limit(limit);
+  return ((data ?? []) as unknown as RawMatch[]).map(toMatchRow);
+}
+
+// Every engine pick on this club's matches (either side), newest first.
+export async function getPredictionsForTeam(
+  teamId: number,
+  limit = 30,
+): Promise<PredictionDetail[]> {
+  const supabase = await createSupabaseServerClient();
+  const { data: matches } = await supabase
+    .from("soccer_matches")
+    .select("id")
+    .or(`home_team_id.eq.${teamId},away_team_id.eq.${teamId}`)
+    .limit(300);
+  const ids = (matches ?? []).map((m) => m.id);
+  if (ids.length === 0) return [];
+  const { data } = await supabase
+    .from("soccer_predictions")
+    .select(PREDICTION_SELECT)
+    .in("match_id", ids)
+    .order("generated_at", { ascending: false })
+    .limit(limit);
+  return ((data ?? []) as unknown as RawPrediction[]).map(toPredictionDetail);
+}
+
+// Latest table line for a team in a competition (null if not in a table).
+export async function getStandingForTeam(
+  competition: SoccerCompetition,
+  teamId: number,
+): Promise<StandingRow | null> {
+  const byGroup = await getStandings(competition);
+  for (const rows of byGroup.values()) {
+    const hit = rows.find((r) => r.team.id === teamId);
+    if (hit) return hit;
+  }
+  return null;
+}
+
+// ---------------------------------------------------------------------------
+// Engine record breakdown (scoreboard)
+// ---------------------------------------------------------------------------
+export type BreakdownCell = {
+  key: string;
+  label: string;
+  won: number;
+  lost: number;
+  voided: number;
+  units: number; // +1 / −1 ledger
+  roi: number | null; // flat 1u stakes at best_odds, null if nothing decisive
+};
+
+export type EngineBreakdown = {
+  byMarket: BreakdownCell[];
+  bySide: BreakdownCell[]; // favourite vs underdog vs draw (match result only)
+  byVenue: BreakdownCell[]; // home / away picks (match result only)
+  byPrice: BreakdownCell[]; // odds buckets
+  byConfidence: BreakdownCell[]; // confidence bands
+  settled: number;
+};
+
+function cell(key: string, label: string): BreakdownCell {
+  return { key, label, won: 0, lost: 0, voided: 0, units: 0, roi: null };
+}
+
+function finish(cells: Map<string, BreakdownCell & { staked: number; returned: number }>) {
+  return [...cells.values()].map((c) => ({
+    key: c.key,
+    label: c.label,
+    won: c.won,
+    lost: c.lost,
+    voided: c.voided,
+    units: c.units,
+    roi: c.staked > 0 ? (c.returned - c.staked) / c.staked : null,
+  }));
+}
+
+export async function getEngineBreakdown(
+  competition: SoccerCompetition,
+): Promise<EngineBreakdown> {
+  const supabase = await createSupabaseServerClient();
+  const { data } = await supabase
+    .from("soccer_predictions")
+    .select("market, side, line, confidence, best_odds, status")
+    .eq("competition", competition)
+    .in("status", ["won", "lost", "void"])
+    .limit(5000);
+
+  type Bucket = Map<string, BreakdownCell & { staked: number; returned: number }>;
+  const mk = (): Bucket => new Map();
+  const byMarket = mk();
+  const bySide = mk();
+  const byVenue = mk();
+  const byPrice = mk();
+  const byConfidence = mk();
+  const bump = (b: Bucket, key: string, label: string, status: string, odds: number) => {
+    let c = b.get(key);
+    if (!c) {
+      c = { ...cell(key, label), staked: 0, returned: 0 };
+      b.set(key, c);
+    }
+    if (status === "won") {
+      c.won += 1;
+      c.units += 1;
+      c.staked += 1;
+      c.returned += odds;
+    } else if (status === "lost") {
+      c.lost += 1;
+      c.units -= 1;
+      c.staked += 1;
+    } else {
+      c.voided += 1;
+    }
+  };
+
+  const MARKET_LABEL: Record<string, string> = {
+    match_winner: "Match result",
+    total_goals: "Total goals",
+    btts: "Both teams to score",
+  };
+  let settled = 0;
+  for (const r of data ?? []) {
+    settled += 1;
+    const odds = Number(r.best_odds);
+    const status = r.status as string;
+    const market = r.market as string;
+    bump(byMarket, market, MARKET_LABEL[market] ?? market, status, odds);
+
+    if (market === "match_winner") {
+      const side = r.side as string;
+      bump(byVenue, side, side === "home" ? "Home side" : side === "away" ? "Away side" : "Draw", status, odds);
+      const tag = side === "draw" ? "draw" : odds <= 1.6 ? "fav" : odds <= 2.3 ? "even" : "dog";
+      const label =
+        tag === "draw" ? "Draws" : tag === "fav" ? "Favourites (≤1.60)" : tag === "even" ? "Toss-ups (1.61–2.30)" : "Underdogs (>2.30)";
+      bump(bySide, tag, label, status, odds);
+    }
+
+    const pb = odds < 1.4 ? "a" : odds < 1.8 ? "b" : odds < 2.5 ? "c" : "d";
+    const pl = pb === "a" ? "Under 1.40" : pb === "b" ? "1.40–1.79" : pb === "c" ? "1.80–2.49" : "2.50 and up";
+    bump(byPrice, pb, pl, status, odds);
+
+    const conf = Number(r.confidence);
+    const cb = conf >= 75 ? "a" : conf >= 60 ? "b" : conf >= 50 ? "c" : "d";
+    const cl = cb === "a" ? "75%+" : cb === "b" ? "60–74%" : cb === "c" ? "50–59%" : "Under 50%";
+    bump(byConfidence, cb, cl, status, odds);
+  }
+
+  const order = (cells: BreakdownCell[], keys: string[]) =>
+    cells.sort((x, y) => keys.indexOf(x.key) - keys.indexOf(y.key));
+
+  return {
+    byMarket: order(finish(byMarket), ["match_winner", "total_goals", "btts"]),
+    bySide: order(finish(bySide), ["fav", "even", "dog", "draw"]),
+    byVenue: order(finish(byVenue), ["home", "away", "draw"]),
+    byPrice: order(finish(byPrice), ["a", "b", "c", "d"]),
+    byConfidence: order(finish(byConfidence), ["a", "b", "c", "d"]),
+    settled,
+  };
 }

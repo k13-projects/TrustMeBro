@@ -7,12 +7,16 @@
 // no cron pulls for them — the World Cup 2026 record is frozen exactly as it
 // finished, and can be brought back live by flipping `status`.
 
-export type SoccerCompetition = "fifa.world" | "uefa.champions";
+export type SoccerCompetition =
+  | "fifa.world"
+  | "uefa.champions"
+  | "uefa.europa"
+  | "uefa.europa.conf";
 
 export const COMPETITION_COOKIE = "tmb_competition";
 export const COMPETITION_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 
-export type CompetitionTheme = "wc" | "ucl";
+export type CompetitionTheme = "wc" | "ucl" | "uel" | "uecl";
 
 export type CompetitionMeta = {
   id: SoccerCompetition;
@@ -55,6 +59,40 @@ export const COMPETITIONS: Record<SoccerCompetition, CompetitionMeta> = {
     tagline: "The best of Europe, every matchday",
     phaseLabel: "League Phase",
   },
+  "uefa.europa": {
+    id: "uefa.europa",
+    label: "Europa League",
+    fullName: "UEFA Europa League",
+    shortLabel: "UEL",
+    season: 2026,
+    seasonLabel: "2026-27",
+    status: "live",
+    kind: "club",
+    espnSlugs: ["uefa.europa", "uefa.europa_qual"],
+    oddsKey: "soccer_uefa_europa_league",
+    logo: "https://a.espncdn.com/i/leaguelogos/soccer/500-dark/2310.png",
+    emoji: "🟠",
+    theme: "uel",
+    tagline: "Thursday nights, the long road to the final",
+    phaseLabel: "League Phase",
+  },
+  "uefa.europa.conf": {
+    id: "uefa.europa.conf",
+    label: "Conference League",
+    fullName: "UEFA Conference League",
+    shortLabel: "UECL",
+    season: 2026,
+    seasonLabel: "2026-27",
+    status: "live",
+    kind: "club",
+    espnSlugs: ["uefa.europa.conf", "uefa.europa.conf_qual"],
+    oddsKey: "soccer_uefa_europa_conference_league",
+    logo: "https://a.espncdn.com/i/leaguelogos/soccer/500-dark/20296.png",
+    emoji: "🟢",
+    theme: "uecl",
+    tagline: "Europe's third tier, first-time finalists every year",
+    phaseLabel: "League Phase",
+  },
   "fifa.world": {
     id: "fifa.world",
     label: "World Cup",
@@ -74,13 +112,18 @@ export const COMPETITIONS: Record<SoccerCompetition, CompetitionMeta> = {
   },
 };
 
-export const COMPETITION_ORDER: SoccerCompetition[] = ["uefa.champions", "fifa.world"];
+export const COMPETITION_ORDER: SoccerCompetition[] = [
+  "uefa.champions",
+  "uefa.europa",
+  "uefa.europa.conf",
+  "fifa.world",
+];
 
 // The competition a football visitor lands on with no cookie.
 export const DEFAULT_COMPETITION: SoccerCompetition = "uefa.champions";
 
 export function isCompetition(value: unknown): value is SoccerCompetition {
-  return value === "fifa.world" || value === "uefa.champions";
+  return typeof value === "string" && value in COMPETITIONS;
 }
 
 export function competitionMeta(id: SoccerCompetition): CompetitionMeta {

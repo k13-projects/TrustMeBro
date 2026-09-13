@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { MatchRow as Match } from "@/lib/sports/soccer/queries";
 import { COMPETITIONS } from "@/lib/sports/soccer/competitions";
 import { LiveMatch } from "./LiveMatch";
@@ -32,7 +33,9 @@ export function MatchRow({
         </div>
       ) : null}
 
-      <LiveMatch match={match} />
+      <Link href={`/football/match/${match.id}`} className="block transition-opacity hover:opacity-90">
+        <LiveMatch match={match} />
+      </Link>
 
       {live || done ? (
         <div className="overflow-hidden rounded-2xl border border-border/60 bg-card/40">

@@ -29,6 +29,9 @@ export function Navbar({
   // threshold the hamburger carries navigation. All three nav surfaces share
   // this flag so the handoff happens at one breakpoint with no dead zone.
   const dense = navItems.length > 6;
+  // Football's nav (11 items with Bracket + Value) doesn't fit until 2xl;
+  // below that the hamburger carries it. All three surfaces share the tier.
+  const ultra = navItems.length > 9;
   return (
     <header className="sticky top-0 z-30">
       <div
@@ -45,7 +48,7 @@ export function Navbar({
             logo-float keyframe) is identical to the previous inline render. */}
         <LogoLink />
 
-        <NavLinks items={navItems} dense={dense} />
+        <NavLinks items={navItems} dense={dense} ultra={ultra} />
 
         <div className="flex items-center gap-2">
           <SportToggle
@@ -53,10 +56,11 @@ export function Navbar({
             competitionLogo={competitionLogo}
             competitionLabel={competitionLabel}
           />
-          <IdentityBadge dense={dense} />
+          <IdentityBadge dense={dense} ultra={ultra} />
           <MobileNav
             items={navItems}
             dense={dense}
+            ultra={ultra}
             identity={
               identity
                 ? {

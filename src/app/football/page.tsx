@@ -45,13 +45,13 @@ function Accent({
   theme,
   children,
 }: {
-  theme: "ucl" | "wc";
+  theme: "ucl" | "uel" | "uecl" | "wc";
   children: React.ReactNode;
 }) {
-  return theme === "ucl" ? (
-    <span className="ucl-sky-text">{children}</span>
-  ) : (
+  return theme === "wc" ? (
     <span style={GOLD}>{children}</span>
+  ) : (
+    <span className="accent-text">{children}</span>
   );
 }
 

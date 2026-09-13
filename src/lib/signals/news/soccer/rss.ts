@@ -346,6 +346,30 @@ const COMPETITION_FEEDS: Record<SoccerCompetition, SoccerRssFeed[]> = {
       source: "rss:gnews-ucl-tr",
     },
   ],
+  "uefa.europa": [
+    {
+      url: "https://news.google.com/rss/search?q=%22Europa+League%22&hl=en-GB&gl=GB&ceid=GB:en",
+      outlet: "Google News",
+      source: "rss:gnews-uel-en",
+    },
+    {
+      url: "https://news.google.com/rss/search?q=%22Avrupa+Ligi%22&hl=tr&gl=TR&ceid=TR:tr",
+      outlet: "Google Haberler",
+      source: "rss:gnews-uel-tr",
+    },
+  ],
+  "uefa.europa.conf": [
+    {
+      url: "https://news.google.com/rss/search?q=%22Conference+League%22&hl=en-GB&gl=GB&ceid=GB:en",
+      outlet: "Google News",
+      source: "rss:gnews-uecl-en",
+    },
+    {
+      url: "https://news.google.com/rss/search?q=%22Konferans+Ligi%22&hl=tr&gl=TR&ceid=TR:tr",
+      outlet: "Google Haberler",
+      source: "rss:gnews-uecl-tr",
+    },
+  ],
 };
 
 export function soccerFeedsFor(competition: SoccerCompetition): SoccerRssFeed[] {

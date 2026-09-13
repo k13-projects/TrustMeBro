@@ -8,33 +8,71 @@ import {
   type SoccerCompetition,
 } from "./competitions";
 import type {
+  CommentaryLine,
+  Lineup,
   Match,
+  MatchDetail,
   MatchEvent,
+  RecentResult,
   SoccerProvider,
   SoccerStanding,
   SoccerTeam,
+  SquadPlayer,
+  TeamProfile,
+  TeamStatLine,
 } from "./provider";
 
-// Scoreboard / summary live on the site API; standings on the web API.
-const SITE_ROOT = "https://site.api.espn.com/apis/site/v2/sports/soccer";
+// ESPN serves the same "site" API from two hosts. Its edge (Akamai) started
+// answering 403 "Access Denied" to server-side callers on site.api.espn.com
+// from cloud IPs (production went dark on 2026-09-10 while local dev kept
+// working); site.web.api.espn.com serves identical payloads and doesn't. We
+// lead with the web host and fall back to the other on a 403 either way.
+const SITE_HOSTS = [
+  "https://site.web.api.espn.com/apis/site/v2/sports/soccer",
+  "https://site.api.espn.com/apis/site/v2/sports/soccer",
+] as const;
+const SITE_ROOT = SITE_HOSTS[0];
 const WEB_ROOT = "https://site.web.api.espn.com/apis/v2/sports/soccer";
 
+const ESPN_HEADERS = {
+  "User-Agent":
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36 TrustMeBro/0.1",
+  Accept: "application/json, text/plain, */*",
+  "Accept-Language": "en-US,en;q=0.9",
+  Referer: "https://www.espn.com/",
+};
+
 type FetchOpts = { revalidate?: number };
+
+function alternateHost(base: string): string | null {
+  for (const host of SITE_HOSTS) {
+    if (base.startsWith(host)) {
+      const other = SITE_HOSTS.find((h) => h !== host)!;
+      return base.replace(host, other);
+    }
+  }
+  return null;
+}
 
 async function fetchJson<T>(
   base: string,
   path: string,
   query: Record<string, string | undefined> = {},
   opts: FetchOpts = {},
+  retried = false,
 ): Promise<T> {
   const url = new URL(`${base}${path}`);
   for (const [k, v] of Object.entries(query)) {
     if (v !== undefined) url.searchParams.set(k, v);
   }
   const res = await fetch(url, {
-    headers: { "User-Agent": "TrustMeBro/0.1 (+contact: app)" },
+    headers: ESPN_HEADERS,
     next: { revalidate: opts.revalidate ?? 60 },
   });
+  if (res.status === 403 && !retried) {
+    const alt = alternateHost(base);
+    if (alt) return fetchJson<T>(alt, path, query, opts, true);
+  }
   if (!res.ok) {
     const body = await res.text().catch(() => "");
     throw new Error(
@@ -85,9 +123,11 @@ type EspnEvent = {
     type?: { state?: string; completed?: boolean; description?: string };
   };
   competitions?: Array<{
+    date?: string; // the summary endpoint's header carries the date here, not at the top level
     competitors?: Array<{
       homeAway: "home" | "away";
       score?: string;
+      winner?: boolean;
       team: EspnTeam;
     }>;
     status?: EspnEvent["status"];
@@ -107,6 +147,68 @@ type EspnStandings = {
     standings?: { entries?: EspnStandingEntry[] };
   }>;
 };
+
+// Team stats worth showing, in display order. ESPN ships ~20; these read.
+const STAT_LABELS: Array<[string, string]> = [
+  ["possessionPct", "Possession %"],
+  ["totalShots", "Shots"],
+  ["shotsOnTarget", "On target"],
+  ["wonCorners", "Corners"],
+  ["foulsCommitted", "Fouls"],
+  ["offsides", "Offsides"],
+  ["yellowCards", "Yellow cards"],
+  ["redCards", "Red cards"],
+  ["saves", "Saves"],
+  ["passPct", "Pass accuracy"],
+  ["totalPasses", "Passes"],
+];
+
+type EspnLastFiveEvent = {
+  id: string;
+  gameDate: string;
+  leagueName?: string;
+  competitionName?: string;
+  homeTeamId?: string;
+  awayTeamId?: string;
+  homeTeamScore?: string;
+  awayTeamScore?: string;
+  gameResult?: string;
+  atVs?: string;
+  opponent?: EspnTeam;
+};
+
+function recentFrom(e: EspnLastFiveEvent, teamId: number): RecentResult | null {
+  const opp = e.opponent;
+  if (!opp) return null;
+  const home = Number(e.homeTeamId) === teamId;
+  const hs = Number(e.homeTeamScore) || 0;
+  const as = Number(e.awayTeamScore) || 0;
+  const gf = home ? hs : as;
+  const ga = home ? as : hs;
+  const result: RecentResult["result"] =
+    e.gameResult === "W" || e.gameResult === "L" || e.gameResult === "D"
+      ? e.gameResult
+      : gf > ga
+        ? "W"
+        : gf < ga
+          ? "L"
+          : "D";
+  return {
+    event_id: Number(e.id),
+    date: e.gameDate,
+    competition_name: e.leagueName ?? e.competitionName ?? "",
+    opponent: {
+      id: Number(opp.id),
+      name: opp.displayName ?? opp.name ?? "",
+      abbreviation: opp.abbreviation ?? "",
+      crest: opp.logo ?? opp.logos?.[0]?.href ?? null,
+    },
+    home_away: home ? "H" : "A",
+    goals_for: gf,
+    goals_against: ga,
+    result,
+  };
+}
 
 function statValue(entry: EspnStandingEntry, name: string): number {
   const s = entry.stats?.find((x) => x.name === name);
@@ -144,13 +246,17 @@ export class EspnSoccerProvider implements SoccerProvider {
     // ESPN puts the round in the season slug; the competition note carries the
     // human label ("Group A" for the World Cup, "1st Leg" for two-legged ties).
     const note = comp.notes?.[0]?.headline ?? null;
+    // Scoreboard events carry `date` at the top level; the summary endpoint's
+    // header only has it on the competition.
+    const when = ev.date ?? comp.date;
+    if (!when) return null;
 
     return {
       id: Number(ev.id),
       competition: this.competition,
       league_slug: this.slug,
-      date: isoDateInProjectTz(ev.date),
-      datetime: ev.date,
+      date: isoDateInProjectTz(when),
+      datetime: when,
       season: ev.season?.year ?? 0,
       status: status?.type?.description ?? "",
       state,
@@ -164,6 +270,11 @@ export class EspnSoccerProvider implements SoccerProvider {
       home_score: Number(home.score) || 0,
       away_score: Number(away.score) || 0,
       finished: status?.type?.completed ?? false,
+      winner_team_id: home.winner
+        ? Number(home.team.id)
+        : away.winner
+          ? Number(away.team.id)
+          : null,
     };
   }
 
@@ -273,6 +384,240 @@ export class EspnSoccerProvider implements SoccerProvider {
       });
     }
     return out;
+  }
+
+  async getMatchDetail(id: number): Promise<MatchDetail | null> {
+    type Summary = {
+      header?: EspnEvent;
+      gameInfo?: {
+        venue?: { fullName?: string };
+        attendance?: number;
+        officials?: Array<{ fullName?: string; displayName?: string }>;
+      };
+      lastFiveGames?: Array<{ team?: EspnTeam; events?: EspnLastFiveEvent[] }>;
+      boxscore?: {
+        teams?: Array<{
+          team?: EspnTeam;
+          homeAway?: string;
+          statistics?: Array<{ name?: string; displayValue?: string }>;
+        }>;
+      };
+      rosters?: Array<{
+        homeAway?: string;
+        formation?: string;
+        roster?: Array<{
+          starter?: boolean;
+          jersey?: string;
+          position?: { abbreviation?: string; name?: string };
+          athlete?: { displayName?: string };
+        }>;
+      }>;
+      commentary?: Array<{ time?: { displayValue?: string }; text?: string }>;
+    };
+    let data: Summary;
+    try {
+      data = await fetchJson<Summary>(
+        this.siteBase,
+        "/summary",
+        { event: String(id) },
+        { revalidate: 30 },
+      );
+    } catch {
+      return null;
+    }
+    const match = data.header ? this.matchFrom(data.header) : null;
+    if (!match) return null;
+
+    const lastFor = (teamId: number): RecentResult[] => {
+      const block = (data.lastFiveGames ?? []).find(
+        (b) => Number(b.team?.id) === teamId,
+      );
+      return (block?.events ?? [])
+        .map((e) => recentFrom(e, teamId))
+        .filter((r): r is RecentResult => r !== null)
+        .sort((a, b) => b.date.localeCompare(a.date));
+    };
+
+    const statsFor = (side: "home" | "away"): TeamStatLine[] => {
+      const team = (data.boxscore?.teams ?? []).find((t) => t.homeAway === side);
+      const raw = new Map(
+        (team?.statistics ?? []).map((s) => [s.name ?? "", s.displayValue ?? ""]),
+      );
+      const out: TeamStatLine[] = [];
+      for (const [key, label] of STAT_LABELS) {
+        const v = raw.get(key);
+        if (v === undefined || v === "") continue;
+        // passPct arrives as a 0..1 fraction on some feeds.
+        const value =
+          key === "passPct" && Number(v) <= 1 ? `${Math.round(Number(v) * 100)}%` : v;
+        out.push({ key, label, value });
+      }
+      return out;
+    };
+
+    const lineups: Lineup[] = (data.rosters ?? [])
+      .filter((r) => r.homeAway === "home" || r.homeAway === "away")
+      .map((r) => ({
+        side: r.homeAway as "home" | "away",
+        formation: r.formation ?? null,
+        players: (r.roster ?? []).map((p) => ({
+          name: p.athlete?.displayName ?? "",
+          position: p.position?.abbreviation ?? "",
+          jersey: p.jersey ?? null,
+          starter: Boolean(p.starter),
+        })),
+      }));
+
+    const commentary: CommentaryLine[] = (data.commentary ?? [])
+      .map((c) => ({ minute: c.time?.displayValue ?? "", text: c.text ?? "" }))
+      .filter((c) => c.text)
+      .reverse();
+
+    return {
+      match,
+      venue: data.gameInfo?.venue?.fullName ?? match.venue,
+      attendance: data.gameInfo?.attendance ?? null,
+      officials: (data.gameInfo?.officials ?? [])
+        .map((o) => o.fullName ?? o.displayName ?? "")
+        .filter(Boolean),
+      last_five: { home: lastFor(match.home_team.id), away: lastFor(match.away_team.id) },
+      stats: { home: statsFor("home"), away: statsFor("away") },
+      lineups,
+      commentary,
+    };
+  }
+
+  async getTeamProfile(teamId: number): Promise<TeamProfile | null> {
+    type TeamResp = {
+      team?: EspnTeam & {
+        venue?: { fullName?: string };
+        record?: { items?: Array<{ summary?: string }> };
+        standingSummary?: string;
+        nextEvent?: Array<{ id?: string; name?: string; date?: string }>;
+      };
+    };
+    let data: TeamResp;
+    try {
+      data = await fetchJson<TeamResp>(
+        this.siteBase,
+        `/teams/${teamId}`,
+        {},
+        { revalidate: 60 * 10 },
+      );
+    } catch {
+      return null;
+    }
+    if (!data.team) return null;
+    const next = data.team.nextEvent?.[0];
+    return {
+      team: teamFrom(data.team, this.national),
+      venue: data.team.venue?.fullName ?? null,
+      record_summary: data.team.record?.items?.[0]?.summary ?? null,
+      standing_summary: data.team.standingSummary ?? null,
+      next_event:
+        next?.id && next.date
+          ? { id: Number(next.id), name: next.name ?? "", date: next.date }
+          : null,
+    };
+  }
+
+  async getTeamSchedule(teamId: number): Promise<RecentResult[]> {
+    // The "all" pseudo-league returns the club's fixtures across every
+    // competition ESPN covers (domestic league, cups, Europe, friendlies).
+    type Sched = {
+      events?: Array<{
+        id: string;
+        date: string;
+        name?: string;
+        league?: { name?: string };
+        season?: { slug?: string };
+        competitions?: Array<{
+          competitors?: Array<{
+            homeAway: "home" | "away";
+            score?: { value?: number; displayValue?: string } | string;
+            winner?: boolean;
+            team: EspnTeam;
+          }>;
+          status?: { type?: { completed?: boolean } };
+        }>;
+      }>;
+    };
+    let data: Sched;
+    try {
+      data = await fetchJson<Sched>(
+        `${SITE_ROOT}/all`,
+        `/teams/${teamId}/schedule`,
+        {},
+        { revalidate: 60 * 10 },
+      );
+    } catch {
+      return [];
+    }
+    const out: RecentResult[] = [];
+    for (const ev of data.events ?? []) {
+      const comp = ev.competitions?.[0];
+      const me = comp?.competitors?.find((c) => Number(c.team.id) === teamId);
+      const opp = comp?.competitors?.find((c) => Number(c.team.id) !== teamId);
+      if (!me || !opp) continue;
+      const score = (c: typeof me): number => {
+        const s = c.score;
+        if (typeof s === "string") return Number(s) || 0;
+        return Number(s?.value ?? s?.displayValue) || 0;
+      };
+      const gf = score(me);
+      const ga = score(opp);
+      const finished = comp?.status?.type?.completed ?? false;
+      out.push({
+        event_id: Number(ev.id),
+        date: ev.date,
+        competition_name: ev.league?.name ?? ev.season?.slug ?? "",
+        opponent: {
+          id: Number(opp.team.id),
+          name: opp.team.displayName ?? opp.team.name ?? "",
+          abbreviation: opp.team.abbreviation ?? "",
+          crest: opp.team.logo ?? opp.team.logos?.[0]?.href ?? null,
+        },
+        home_away: me.homeAway === "home" ? "H" : "A",
+        goals_for: gf,
+        goals_against: ga,
+        result: !finished ? "D" : gf > ga ? "W" : gf < ga ? "L" : "D",
+      });
+    }
+    return out.sort((a, b) => b.date.localeCompare(a.date));
+  }
+
+  async getTeamSquad(teamId: number): Promise<SquadPlayer[]> {
+    type Roster = {
+      athletes?: Array<{
+        id?: string;
+        displayName?: string;
+        position?: { abbreviation?: string; name?: string };
+        jersey?: string;
+        age?: number;
+        citizenship?: string;
+        headshot?: { href?: string };
+      }>;
+    };
+    let data: Roster;
+    try {
+      data = await fetchJson<Roster>(
+        this.siteBase,
+        `/teams/${teamId}/roster`,
+        {},
+        { revalidate: 60 * 60 * 6 },
+      );
+    } catch {
+      return [];
+    }
+    return (data.athletes ?? []).map((a) => ({
+      id: Number(a.id),
+      name: a.displayName ?? "",
+      position: a.position?.abbreviation ?? a.position?.name ?? "",
+      jersey: a.jersey ?? null,
+      age: typeof a.age === "number" ? a.age : null,
+      nationality: a.citizenship ?? null,
+      headshot: a.headshot?.href ?? null,
+    }));
   }
 
   async listStandings(season?: number): Promise<SoccerStanding[]> {
