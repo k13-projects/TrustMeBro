@@ -53,6 +53,7 @@ export async function upsertMatches(matches: Match[]): Promise<void> {
     home_score: m.home_score,
     away_score: m.away_score,
     finished: m.finished,
+    winner_team_id: m.winner_team_id,
     updated_at: new Date().toISOString(),
   }));
   const { error } = await supabase.from("soccer_matches").upsert(rows);
@@ -110,6 +111,29 @@ export async function insertSoccerOdds(
     );
   if (error) throw new Error(`soccer_odds_snapshots insert: ${error.message}`);
   return { inserted: count ?? rows.length };
+}
+
+export type OddsHistoryRow = {
+  match_id: number;
+  market: SoccerMarket;
+  side: MatchSide;
+  line: number | null;
+  prob: number;
+  best_odds: number | null;
+  book_count: number;
+};
+
+// One compact consensus row per (match, market, side, line) per run — the
+// odds-movement series. Never pruned (a few rows per match per day).
+export async function insertOddsHistory(rows: OddsHistoryRow[]): Promise<number> {
+  if (rows.length === 0) return 0;
+  const supabase = supabaseAdmin();
+  const captured_at = new Date().toISOString();
+  const { error } = await supabase
+    .from("soccer_odds_history")
+    .insert(rows.map((r) => ({ ...r, captured_at })));
+  if (error) throw new Error(`soccer_odds_history insert: ${error.message}`);
+  return rows.length;
 }
 
 // Drop soccer odds snapshots older than the cutoff (48h default). The engine

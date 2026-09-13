@@ -35,7 +35,7 @@ export default async function FootballLayout({
   return (
     <div
       data-competition={competition}
-      className={meta.theme === "ucl" ? "ucl-starfield" : undefined}
+      className={meta.theme === "wc" ? undefined : "ucl-starfield"}
     >
       <div className="relative">
         <CompetitionBar competition={competition} phase={phase} />

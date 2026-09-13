@@ -39,9 +39,11 @@ function useUrlHash() {
 export function NavLinks({
   items,
   dense = false,
+  ultra = false,
 }: {
   items: ReadonlyArray<Item>;
   dense?: boolean;
+  ultra?: boolean;
 }) {
   const pathname = usePathname();
   const urlHash = useUrlHash();
@@ -51,7 +53,10 @@ export function NavLinks({
   return (
     <div
       ref={containerRef}
-      className={cx(dense ? "hidden xl:flex" : "hidden lg:flex", "items-center")}
+      className={cx(
+        ultra ? "hidden 2xl:flex" : dense ? "hidden xl:flex" : "hidden lg:flex",
+        "items-center",
+      )}
       onMouseLeave={() => setHoverIdx(null)}
     >
       <nav
@@ -113,7 +118,9 @@ export function NavLinks({
                     window.scrollTo({ top: 0, behavior: "smooth" });
                   }
                 }}
-                className={`relative inline-flex items-center whitespace-nowrap px-3 py-2 font-semibold uppercase tracking-[0.12em] transition-colors duration-200 ${
+                className={`relative inline-flex items-center whitespace-nowrap py-2 font-semibold uppercase transition-colors duration-200 ${
+                  ultra ? "px-2 text-[11.5px] tracking-[0.08em]" : "px-3 tracking-[0.12em]"
+                } ${
                   isActive
                     ? "text-primary"
                     : "text-foreground/72 hover:text-foreground"

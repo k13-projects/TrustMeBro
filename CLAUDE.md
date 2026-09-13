@@ -290,8 +290,18 @@ API key, logo, theme.
   "Slavia Prague"). `team-match.ts` reconciles them (aliases + token overlap,
   both sides must clear the bar, ties refuse to guess); `track-odds` reports
   `unmatched` per run — check it after each matchday's first pull.
-- **Cron cost.** One Odds API call per live competition per day (4 credits) ⇒
-  ~120/month of the 500 free.
+- **Cron cost.** One Odds API call per live competition per day (4 credits),
+  skipped on days a competition has no unfinished match inside the 8-day
+  window ⇒ roughly 150–250/month of the 500 free with three UEFA competitions
+  live (matchdays cluster, so most days cost nothing).
+- **Odds movement.** Raw snapshots are still pruned after 48h; `track-odds`
+  also writes one compact consensus row per (match, market, side) per run to
+  `soccer_odds_history` (migration 0023), never pruned — that is the series
+  the match page charts. The window is 8 days ahead so a matchday gets a daily
+  point once books list it.
+- **Live competitions (2026-09-10):** Champions League, Europa League,
+  Conference League (`uefa.champions`, `uefa.europa`, `uefa.europa.conf`, each
+  with its `*_qual` ESPN feed). World Cup archived.
 
 ## Cron Schedule (Vercel)
 
@@ -305,7 +315,7 @@ NBA crons (top group) early-exit while `NBA_LIGHT_MODE=true` — the season is o
 | `/api/cron/scrape-news`           | every 2h              | Magazine/social pulls                  |
 | `/api/cron/settle-bets`           | every 30 min, gameday | Settle finalized games, update score   |
 | `/api/cron/soccer/sync-fixtures`  | daily @ 09:00 UTC     | Fixtures + scores + standings for every **live** football competition (`?competition=&from=&to=` to backfill) |
-| `/api/cron/soccer/track-odds`     | daily @ 13:30 UTC     | Real bookmaker odds per live competition (4 credits each); skips days with no unfinished matches |
+| `/api/cron/soccer/track-odds`     | daily @ 13:30 UTC     | Real bookmaker odds per live competition for the next 8 days (4 credits each); skips days with no unfinished matches; appends odds-movement history |
 | `/api/cron/soccer/generate-predictions` | daily @ 15:00 UTC | Engine picks + coupons per live competition |
 | `/api/cron/soccer/settle-bets`    | daily @ 11:30 UTC     | Grade finished matches → that competition's ledger |
 | `/api/cron/soccer/scrape-news`    | daily @ 08:00 UTC     | News → `soccer_news` per live competition (/football/news) — backstop; the page also self-refreshes on visit when >30min stale |

@@ -1,8 +1,13 @@
 import { activeCompetition } from "@/lib/sports/soccer/competition-cookie";
 import { COMPETITIONS } from "@/lib/sports/soccer/competitions";
-import { getSoccerScore, getSoccerScoreHistory } from "@/lib/sports/soccer/queries";
+import {
+  getEngineBreakdown,
+  getSoccerScore,
+  getSoccerScoreHistory,
+} from "@/lib/sports/soccer/queries";
 import { FootballHeader } from "@/components/soccer/FootballHeader";
 import { ScoreChart } from "@/components/ScoreChart";
+import { EngineBreakdown } from "@/components/soccer/EngineBreakdown";
 
 export const dynamic = "force-dynamic";
 
@@ -18,9 +23,10 @@ function Stat({ label, value, tone }: { label: string; value: string; tone?: str
 export default async function ScoreboardPage() {
   const competition = await activeCompetition();
   const meta = COMPETITIONS[competition];
-  const [s, history] = await Promise.all([
+  const [s, history, breakdown] = await Promise.all([
     getSoccerScore(competition),
     getSoccerScoreHistory(competition),
+    getEngineBreakdown(competition),
   ]);
   const settled = s.wins + s.losses;
   const hitRate = settled > 0 ? Math.round((s.wins / settled) * 100) : 0;
@@ -77,6 +83,8 @@ export default async function ScoreboardPage() {
         <Stat label="Voids" value={String(s.voids)} />
         <Stat label="Hit Rate" value={`${hitRate}%`} />
       </div>
+
+      <EngineBreakdown breakdown={breakdown} />
     </div>
   );
 }

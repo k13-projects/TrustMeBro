@@ -269,6 +269,72 @@ body {
   -webkit-text-fill-color: transparent;
 }
 
+/* UEFA Europa League: same midnight canvas, the competition's orange. */
+[data-competition="uefa.europa"] {
+  --primary: #ff7a1a;
+  --primary-foreground: #1a0a00;
+  --primary-hover: #ff9542;
+  --accent: rgba(255, 122, 26, 0.14);
+  --accent-foreground: var(--primary);
+  --ring: var(--primary);
+  --sidebar-primary: var(--primary);
+  --sidebar-accent: rgba(255, 122, 26, 0.12);
+  --sidebar-accent-foreground: var(--primary);
+  --surface: #14110f;
+  --surface-2: #1c1714;
+  --card: var(--surface);
+  --popover: var(--surface);
+  --border: rgba(255, 200, 160, 0.12);
+  --muted-foreground: #a99a8e;
+  --chart-1: var(--primary);
+  --font-display: var(--font-ucl);
+  --font-heading: var(--font-ucl);
+  background:
+    radial-gradient(70rem 42rem at 50% -8rem, rgba(255, 122, 26, 0.22), transparent 62%),
+    linear-gradient(180deg, #1a0f08 0%, #0d0a08 34rem, var(--background) 70rem);
+}
+[data-competition="uefa.europa"] .font-display {
+  letter-spacing: 0.02em;
+  font-weight: 700;
+}
+
+/* UEFA Conference League: the competition's green on near-black. */
+[data-competition="uefa.europa.conf"] {
+  --primary: #22c55e;
+  --primary-foreground: #04170b;
+  --primary-hover: #4ade80;
+  --accent: rgba(34, 197, 94, 0.14);
+  --accent-foreground: var(--primary);
+  --ring: var(--primary);
+  --sidebar-primary: var(--primary);
+  --sidebar-accent: rgba(34, 197, 94, 0.12);
+  --sidebar-accent-foreground: var(--primary);
+  --surface: #0e1511;
+  --surface-2: #131c17;
+  --card: var(--surface);
+  --popover: var(--surface);
+  --border: rgba(180, 230, 200, 0.12);
+  --muted-foreground: #93a89b;
+  --chart-1: var(--primary);
+  --font-display: var(--font-ucl);
+  --font-heading: var(--font-ucl);
+  background:
+    radial-gradient(70rem 42rem at 50% -8rem, rgba(34, 197, 94, 0.18), transparent 62%),
+    linear-gradient(180deg, #071a10 0%, #060d09 34rem, var(--background) 70rem);
+}
+[data-competition="uefa.europa.conf"] .font-display {
+  letter-spacing: 0.02em;
+  font-weight: 700;
+}
+
+/* One lit word in a section title, in the competition's own accent. */
+@utility accent-text {
+  background: linear-gradient(180deg, var(--primary-hover) 0%, var(--primary) 60%, color-mix(in srgb, var(--primary) 80%, black) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
 /* World Cup archive scope — the original gold section, unchanged tokens,
    plus a quieter canvas so it reads as a record rather than a live slate. */
 [data-competition="fifa.world"] {

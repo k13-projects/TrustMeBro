@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { PredictionDetail } from "@/lib/sports/soccer/queries";
 import { marketLabel, sideLabel } from "@/lib/sports/soccer/labels";
 import { AddToCouponButton } from "@/components/cart/AddToCouponButton";
@@ -16,14 +17,14 @@ export function BankoCard({ pick }: { pick: PredictionDetail }) {
           {Math.round(pick.confidence)}%
         </span>
       </div>
-      <div className="mt-3">
+      <Link href={`/football/match/${pick.match_id}`} className="mt-3 block transition-opacity hover:opacity-90">
         <MatchBanner
           size="sm"
           competition={pick.competition}
           home={{ name: pick.home, abbreviation: pick.home_abbr, crest: pick.home_crest, color: pick.home_color }}
           away={{ name: pick.away, abbreviation: pick.away_abbr, crest: pick.away_crest, color: pick.away_color }}
         />
-      </div>
+      </Link>
       <h3 className="mt-2 text-lg font-black">
         {sideLabel(pick.market, pick.side, pick.line, pick.home, pick.away)}
         <span className="ml-2 text-sm font-semibold text-foreground/45">

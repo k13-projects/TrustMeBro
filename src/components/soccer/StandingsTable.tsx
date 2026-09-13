@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { StandingRow } from "@/lib/sports/soccer/queries";
 import type { SoccerCompetition } from "@/lib/sports/soccer/competitions";
 import { accentColor } from "./MatchBanner";
@@ -95,7 +96,10 @@ export function StandingsTable({
                           size={18}
                         />
                       )}
-                      <span className="flex min-w-0 items-center gap-2 font-semibold">
+                      <Link
+                        href={`/football/club/${r.team.id}`}
+                        className="flex min-w-0 items-center gap-2 font-semibold transition-colors hover:text-primary hover:underline hover:underline-offset-2"
+                      >
                         <span className="truncate">{r.team.name}</span>
                         {accent ? (
                           <span
@@ -104,7 +108,7 @@ export function StandingsTable({
                             style={{ background: accent }}
                           />
                         ) : null}
-                      </span>
+                      </Link>
                     </span>
                   </td>
                   <td className="px-2 py-2 text-center tabular-nums text-foreground/70">{r.played}</td>

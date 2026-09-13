@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { PredictionDetail } from "@/lib/sports/soccer/queries";
 import { sideLabel } from "@/lib/sports/soccer/labels";
 import { AddToCouponButton } from "@/components/cart/AddToCouponButton";
@@ -10,12 +11,14 @@ import { MatchBanner } from "./MatchBanner";
 export function PickLine({ pick }: { pick: PredictionDetail }) {
   return (
     <div className="space-y-1.5 py-2.5">
-      <MatchBanner
-        size="sm"
-        competition={pick.competition}
-        home={{ name: pick.home, abbreviation: pick.home_abbr, crest: pick.home_crest, color: pick.home_color }}
-        away={{ name: pick.away, abbreviation: pick.away_abbr, crest: pick.away_crest, color: pick.away_color }}
-      />
+      <Link href={`/football/match/${pick.match_id}`} className="block transition-opacity hover:opacity-90">
+        <MatchBanner
+          size="sm"
+          competition={pick.competition}
+          home={{ name: pick.home, abbreviation: pick.home_abbr, crest: pick.home_crest, color: pick.home_color }}
+          away={{ name: pick.away, abbreviation: pick.away_abbr, crest: pick.away_crest, color: pick.away_color }}
+        />
+      </Link>
       <div className="flex items-center justify-between gap-3">
         <span className="truncate text-sm font-semibold">
           {sideLabel(pick.market, pick.side, pick.line, pick.home, pick.away)}
