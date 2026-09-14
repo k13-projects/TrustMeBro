@@ -3,6 +3,7 @@ import { activeCompetition } from "@/lib/sports/soccer/competition-cookie";
 import { COMPETITIONS } from "@/lib/sports/soccer/competitions";
 import { currentRound, getRounds } from "@/lib/sports/soccer/queries";
 import { CompetitionBar } from "@/components/soccer/CompetitionBar";
+import { ProviderBanner } from "@/components/soccer/ProviderBanner";
 
 export const dynamic = "force-dynamic";
 
@@ -39,6 +40,7 @@ export default async function FootballLayout({
     >
       <div className="relative">
         <CompetitionBar competition={competition} phase={phase} />
+        <ProviderBanner />
         {children}
       </div>
     </div>

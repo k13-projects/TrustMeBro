@@ -302,6 +302,17 @@ API key, logo, theme.
 - **Live competitions (2026-09-10):** Champions League, Europa League,
   Conference League (`uefa.champions`, `uefa.europa`, `uefa.europa.conf`, each
   with its `*_qual` ESPN feed). World Cup archived.
+- **Provider health + fallback (2026-09-14).** Three tiers, always preferring
+  the first: `site.web.api.espn.com` → `site.api.espn.com` → the core API
+  (`sports.core.api.espn.com`), which honours dates but returns `$ref` links,
+  so it is used only to close out finished matches so picks still grade.
+  `provider-health.ts` records which source served the data (migration 0028:
+  `soccer_provider_health` + `soccer_provider_incidents`), `ProviderBanner`
+  says so on every football page while degraded, and each transition posts to
+  `ALERT_WEBHOOK_URL` when one is set (Discord/Slack/any JSON webhook).
+  While degraded, every page view re-probes the primary after the response,
+  so the site returns to it on its own. **Never let an upstream failure be
+  silent** — that is what cost three days in September.
 - **ESPN host (2026-09-13).** `site.api.espn.com` returns 403 to Vercel;
   every call goes through `site.web.api.espn.com` with a 403 fallback to the
   other host (`src/lib/sports/soccer/espn.ts`). See `.claude/Lessons.md`.

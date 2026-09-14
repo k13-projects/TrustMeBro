@@ -5,6 +5,7 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 import { COMPETITIONS, type SoccerCompetition } from "./competitions";
 import { soccerProvider, soccerProviders } from "./espn";
 import { insertStandings, upsertMatches } from "./repo";
+import { recoverFinishedMatches } from "./core-recovery";
 import type { Match } from "./provider";
 
 // Minimal shape the live poller needs — just the volatile bits of a match.
@@ -75,9 +76,15 @@ export async function refreshStaleMatches(
   if (stale.length === 0) return 0;
 
   const refreshed: Match[] = [];
+  let scoreboardFailed = false;
   await Promise.all(
     stale.map(async (row) => {
-      const m = await soccerProvider(competition, row.league_slug).getMatch(row.id);
+      const m = await soccerProvider(competition, row.league_slug)
+        .getMatch(row.id)
+        .catch(() => {
+          scoreboardFailed = true;
+          return null;
+        });
       if (!m) return;
       // The summary endpoint carries the score but not the round: its header
       // has no season slug, no competition note and no venue. Keep whatever
@@ -92,6 +99,13 @@ export async function refreshStaleMatches(
     }),
   );
   await upsertMatches(refreshed);
+
+  // Both scoreboard hosts refused: fall through to the backup feed so a
+  // finished match still closes out and its picks still grade.
+  if (scoreboardFailed && refreshed.length === 0) {
+    const recovered = await recoverFinishedMatches(competition);
+    return recovered.updated;
+  }
   return refreshed.length;
 }
 
