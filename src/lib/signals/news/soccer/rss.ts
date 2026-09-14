@@ -29,15 +29,20 @@ const USER_AGENT =
 
 const stripTags = (s: string) => s.replace(/<[^>]+>/g, "");
 
-const unescape = (s: string) =>
+const unescapeOnce = (s: string) =>
   s
     .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
     .replace(/&apos;/g, "'")
     .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">");
+    .replace(/&gt;/g, ">")
+    .replace(/&amp;/g, "&");
+
+// Feeds vary in how many times they escape: Google News ships `&amp;nbsp;`,
+// which only becomes a real space after a second pass. Two passes is enough
+// for everything we have seen and leaves ordinary text alone.
+const unescape = (s: string) => unescapeOnce(unescapeOnce(s));
 
 // Google News (and some Turkish desks) ship the description as entity-encoded
 // HTML (`&lt;a href=…&gt;`), so a single strip-then-decode pass would leave a

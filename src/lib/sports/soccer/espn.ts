@@ -18,6 +18,7 @@ import type {
   SoccerStanding,
   SoccerTeam,
   SquadPlayer,
+  TeamLeaders,
   TeamProfile,
   TeamStatLine,
 } from "./provider";
@@ -413,6 +414,22 @@ export class EspnSoccerProvider implements SoccerProvider {
         }>;
       }>;
       commentary?: Array<{ time?: { displayValue?: string }; text?: string }>;
+      leaders?: Array<{
+        team?: EspnTeam;
+        leaders?: Array<{
+          name?: string;
+          displayName?: string;
+          leaders?: Array<{
+            displayValue?: string;
+            shortDisplayValue?: string;
+            athlete?: {
+              displayName?: string;
+              shortName?: string;
+              position?: { abbreviation?: string };
+            };
+          }>;
+        }>;
+      }>;
     };
     let data: Summary;
     try {
@@ -473,8 +490,37 @@ export class EspnSoccerProvider implements SoccerProvider {
       .filter((c) => c.text)
       .reverse();
 
+    // ESPN phrases a goal leader as "Matches: 3, Goals: 2"; keep only the
+    // part that is the achievement, so a row reads "2 goals" not a sentence.
+    const tidy = (raw: string): string => {
+      const m = raw.match(/(Goals|Assists):\s*(\d+)/i);
+      if (!m) return raw;
+      const n = Number(m[2]);
+      const word = m[1].toLowerCase();
+      return `${n} ${n === 1 ? word.replace(/s$/, "") : word}`;
+    };
+    const leaders: TeamLeaders[] = (data.leaders ?? [])
+      .map((block) => ({
+        teamId: Number(block.team?.id),
+        categories: (block.leaders ?? [])
+          .map((c) => ({
+            key: c.name ?? "",
+            label: c.displayName ?? c.name ?? "",
+            entries: (c.leaders ?? [])
+              .map((l) => ({
+                player: l.athlete?.displayName ?? l.athlete?.shortName ?? "",
+                position: l.athlete?.position?.abbreviation ?? null,
+                value: tidy(l.displayValue ?? ""),
+              }))
+              .filter((e) => e.player && e.value),
+          }))
+          .filter((c) => c.entries.length > 0),
+      }))
+      .filter((b) => Number.isFinite(b.teamId) && b.categories.length > 0);
+
     return {
       match,
+      leaders,
       venue: data.gameInfo?.venue?.fullName ?? match.venue,
       attendance: data.gameInfo?.attendance ?? null,
       officials: (data.gameInfo?.officials ?? [])
