@@ -8,6 +8,10 @@ export type ScorePoint = {
   delta: number;
   outcome: "won" | "lost" | "void";
   recordedAt: string;
+  /** Optional context: which match and which pick moved the ledger here. */
+  matchId?: number | null;
+  matchup?: string | null;
+  pick?: string | null;
 };
 
 const W = 720;
@@ -183,13 +187,16 @@ function HoverCard({
   return (
     <div
       className={cx(
-        "pointer-events-none absolute top-2 glass-strong rounded-xl px-3 py-2 text-xs space-y-1 min-w-[160px]",
+        "pointer-events-none absolute top-2 glass-strong rounded-xl px-3 py-2 text-xs space-y-1 min-w-[160px] max-w-[15rem]",
         anchorRight ? "right-2" : "left-2",
       )}
       aria-hidden
     >
       <div className="font-mono tabular-nums text-foreground/55">
-        {new Date(point.recordedAt).toLocaleString()}
+        {new Date(point.recordedAt).toLocaleDateString(undefined, {
+          month: "short",
+          day: "numeric",
+        })}
       </div>
       <div className="flex items-center justify-between gap-3">
         <span className={cx("uppercase tracking-wider text-[10px]", tone)}>
@@ -199,6 +206,16 @@ function HoverCard({
           {point.delta > 0 ? `+${point.delta.toFixed(1)}` : point.delta.toFixed(1)}
         </span>
       </div>
+      {point.pick || point.matchup ? (
+        <div className="space-y-0.5 border-t border-white/8 pt-1">
+          {point.pick ? (
+            <div className="truncate font-semibold text-foreground/90">{point.pick}</div>
+          ) : null}
+          {point.matchup ? (
+            <div className="truncate text-[11px] text-foreground/55">{point.matchup}</div>
+          ) : null}
+        </div>
+      ) : null}
       <div className="flex items-center justify-between gap-3 pt-1 border-t border-white/8">
         <span className="text-foreground/55">Score</span>
         <span

@@ -2,6 +2,7 @@ import "server-only";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { MatchSide, SoccerMarket } from "@/lib/sports/types";
+import { sideLabel } from "./labels";
 import { QUALIFYING_STAGES, type SoccerCompetition } from "./competitions";
 
 // Read-side helpers for the /football pages. Public-read RLS lets the SSR
@@ -553,6 +554,10 @@ export type SoccerScorePoint = {
   delta: number;
   outcome: "won" | "lost" | "void";
   recordedAt: string;
+  /** Which match moved the ledger, so a step on the chart can be explained. */
+  matchId: number | null;
+  matchup: string | null;
+  pick: string | null;
 };
 
 // Running net-units history for a competition's ledger — the time series the
@@ -563,16 +568,65 @@ export async function getSoccerScoreHistory(
   const supabase = await createSupabaseServerClient();
   const { data } = await supabase
     .from("soccer_system_score_history")
-    .select("delta, outcome, score_after, recorded_at")
+    .select(
+      "delta, outcome, score_after, recorded_at, " +
+        "soccer_predictions(market, side, line, match_id, " +
+        "soccer_matches(home_score, away_score, " +
+        "home:soccer_teams!soccer_matches_home_team_id_fkey(name), " +
+        "away:soccer_teams!soccer_matches_away_team_id_fkey(name)))",
+    )
     .eq("competition", competition)
     .order("recorded_at", { ascending: true })
     .limit(500);
-  return (data ?? []).map((r) => ({
-    scoreAfter: Number(r.score_after),
-    delta: Number(r.delta),
-    outcome: r.outcome as "won" | "lost" | "void",
-    recordedAt: r.recorded_at as string,
-  }));
+
+  type RawHistoryPrediction = {
+    market: SoccerMarket;
+    side: MatchSide;
+    line: number | null;
+    match_id: number;
+    soccer_matches:
+      | {
+          home_score: number;
+          away_score: number;
+          home: { name: string } | { name: string }[] | null;
+          away: { name: string } | { name: string }[] | null;
+        }
+      | Array<{
+          home_score: number;
+          away_score: number;
+          home: { name: string } | { name: string }[] | null;
+          away: { name: string } | { name: string }[] | null;
+        }>
+      | null;
+  };
+
+  return ((data ?? []) as unknown as Array<{
+    delta: number;
+    outcome: string;
+    score_after: number;
+    recorded_at: string;
+    soccer_predictions: RawHistoryPrediction | RawHistoryPrediction[] | null;
+  }>).map((r) => {
+    const pred = one(r.soccer_predictions);
+    const match = one(pred?.soccer_matches ?? null);
+    const home = one(match?.home ?? null)?.name ?? null;
+    const away = one(match?.away ?? null)?.name ?? null;
+    return {
+      scoreAfter: Number(r.score_after),
+      delta: Number(r.delta),
+      outcome: r.outcome as "won" | "lost" | "void",
+      recordedAt: r.recorded_at,
+      matchId: pred?.match_id ?? null,
+      matchup:
+        home && away && match
+          ? `${home} ${match.home_score}–${match.away_score} ${away}`
+          : null,
+      pick:
+        pred && home && away
+          ? sideLabel(pred.market, pred.side, pred.line, home, away)
+          : null,
+    };
+  });
 }
 
 // The competition's showpiece result (the final) — for the archive header.
