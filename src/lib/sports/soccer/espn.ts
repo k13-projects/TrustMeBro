@@ -2,6 +2,7 @@ import "server-only";
 
 import { isoDateInProjectTz } from "@/lib/date";
 import { countryCrestUrl } from "./branding";
+import { recordFailure, recordSuccess, type SourceId } from "./provider-health";
 import {
   COMPETITIONS,
   DEFAULT_COMPETITION,
@@ -55,6 +56,10 @@ function alternateHost(base: string): string | null {
   return null;
 }
 
+function sourceOf(base: string): SourceId {
+  return base.startsWith(SITE_HOSTS[0]) ? "espn-site-web" : "espn-site";
+}
+
 async function fetchJson<T>(
   base: string,
   path: string,
@@ -66,13 +71,34 @@ async function fetchJson<T>(
   for (const [k, v] of Object.entries(query)) {
     if (v !== undefined) url.searchParams.set(k, v);
   }
-  const res = await fetch(url, {
-    headers: ESPN_HEADERS,
-    next: { revalidate: opts.revalidate ?? 60 },
-  });
-  if (res.status === 403 && !retried) {
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      headers: ESPN_HEADERS,
+      next: { revalidate: opts.revalidate ?? 60 },
+    });
+  } catch (err) {
+    // A network-level failure on the primary is the same story as a 403.
+    const alt = retried ? null : alternateHost(base);
+    const message = err instanceof Error ? err.message : String(err);
+    if (alt) {
+      await recordFailure(sourceOf(alt), `${sourceOf(base)}: ${message}`);
+      return fetchJson<T>(alt, path, query, opts, true);
+    }
+    throw err;
+  }
+
+  // The primary host answering 403 is exactly how the September outage
+  // looked: the other host serves the same payload, so switch and say so.
+  if ((res.status === 403 || res.status >= 500) && !retried) {
     const alt = alternateHost(base);
-    if (alt) return fetchJson<T>(alt, path, query, opts, true);
+    if (alt) {
+      await recordFailure(
+        sourceOf(alt),
+        `${sourceOf(base)} returned ${res.status} on ${path}`,
+      );
+      return fetchJson<T>(alt, path, query, opts, true);
+    }
   }
   if (!res.ok) {
     const body = await res.text().catch(() => "");
@@ -80,6 +106,9 @@ async function fetchJson<T>(
       `ESPN soccer ${res.status} ${res.statusText} on ${path}: ${body.slice(0, 200)}`,
     );
   }
+  // Always report which host actually served it, so a recovery onto the
+  // primary is noticed as soon as it happens.
+  await recordSuccess(sourceOf(base));
   return res.json() as Promise<T>;
 }
 
@@ -692,6 +721,25 @@ export class EspnSoccerProvider implements SoccerProvider {
       }
     }
     return out;
+  }
+}
+
+/**
+ * A cheap call to the primary host, used to find out whether an outage is
+ * over. Health is recorded by `fetchJson` either way, so a success here is
+ * what puts the site back on the primary and takes the banner down.
+ */
+export async function probePrimarySource(): Promise<boolean> {
+  try {
+    await fetchJson(
+      SITE_HOSTS[0],
+      "/uefa.champions/scoreboard",
+      { limit: "1" },
+      { revalidate: 0 },
+    );
+    return true;
+  } catch {
+    return false;
   }
 }
 

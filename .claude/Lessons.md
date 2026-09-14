@@ -14,3 +14,15 @@ Corrections and hard-won rules for this project. Append; never rewrite history.
 - **Safety nets now in place:** every competition sync re-reads matches that
   kicked off 3h+ ago and aren't final; a failed on-visit refresh does not
   update `last_run_at`, so it retries on the next visit.
+
+## 2026-09-14 — An upstream can fail silently; make it impossible
+- **Rule:** any third-party data source gets (a) a fallback, (b) a recorded
+  health state, (c) something visible on the page when the fallback is live,
+  and (d) an alert on the transition. A provider that fails quietly looks
+  exactly like a quiet week.
+- **Always return to the primary.** The fallback is never sticky: every call
+  tries the primary first, and while degraded each page view re-probes it in
+  the background so recovery needs no human and no cron.
+- **Test the fallback by breaking something real.** The recovery path was
+  proved by setting a finished match back to 0–0 "Halftime" and watching the
+  backup feed restore 1–0 Full Time, not by reading the code.
