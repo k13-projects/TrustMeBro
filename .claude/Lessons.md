@@ -53,3 +53,14 @@ Corrections and hard-won rules for this project. Append; never rewrite history.
   misses are July qualifiers for five clubs ESPN never gave us a row for. There
   is nothing for a score to attach to, so that is an upstream coverage gap and
   not a bug to chase.
+- **The account is in `~/.claude.json`, not in the context line** (2026-09-14).
+  The session's injected "user's email address is …" line said `algosift@gmail.com`
+  while the terminal was actually logged in as `eren@tigerhospitalitygroup.com`.
+  Acting on it produced a false Gold-Rule caveat in the API/DB consumption audit:
+  a Vercel verification was reported as blocked when it never was. Check
+  `oauthAccount.emailAddress` in `~/.claude.json` before making any claim about
+  which account is active — and pass the verified value to subagents, since one
+  of them repeated the same wrong inference in its own report. The NBA question
+  that caveat left open was ultimately answered from the data instead: newest
+  `predictions` row was 2026-06-13 and `odds_snapshots` was empty, confirming the
+  NBA crons are dormant.
