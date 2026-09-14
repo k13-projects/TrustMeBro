@@ -252,6 +252,13 @@ See `.env.example`. Required keys:
 - `SUPABASE_SERVICE_ROLE_KEY` — server-only, never `NEXT_PUBLIC_*`
 
 Add as needed (and update `.env.example`):
+**No paid APIs (Kazim, 2026-09-14).** The site runs on free tiers only. Do not
+propose, wire, or assume a paid plan for any data source — that includes the
+Odds API tier that would unlock domestic leagues, and any paid alerting or
+monitoring service. If a feature needs money, it does not get built; say so and
+stop. This is why outage alerting goes through the War Room rather than a
+hosted pager.
+
 - `ODDS_API_KEY` — The Odds API (https://the-odds-api.com). Load-bearing: `/api/cron/track-odds` needs it to pull player-prop snapshots, and `/api/cron/generate-predictions` produces zero picks without it (real odds gated). Free tier = 500 req/mo and player props cost 10x — expect to upgrade to ~$30/mo for steady-state.
 - `CRON_SECRET` — to protect `/api/cron/*` endpoints from unauthorized invocation
 - `NBA_LIGHT_MODE` — off-season toggle. `"true"` makes every NBA cron early-exit (`{skipped:true}`) via `src/app/api/cron/_light-mode.ts`. The Vercel schedule is left intact; unset to wake the NBA side. Soccer crons ignore it.
@@ -302,10 +309,15 @@ API key, logo, theme.
 - **Live competitions (2026-09-10):** Champions League, Europa League,
   Conference League (`uefa.champions`, `uefa.europa`, `uefa.europa.conf`, each
   with its `*_qual` ESPN feed). World Cup archived.
-- **Provider health + fallback (2026-09-14).** Three tiers, always preferring
-  the first: `site.web.api.espn.com` → `site.api.espn.com` → the core API
-  (`sports.core.api.espn.com`), which honours dates but returns `$ref` links,
-  so it is used only to close out finished matches so picks still grade.
+- **Provider health + fallback (2026-09-14).** Four tiers, always preferring
+  the first: `site.web.api.espn.com` → `site.api.espn.com` → **UEFA's own feed**
+  (`match.uefa.com/v5/matches`, `soccer/uefa.ts`) → ESPN's core API
+  (`sports.core.api.espn.com`), which honours dates but returns `$ref` links.
+  The last two only ever close out finished matches so picks still grade.
+  UEFA is the one source that shares no failure domain with ESPN, which is the
+  point of it; it needs no key and no account, but carries only results, so it
+  can never replace ESPN for stats, lineups, commentary or crests. It has
+  nothing to say about the World Cup (FIFA's competition, not UEFA's).
   `provider-health.ts` records which source served the data (migration 0028:
   `soccer_provider_health` + `soccer_provider_incidents`), `ProviderBanner`
   says so on every football page while degraded, and each transition posts to
@@ -313,6 +325,15 @@ API key, logo, theme.
   While degraded, every page view re-probes the primary after the response,
   so the site returns to it on its own. **Never let an upstream failure be
   silent** — that is what cost three days in September.
+- **How an outage reaches Kazim (2026-09-14).** Through the **K13 War Room**,
+  not email and not a paid pager. `/api/health` is public, unauthenticated and
+  free: one row, no secrets, always HTTP 200, with the state in the body so the
+  reader always gets the detail. The War Room's `selftest --live` canary reads
+  it, and raises the board's amber/red strip plus the SessionStart report when
+  `status` is anything but `ok`. Registered in
+  `K13-WarRoom/.k13/health-endpoints.json`. `status: "unknown"` (nothing has
+  reported yet) is deliberately not an alert. `ALERT_WEBHOOK_URL` still works
+  if one is ever set, but nothing depends on it being set.
 - **ESPN host (2026-09-13).** `site.api.espn.com` returns 403 to Vercel;
   every call goes through `site.web.api.espn.com` with a 403 fallback to the
   other host (`src/lib/sports/soccer/espn.ts`). See `.claude/Lessons.md`.
