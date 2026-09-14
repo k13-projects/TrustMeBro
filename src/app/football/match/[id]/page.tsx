@@ -21,6 +21,8 @@ import {
   getPublicCallSummary,
 } from "@/lib/sports/soccer/predictions-queries";
 import { hasKickedOff } from "@/lib/date";
+import { buildMatchPreview } from "@/lib/sports/soccer/match-preview";
+import { getStandingForTeam } from "@/lib/sports/soccer/queries";
 import { getSoccerRates, type MarketRates } from "@/lib/sports/soccer/rates";
 import { soccerProvider } from "@/lib/sports/soccer";
 import type { MatchDetail, RecentResult } from "@/lib/sports/soccer/provider";
@@ -32,6 +34,8 @@ import { MatchEvents } from "@/components/soccer/MatchEvents";
 import { MatchRates } from "@/components/soccer/MatchRates";
 import { OddsMovement } from "@/components/soccer/OddsMovement";
 import { PickLine } from "@/components/soccer/PickLine";
+import { MatchLeaders } from "@/components/soccer/MatchLeaders";
+import { MatchPreview } from "@/components/soccer/MatchPreview";
 import { ScoreCall } from "@/components/soccer/ScoreCall";
 import { SettledPickRow } from "@/components/soccer/SettledPickRow";
 import { ShareButton } from "@/components/soccer/ShareButton";
@@ -124,12 +128,37 @@ export default async function MatchPage({ params }: PageProps) {
     getOwnScoreCalls([matchId]),
     getPublicCallSummary([matchId]),
   ]);
+
   const { detail, events } = detailAndEvents;
   const callLocked = Boolean(match.datetime && hasKickedOff(match.datetime));
 
   const round = rounds.find((r) => r.matches.some((m) => m.id === match.id)) ?? null;
   const roundLabel = roundLabelFor(match, rounds);
   const markets = ratesByMatch.get(matchId) ?? [];
+
+  // A match that has not been played has no stats, lineups or commentary, so
+  // the page was mostly empty. Build the preview from what we do know.
+  const upcoming = match.state === "pre";
+  const [homeStanding, awayStanding] = upcoming
+    ? await Promise.all([
+        getStandingForTeam(match.competition, match.home.id),
+        getStandingForTeam(match.competition, match.away.id),
+      ])
+    : [null, null];
+  const preview =
+    upcoming && detail
+      ? buildMatchPreview({
+          match,
+          homeResults: detail.last_five.home,
+          awayResults: detail.last_five.away,
+          homeStanding,
+          awayStanding,
+          markets,
+          headToHead: h2h,
+          phaseLabel: meta.phaseLabel,
+        })
+      : null;
+
 
   // Live tracker: renders while in-play, within 20 min of kickoff (catches the
   // state flip pre → in), or finished (final snapshot, no polling). Beyond
@@ -199,6 +228,19 @@ export default async function MatchPage({ params }: PageProps) {
 
       <div className="grid gap-8 lg:grid-cols-3">
         <div className="space-y-10 lg:col-span-2">
+          {preview ? (
+            <MatchPreview match={match} preview={preview} national={kind === "flag"} />
+          ) : null}
+
+          {detail && detail.leaders.length > 0 ? (
+            <MatchLeaders
+              match={match}
+              leaders={detail.leaders}
+              national={kind === "flag"}
+              competitionLabel={meta.label}
+            />
+          ) : null}
+
           <EngineSection pending={pending} graded={graded} finished={match.state === "post"} />
 
           <section className="space-y-4">

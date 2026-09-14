@@ -90,6 +90,18 @@ export type Lineup = {
 
 export type CommentaryLine = { minute: string; text: string };
 
+/** A player who has produced in this competition, per ESPN's match summary. */
+export type LeaderEntry = {
+  player: string;
+  position: string | null;
+  value: string;
+};
+
+export type TeamLeaders = {
+  teamId: number;
+  categories: Array<{ key: string; label: string; entries: LeaderEntry[] }>;
+};
+
 // Everything ESPN's match summary gives us beyond the score: form, team stats,
 // lineups, officials, running commentary. Any block may be empty pre-match.
 export type MatchDetail = {
@@ -101,6 +113,8 @@ export type MatchDetail = {
   stats: { home: TeamStatLine[]; away: TeamStatLine[] };
   lineups: Lineup[];
   commentary: CommentaryLine[]; // newest first
+  /** Goals / assists / shots / saves leaders per side, competition to date. */
+  leaders: TeamLeaders[];
 };
 
 export type TeamProfile = {
