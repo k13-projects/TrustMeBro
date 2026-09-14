@@ -3,14 +3,22 @@ import Link from "next/link";
 import { todayIsoDate } from "@/lib/date";
 import { maybeRefresh } from "@/lib/ingest/refresh";
 import { activeCompetition } from "@/lib/sports/soccer/competition-cookie";
-import { COMPETITIONS } from "@/lib/sports/soccer/competitions";
+import { COMPETITIONS, type SoccerCompetition } from "@/lib/sports/soccer/competitions";
+import {
+  daysUntil,
+  deriveMovement,
+  getCompetitionNews,
+  getRoundEngineSummary,
+  lastCompletedRound,
+  nextUpcomingRound,
+  roundHighlights,
+  roundIsImminent,
+} from "@/lib/sports/soccer/home-queries";
 import { refreshFixturesWindow } from "@/lib/sports/soccer/live";
 import {
-  currentRound,
   getBankoPicks,
   getEngineCoupons,
   getFinalMatch,
-  getMatchesByDates,
   getRecentSettledPicks,
   getRounds,
   getSoccerScore,
@@ -18,9 +26,16 @@ import {
   type MatchRow as MatchRowT,
 } from "@/lib/sports/soccer/queries";
 import { getSoccerEngineStats } from "@/lib/scoring/stats";
+import { getFollowedFixtures } from "@/lib/sports/soccer/follow-queries";
 import { BankoCard } from "@/components/soccer/BankoCard";
 import { CouponCard } from "@/components/soccer/CouponCard";
 import { MatchRow } from "@/components/soccer/MatchRow";
+import { HomeCountdown } from "@/components/soccer/HomeCountdown";
+import { HomeFixtureRow } from "@/components/soccer/HomeFixtureRow";
+import { HomeMovers } from "@/components/soccer/HomeMovers";
+import { HomeReplay } from "@/components/soccer/HomeReplay";
+import { HomeStorylines } from "@/components/soccer/HomeStorylines";
+import { MyClubsStrip } from "@/components/soccer/MyClubsStrip";
 import { SettledPickRow } from "@/components/soccer/SettledPickRow";
 import { StandingsTable } from "@/components/soccer/StandingsTable";
 import { Hero } from "@/components/site/Hero";
@@ -90,12 +105,6 @@ export default async function FootballHome() {
     getRounds(competition),
     getStandings(competition),
   ]);
-  const round = currentRound(rounds, today);
-
-  const topBanko = banko.slice(0, 3);
-  const headlineCoupons = coupons
-    .filter((c) => c.target_multiplier !== null || c.kind === "surprise")
-    .slice(0, 3);
 
   if (!live) {
     return (
@@ -110,9 +119,35 @@ export default async function FootballHome() {
     );
   }
 
+  // Which of the two live modes to render. A round that is running, or one
+  // that kicks off within two days, gets the slate. Otherwise the section is
+  // in the gap European competitions leave between rounds — often a month —
+  // and needs to be about what just happened and what is coming.
+  const inProgress = rounds.find((r) => r.from <= today && r.to >= today) ?? null;
+  const next = nextUpcomingRound(rounds, today);
+  const imminent = !inProgress && roundIsImminent(next, 48);
+  const focusRound = inProgress ?? (imminent ? next : null);
+
+  if (!focusRound) {
+    return (
+      <BetweenMatchdays
+        competition={competition}
+        stats={stats}
+        rounds={rounds}
+        standings={standings}
+        today={today}
+      />
+    );
+  }
+
+  const topBanko = banko.slice(0, 3);
+  const headlineCoupons = coupons
+    .filter((c) => c.target_multiplier !== null || c.kind === "surprise")
+    .slice(0, 3);
+
   // The matchday in focus: its fixtures grouped by LA-day, today first when
   // the round is in progress.
-  const focusMatches = round?.matches ?? (await getMatchesByDates(competition, [today]));
+  const focusMatches = focusRound.matches;
   const byDate = new Map<string, MatchRowT[]>();
   for (const m of focusMatches) {
     const list = byDate.get(m.date) ?? [];
@@ -125,15 +160,11 @@ export default async function FootballHome() {
   const tableRows = tableKey ? (standings.get(tableKey) ?? []) : [];
   const leaguePhase = standings.size === 1 && tableRows.length > 8;
 
-  const heroEyebrow = round
-    ? `${meta.label} · ${round.label}`
-    : `${meta.label} · ${meta.seasonLabel}`;
-
   return (
     <div className="fade-up">
       <Hero
         stats={stats}
-        eyebrow={heroEyebrow}
+        eyebrow={`${meta.label} · ${focusRound.label}`}
         subtitle="Europe's elite, priced by forty books and de-vigged to the real probability, nudged by the league table. Every pick graded after the final whistle."
         primaryCta={{ href: "/football/picks", label: "This Matchday's Picks" }}
         secondaryCta={{ href: "/football/standings", label: "League Table" }}
@@ -185,19 +216,20 @@ export default async function FootballHome() {
 
       <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
         <SectionHeading
-          eyebrow={round ? `${meta.label} · ${round.label}` : `${meta.label} · Today`}
+          eyebrow={`${meta.label} · ${focusRound.label}`}
           title={
-            <>
-              {round?.kind === "league" ? (
-                <>
-                  Matchday <Accent theme={theme}>{round.label.replace("Matchday ", "")}</Accent>
-                </>
-              ) : (
-                <>
-                  This <Accent theme={theme}>Week</Accent>
-                </>
-              )}
-            </>
+            focusRound.kind === "league" ? (
+              <>
+                Matchday{" "}
+                <Accent theme={theme}>
+                  {focusRound.label.replace("Matchday ", "")}
+                </Accent>
+              </>
+            ) : (
+              <>
+                This <Accent theme={theme}>Week</Accent>
+              </>
+            )
           }
           trailing={
             <Link
@@ -208,28 +240,18 @@ export default async function FootballHome() {
             </Link>
           }
         />
-        {focusDates.length > 0 ? (
-          <div className="space-y-8">
-            {focusDates.map((d) => (
-              <div key={d} className="space-y-2">
-                <h3 className="text-center text-[11px] font-semibold uppercase tracking-[0.22em] text-foreground/45 sm:text-left">
-                  {dayHeading(d, today)}
-                </h3>
-                {(byDate.get(d) ?? []).map((m) => (
-                  <MatchRow key={m.id} match={m} />
-                ))}
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="rounded-2xl border border-border/60 bg-card/40 px-4 py-8 text-center text-sm text-foreground/55">
-            No matches scheduled this week. Check the{" "}
-            <Link href="/football/schedule" className="font-semibold text-primary">
-              schedule
-            </Link>
-            .
-          </p>
-        )}
+        <div className="space-y-8">
+          {focusDates.map((d) => (
+            <div key={d} className="space-y-2">
+              <h3 className="text-center text-[11px] font-semibold uppercase tracking-[0.22em] text-foreground/45 sm:text-left">
+                {dayHeading(d, today)}
+              </h3>
+              {(byDate.get(d) ?? []).map((m) => (
+                <MatchRow key={m.id} match={m} />
+              ))}
+            </div>
+          ))}
+        </div>
       </section>
 
       {leaguePhase ? (
@@ -258,6 +280,195 @@ export default async function FootballHome() {
               competition={competition}
             />
           </div>
+        </section>
+      ) : null}
+
+      <PillarRow />
+    </div>
+  );
+}
+
+// The gap between rounds. European competitions leave weeks between
+// matchdays, so with no slate to show the page becomes: when football is
+// back, what is coming, what just happened, and what changed.
+async function BetweenMatchdays({
+  competition,
+  stats,
+  rounds,
+  standings,
+  today,
+}: {
+  competition: SoccerCompetition;
+  stats: Awaited<ReturnType<typeof getSoccerEngineStats>>;
+  rounds: Awaited<ReturnType<typeof getRounds>>;
+  standings: Awaited<ReturnType<typeof getStandings>>;
+  today: string;
+}) {
+  const meta = COMPETITIONS[competition];
+  const theme = meta.theme;
+  const next = nextUpcomingRound(rounds, today);
+  const last = lastCompletedRound(rounds, today);
+
+  const [engine, news, followed] = await Promise.all([
+    last ? getRoundEngineSummary(last.matches.map((m) => m.id)) : Promise.resolve(null),
+    getCompetitionNews(competition, 4),
+    getFollowedFixtures(),
+  ]);
+
+  const tableKey = [...standings.keys()][0];
+  const tableRows = tableKey ? (standings.get(tableKey) ?? []) : [];
+  const movement =
+    last && tableRows.length > 0 ? deriveMovement(tableRows, last.matches) : null;
+  const highlights = last ? roundHighlights(last.matches) : [];
+
+  const nextKickoff =
+    next?.matches.find((m) => m.datetime)?.datetime ?? (next ? `${next.from}T12:00:00Z` : null);
+  const days = nextKickoff ? daysUntil(nextKickoff) : null;
+  const countdownLabel =
+    days === null ? "" : days === 0 ? "today" : days === 1 ? "tomorrow" : `in ${days} days`;
+  const nextDate = next
+    ? new Date(`${next.from}T12:00:00Z`).toLocaleDateString("en-US", {
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+      })
+    : null;
+
+  return (
+    <div className="fade-up">
+      <Hero
+        stats={stats}
+        eyebrow={
+          next ? `${meta.label} · ${next.label} · ${countdownLabel}` : `${meta.label} · ${meta.seasonLabel}`
+        }
+        subtitle={
+          next
+            ? `No ${meta.label} football until ${nextDate}. Here is where the competition stands, how the last round went, and what the engine made of it.`
+            : "The season's fixtures are complete. Here is where the competition stands."
+        }
+        primaryCta={{ href: "/football/predictions", label: "Call The Scores" }}
+        secondaryCta={{ href: "/football/standings", label: "League Table" }}
+      />
+
+      {followed.length > 0 ? (
+        <section className="mx-auto max-w-7xl px-4 pt-10 sm:px-6">
+          <SectionHeading
+            eyebrow="Yours"
+            title={
+              <>
+                Your <Accent theme={theme}>clubs</Accent>
+              </>
+            }
+            trailing={
+              <Link
+                href="/football/clubs"
+                className="text-sm font-semibold text-primary hover:text-primary-hover"
+              >
+                All clubs →
+              </Link>
+            }
+          />
+          <MyClubsStrip fixtures={followed} />
+        </section>
+      ) : null}
+
+      {next ? (
+        <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
+          <SectionHeading
+            eyebrow={`${meta.label} · Next up`}
+            title={
+              <>
+                {next.label} <Accent theme={theme}>{countdownLabel}</Accent>
+              </>
+            }
+            trailing={
+              <Link
+                href="/football/schedule"
+                className="text-sm font-semibold text-primary hover:text-primary-hover"
+              >
+                Full schedule →
+              </Link>
+            }
+          />
+          <div className="space-y-3">
+            <p className="text-sm text-foreground/55">
+              {nextDate}
+              {nextKickoff ? (
+                <>
+                  {" · "}
+                  <HomeCountdown target={nextKickoff} initialLabel={countdownLabel} />
+                </>
+              ) : null}
+              {". "}
+              Odds and picks land the day before kickoff.
+            </p>
+            <div className="divide-y divide-border/40 overflow-hidden rounded-2xl border border-border/60 bg-card/30">
+              {next.matches.slice(0, 9).map((m) => (
+                <HomeFixtureRow key={m.id} match={m} />
+              ))}
+            </div>
+            {next.matches.length > 9 ? (
+              <p className="text-xs text-foreground/45">
+                and {next.matches.length - 9} more on the schedule.
+              </p>
+            ) : null}
+          </div>
+        </section>
+      ) : null}
+
+      {last ? (
+        <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
+          <SectionHeading
+            eyebrow={`${meta.label} · Last time out`}
+            title={
+              <>
+                {last.label} <Accent theme={theme}>replayed</Accent>
+              </>
+            }
+          />
+          <HomeReplay round={last} highlights={highlights} engine={engine} />
+        </section>
+      ) : null}
+
+      {movement && last ? (
+        <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
+          <SectionHeading
+            eyebrow={`${meta.label} · ${meta.phaseLabel}`}
+            title={
+              <>
+                Where they <Accent theme={theme}>stand</Accent>
+              </>
+            }
+          />
+          <div className="mx-auto max-w-3xl">
+            <HomeMovers
+              moves={movement.moves}
+              firstTable={movement.firstTable}
+              roundLabel={last.label}
+            />
+          </div>
+        </section>
+      ) : null}
+
+      {news.length > 0 ? (
+        <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
+          <SectionHeading
+            eyebrow={`${meta.label} · Storylines`}
+            title={
+              <>
+                While we <Accent theme={theme}>wait</Accent>
+              </>
+            }
+            trailing={
+              <Link
+                href="/football/news"
+                className="text-sm font-semibold text-primary hover:text-primary-hover"
+              >
+                All news →
+              </Link>
+            }
+          />
+          <HomeStorylines items={news} />
         </section>
       ) : null}
 

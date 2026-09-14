@@ -21,6 +21,8 @@ import { getRequester } from "@/lib/identity";
 import { getEngineStats, getSoccerEngineStats } from "@/lib/scoring/stats";
 import { touchProfilePresence } from "@/lib/bros/presence";
 import { activeSport } from "@/lib/sports/sport-cookie";
+import { SPORTS } from "@/lib/sports/registry";
+import { BottomBar } from "@/components/site/BottomBar";
 import { activeCompetition } from "@/lib/sports/soccer/competition-cookie";
 import { COMPETITIONS } from "@/lib/sports/soccer/competitions";
 
@@ -104,7 +106,9 @@ export default async function RootLayout({
       data-scroll-behavior="smooth"
       className={`dark ${geistSans.variable} ${geistMono.variable} ${anton.variable} ${archivoBlack.variable} ${permanentMarker.variable} ${bowlbyOne.variable} ${barlowCondensed.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col font-sans">
+      {/* pb on mobile so the fixed bottom bar never covers the end of the
+          page, footer included; from md there is no bar. */}
+      <body className="min-h-full flex flex-col font-sans pb-16 md:pb-0">
         <a
           href="#main"
           className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-full focus:bg-primary focus:text-primary-foreground focus:px-4 focus:py-2 focus:text-sm focus:font-medium"
@@ -141,6 +145,7 @@ export default async function RootLayout({
             <ChatLauncher sport={sport} />
           </CartShell>
 
+          <BottomBar sport={sport} entries={SPORTS[sport].nav} />
           <Toaster />
         </TooltipProvider>
 

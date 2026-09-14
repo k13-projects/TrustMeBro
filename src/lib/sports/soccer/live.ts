@@ -65,7 +65,7 @@ export async function refreshStaleMatches(
   const cutoff = new Date(Date.now() - 3 * 3600 * 1000).toISOString();
   const { data } = await supabase
     .from("soccer_matches")
-    .select("id, league_slug")
+    .select("id, league_slug, stage, grp, venue")
     .eq("competition", competition)
     .eq("finished", false)
     .lt("datetime", cutoff)
@@ -78,7 +78,17 @@ export async function refreshStaleMatches(
   await Promise.all(
     stale.map(async (row) => {
       const m = await soccerProvider(competition, row.league_slug).getMatch(row.id);
-      if (m) refreshed.push(m);
+      if (!m) return;
+      // The summary endpoint carries the score but not the round: its header
+      // has no season slug, no competition note and no venue. Keep whatever
+      // the scoreboard already told us rather than blanking the round, which
+      // would strand the match outside its matchday.
+      refreshed.push({
+        ...m,
+        stage: m.stage ?? row.stage,
+        group: m.group ?? row.grp,
+        venue: m.venue ?? row.venue,
+      });
     }),
   );
   await upsertMatches(refreshed);

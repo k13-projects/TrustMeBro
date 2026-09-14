@@ -13,6 +13,22 @@ export const SPORT_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 // importable from client components (the toggle, the nav).
 export type NavItem = { href: string; label: string; exact?: boolean };
 
+// A sport's primary nav is a short list of entries, where an entry is either a
+// single link or a labelled group. Twelve flat links only fitted from 1536px,
+// which hid the entire navigation behind a hamburger on an ordinary laptop;
+// grouping gets the row back onto the screen without losing a destination.
+export type NavGroup = { label: string; items: NavItem[] };
+export type NavEntry = NavItem | NavGroup;
+
+export function isNavGroup(entry: NavEntry): entry is NavGroup {
+  return "items" in entry;
+}
+
+/** Every destination, groups opened out — for the drawer and the bottom bar. */
+export function flattenNav(entries: readonly NavEntry[]): NavItem[] {
+  return entries.flatMap((e) => (isNavGroup(e) ? e.items : [e]));
+}
+
 export type SportMeta = {
   sport: Sport;
   label: string; // human nav label: "Basketball" / "Football"
@@ -22,7 +38,7 @@ export type SportMeta = {
   /** Root section path for this sport. NBA is the legacy root; football is additive. */
   home: string;
   accent: string; // section accent hex (gold master-brand by default)
-  nav: NavItem[]; // primary nav for this sport
+  nav: NavEntry[]; // primary nav for this sport
 };
 
 export const SPORTS: Record<Sport, SportMeta> = {
@@ -36,14 +52,29 @@ export const SPORTS: Record<Sport, SportMeta> = {
     accent: "#FFB800",
     nav: [
       { href: "/", label: "Home", exact: true },
-      { href: "/#picks", label: "Picks" },
-      { href: "/games", label: "Games" },
-      { href: "/results", label: "Results" },
+      {
+        label: "Matches",
+        items: [
+          { href: "/games", label: "Games" },
+          { href: "/results", label: "Results" },
+          { href: "/teams", label: "Teams" },
+        ],
+      },
+      {
+        label: "Picks",
+        items: [
+          { href: "/#picks", label: "Today's Picks" },
+          { href: "/scorecard", label: "Scorecard" },
+        ],
+      },
+      {
+        label: "Play",
+        items: [
+          { href: "/bros", label: "Bro Board" },
+          { href: "/history", label: "History" },
+        ],
+      },
       { href: "/news", label: "News" },
-      { href: "/teams", label: "Teams" },
-      { href: "/bros", label: "Bro Board" },
-      { href: "/scorecard", label: "Scorecard" },
-      { href: "/history", label: "History" },
     ],
   },
   soccer: {
@@ -56,17 +87,34 @@ export const SPORTS: Record<Sport, SportMeta> = {
     accent: "#FFB800",
     nav: [
       { href: "/football", label: "Home", exact: true },
-      { href: "/football/schedule", label: "Schedule" },
-      { href: "/football/standings", label: "Standings" },
-      { href: "/football/bracket", label: "Bracket" },
-      { href: "/football/rates", label: "Odds" },
-      { href: "/football/value", label: "Value" },
-      { href: "/football/picks", label: "Picks" },
-      { href: "/football/predictions", label: "Predictions" },
-      { href: "/football/scoreboard", label: "Scoreboard" },
+      {
+        label: "Matches",
+        items: [
+          { href: "/football/schedule", label: "Schedule" },
+          { href: "/football/standings", label: "Standings" },
+          { href: "/football/bracket", label: "Bracket" },
+          { href: "/football/clubs", label: "Clubs" },
+        ],
+      },
+      {
+        label: "Picks",
+        items: [
+          { href: "/football/picks", label: "Engine Picks" },
+          { href: "/football/value", label: "Best Value" },
+          { href: "/football/rates", label: "Odds" },
+          { href: "/football/scoreboard", label: "Scoreboard" },
+          { href: "/football/glossary", label: "How To Read" },
+        ],
+      },
+      {
+        label: "Play",
+        items: [
+          { href: "/football/predictions", label: "Predictions" },
+          { href: "/bros", label: "Bro Board" },
+          { href: "/history", label: "History" },
+        ],
+      },
       { href: "/football/news", label: "News" },
-      { href: "/bros", label: "Bro Board" },
-      { href: "/history", label: "History" },
     ],
   },
 };

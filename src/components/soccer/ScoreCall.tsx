@@ -6,6 +6,7 @@ import { Minus, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { MatchBanner } from "./MatchBanner";
 import { GuestPicker } from "@/components/auth/GuestPicker";
+import { LocalTime } from "@/components/site/LocalTime";
 import { cx, disabledStyles, focusRingInset } from "@/lib/design/tokens";
 import type { SoccerCompetition } from "@/lib/sports/soccer/competitions";
 
@@ -290,7 +291,9 @@ export function ScoreCall({
         {saving ? "Saving…" : call ? "Update call" : "Save call"}
       </button>
       <p className="text-center text-[11px] text-foreground/45">
-        Locks at kickoff, {kickoffLabel(kickoff)} — edit anytime before then.
+        Locks at kickoff,{" "}
+        <LocalTime iso={kickoff} fallback={kickoffLabel(kickoff)} format="dayTime" /> — edit
+        anytime before then.
       </p>
     </div>
   );

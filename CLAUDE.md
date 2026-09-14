@@ -311,6 +311,17 @@ API key, logo, theme.
   record, news), `/football/value` (edge board, 15% floor, pre-match only),
   `/football/bracket` (ties via `bracket.ts`; needs `winner_team_id` for
   shoot-outs, migration 0025), scoreboard breakdown (`getEngineBreakdown`).
+- **Wave 3, usability (2026-09-13).** The football home has three modes:
+  matchday slate, **between matchdays** (countdown, next round, last round
+  replayed, derived table movement, storylines — `home-queries.ts` +
+  `Home*` components), and the archive. Nav is grouped (`NavEntry` /
+  `NavGroup` in `registry.ts`) so the desktop row fits from 1024 instead of
+  1536, with `BottomBar` on phones. Kickoffs render in the viewer's zone via
+  `src/lib/tz.ts` + `<LocalTime>` + a footer toggle — **`PROJECT_TIMEZONE`
+  remains the canonical day boundary and must not change**. Search palette
+  (Cmd-K, `/api/soccer/search`, accent-folded `name_search`, alias table),
+  following clubs (`soccer_team_follows`, migration 0026), `/football/clubs`,
+  `/football/glossary`, and URL-driven filters on the Value board.
 - **Wave 2 (2026-09-13).** Live tracker on match pages (`LiveTracker` +
   `/api/soccer/matches/[id]/live`; in-play win probability from
   `live-prob.ts`, Poisson on the pre-match consensus), bro score predictions

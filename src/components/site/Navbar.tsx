@@ -3,6 +3,7 @@ import { NavLinks } from "@/components/site/NavLinks";
 import { MobileNav } from "@/components/MobileNav";
 import { IdentityBadge } from "@/components/auth/IdentityBadge";
 import { SportToggle } from "@/components/sports/SportToggle";
+import { SearchTrigger } from "@/components/soccer/SearchTrigger";
 import { SPORTS } from "@/lib/sports/registry";
 import type { Sport } from "@/lib/sports/types";
 
@@ -31,7 +32,6 @@ export function Navbar({
   const dense = navItems.length > 6;
   // Football's nav (11 items with Bracket + Value) doesn't fit until 2xl;
   // below that the hamburger carries it. All three surfaces share the tier.
-  const ultra = navItems.length > 9;
   return (
     <header className="sticky top-0 z-30">
       <div
@@ -48,19 +48,19 @@ export function Navbar({
             logo-float keyframe) is identical to the previous inline render. */}
         <LogoLink />
 
-        <NavLinks items={navItems} dense={dense} ultra={ultra} />
+        <NavLinks items={navItems} dense={dense} />
 
         <div className="flex items-center gap-2">
+          <SearchTrigger />
           <SportToggle
             active={sport}
             competitionLogo={competitionLogo}
             competitionLabel={competitionLabel}
           />
-          <IdentityBadge dense={dense} ultra={ultra} />
+          <IdentityBadge dense={dense} />
           <MobileNav
             items={navItems}
             dense={dense}
-            ultra={ultra}
             identity={
               identity
                 ? {

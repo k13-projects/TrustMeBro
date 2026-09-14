@@ -4,10 +4,11 @@ import { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cx, focusRing } from "@/lib/design/tokens";
+import { isNavGroup, type NavEntry, type NavItem } from "@/lib/sports/registry";
 
-type Item = { href: string; label: string; exact?: boolean };
+type Item = NavItem;
 
-const DEFAULT_ITEMS: Item[] = [
+const DEFAULT_ITEMS: NavEntry[] = [
   { href: "/", label: "Picks", exact: true },
   { href: "/games", label: "Games" },
   { href: "/results", label: "Results" },
@@ -27,14 +28,12 @@ export function MobileNav({
   identity,
   items,
   dense = false,
-  ultra = false,
 }: {
   identity?: Identity;
-  items?: ReadonlyArray<Item>;
+  items?: ReadonlyArray<NavEntry>;
   dense?: boolean;
-  ultra?: boolean;
 } = {}) {
-  const ITEMS = items ?? DEFAULT_ITEMS;
+  const ITEMS: ReadonlyArray<NavEntry> = items ?? DEFAULT_ITEMS;
   const pathname = usePathname() ?? "/";
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -71,7 +70,7 @@ export function MobileNav({
   return (
     <div
       ref={containerRef}
-      className={cx(ultra ? "2xl:hidden" : dense ? "xl:hidden" : "lg:hidden", "relative")}
+      className={cx(dense ? "xl:hidden" : "lg:hidden", "relative")}
     >
       <button
         type="button"
@@ -114,28 +113,20 @@ export function MobileNav({
           role="menu"
           className="absolute right-0 top-11 z-40 w-56 rounded-2xl border border-white/10 bg-[#0b0d14] p-2 space-y-1 shadow-[0_20px_60px_rgba(0,0,0,0.6)]"
         >
-          {ITEMS.map((item) => {
-            const active = item.exact
-              ? pathname === item.href
-              : pathname === item.href || pathname.startsWith(`${item.href}/`);
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                role="menuitem"
-                aria-current={active ? "page" : undefined}
-                className={cx(
-                  "block rounded-xl px-3 py-2 text-sm",
-                  active
-                    ? "bg-white/12 text-foreground"
-                    : "text-foreground/75 hover:bg-white/5 hover:text-foreground",
-                  focusRing,
-                )}
-              >
-                {item.label}
-              </Link>
-            );
-          })}
+          {ITEMS.map((entry) =>
+            isNavGroup(entry) ? (
+              <div key={entry.label} className="pt-1">
+                <div className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-foreground/40">
+                  {entry.label}
+                </div>
+                {entry.items.map((item) => (
+                  <DrawerLink key={item.href} item={item} pathname={pathname} />
+                ))}
+              </div>
+            ) : (
+              <DrawerLink key={entry.href} item={entry} pathname={pathname} />
+            ),
+          )}
           {identity ? (
             <form
               action="/api/auth/signout"
@@ -173,5 +164,27 @@ export function MobileNav({
         </div>
       ) : null}
     </div>
+  );
+}
+
+function DrawerLink({ item, pathname }: { item: Item; pathname: string }) {
+  const active = item.exact
+    ? pathname === item.href
+    : pathname === item.href || pathname.startsWith(`${item.href}/`);
+  return (
+    <Link
+      href={item.href}
+      role="menuitem"
+      aria-current={active ? "page" : undefined}
+      className={cx(
+        "block rounded-xl px-3 py-2 text-sm",
+        active
+          ? "bg-white/12 text-foreground"
+          : "text-foreground/75 hover:bg-white/5 hover:text-foreground",
+        focusRing,
+      )}
+    >
+      {item.label}
+    </Link>
   );
 }

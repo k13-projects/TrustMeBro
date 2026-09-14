@@ -32,8 +32,8 @@ export function ChatLauncher({
   const drawerOpen = cart.isOpen;
   const visibility = drawerOpen ? "hidden sm:inline-flex" : "inline-flex";
   const position = drawerOpen
-    ? "fixed bottom-6 right-[436px] z-[60]"
-    : "fixed bottom-6 right-6 z-40";
+    ? "fixed bottom-[4.75rem] md:bottom-6 right-[436px] z-[60]"
+    : "fixed bottom-[4.75rem] md:bottom-6 right-6 z-40";
 
   return (
     <>
