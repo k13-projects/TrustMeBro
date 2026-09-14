@@ -5,9 +5,17 @@ type Props = {
   title: React.ReactNode;
   trailing?: React.ReactNode;
   className?: string;
+  /** Page-level headings pass "h1"; section headings keep the default. */
+  as?: "h1" | "h2";
 };
 
-export function SectionHeading({ eyebrow, title, trailing, className }: Props) {
+export function SectionHeading({
+  eyebrow,
+  title,
+  trailing,
+  className,
+  as: Heading = "h2",
+}: Props) {
   return (
     <div
       className={cn(
@@ -21,9 +29,9 @@ export function SectionHeading({ eyebrow, title, trailing, className }: Props) {
             {eyebrow}
           </p>
         ) : null}
-        <h2 className="mt-1 font-display uppercase text-[clamp(2rem,4.4vw,3.4rem)] leading-[0.95] tracking-[-0.01em] text-foreground">
+        <Heading className="mt-1 font-display uppercase text-[clamp(2rem,4.4vw,3.4rem)] leading-[0.95] tracking-[-0.01em] text-foreground">
           {title}
-        </h2>
+        </Heading>
       </div>
       {trailing ? <div className="mb-1">{trailing}</div> : null}
     </div>

@@ -62,7 +62,7 @@ export function FollowButton({
       title={following ? `Unfollow ${teamName}` : `Follow ${teamName}`}
       className={cx(
         "inline-flex shrink-0 items-center gap-1.5 rounded-full border font-semibold uppercase tracking-wide transition-colors",
-        sm ? "px-2 py-1 text-[10px]" : "px-3 py-1.5 text-[11px]",
+        sm ? "min-h-6 px-2 py-1.5 text-[10px]" : "min-h-8 px-3 py-1.5 text-[11px]",
         following
           ? "border-primary/60 bg-primary/15 text-primary"
           : "border-border/70 text-foreground/60 hover:border-primary/50 hover:text-foreground",

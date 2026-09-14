@@ -115,7 +115,7 @@ export function SoccerNewsCard({
                 href={item.source_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-[11px] uppercase tracking-[0.18em] text-primary transition-opacity hover:opacity-80"
+                className="inline-block py-1 -my-1 text-[11px] uppercase tracking-[0.18em] text-primary transition-opacity hover:opacity-80"
               >
                 Read on {item.outlet} ↗
               </a>

@@ -43,7 +43,7 @@ export default async function ClubsPage() {
               <TeamCrest crest={c.crest} name={c.name} size={26} />
               <Link
                 href={`/football/club/${c.id}`}
-                className="min-w-0 flex-1 truncate text-sm font-semibold hover:text-primary"
+                className="min-w-0 flex-1 truncate py-1 -my-1 text-sm font-semibold hover:text-primary"
               >
                 {c.name}
                 {c.rank !== null ? (

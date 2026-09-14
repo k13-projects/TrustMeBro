@@ -66,7 +66,7 @@ export default async function PredictionsPage() {
           </div>
           <Link
             href="/football/schedule"
-            className="text-sm font-semibold text-primary hover:text-primary-hover"
+            className="inline-block py-1 -my-1 text-sm font-semibold text-primary hover:text-primary-hover"
           >
             Full schedule →
           </Link>

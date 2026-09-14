@@ -79,7 +79,7 @@ function TieCard({ tie, flags }: { tie: Tie; flags: boolean }) {
               </span>
               <Link
                 href={`/football/club/${r.team.id}`}
-                className={`min-w-0 flex-1 truncate text-sm font-semibold hover:text-primary ${
+                className={`min-w-0 flex-1 truncate py-1 -my-1 text-sm font-semibold hover:text-primary ${
                   won ? "text-primary" : ""
                 }`}
               >
@@ -101,7 +101,7 @@ function TieCard({ tie, flags }: { tie: Tie; flags: boolean }) {
           <Link
             key={leg.id}
             href={`/football/match/${leg.id}`}
-            className="inline-flex items-center gap-1 hover:text-foreground"
+            className="inline-flex items-center gap-1 py-1.5 -my-1 hover:text-foreground"
             title={`${leg.home.name} v ${leg.away.name}`}
           >
             <span>{single ? "Match" : `Leg ${i + 1}`}</span>

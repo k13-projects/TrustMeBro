@@ -69,7 +69,11 @@ export function FilterBar({
       <p className="flex flex-wrap items-center gap-2 text-xs text-foreground/50">
         <span>{summary}</span>
         {anyActive ? (
-          <Link href={base} scroll={false} className="font-semibold text-primary">
+          <Link
+            href={base}
+            scroll={false}
+            className="inline-block py-1 -my-1 font-semibold text-primary"
+          >
             Clear filters
           </Link>
         ) : null}

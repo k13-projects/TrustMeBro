@@ -34,7 +34,7 @@ export function HomeMovers({
       </div>
       <Link
         href="/football/standings"
-        className="inline-block text-sm font-semibold text-primary hover:text-primary-hover"
+        className="inline-block py-1 -my-1 text-sm font-semibold text-primary hover:text-primary-hover"
       >
         Full table →
       </Link>
@@ -71,7 +71,7 @@ function Group({
             <TeamCrest crest={m.row.team.crest} name={m.row.team.name} size={20} />
             <Link
               href={`/football/club/${m.row.team.id}`}
-              className="min-w-0 flex-1 truncate text-sm font-semibold hover:text-primary"
+              className="min-w-0 flex-1 truncate py-1 -my-1 text-sm font-semibold hover:text-primary"
             >
               {m.row.team.name}
             </Link>
