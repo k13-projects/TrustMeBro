@@ -10,11 +10,12 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 // outside. Failures are recorded, the site says so on the page, and the
 // transition into and out of trouble fires an alert.
 
-export type SourceId = "espn-site-web" | "espn-site" | "espn-core";
+export type SourceId = "espn-site-web" | "espn-site" | "uefa" | "espn-core";
 
 export const SOURCE_LABEL: Record<SourceId, string> = {
   "espn-site-web": "ESPN",
   "espn-site": "ESPN (secondary host)",
+  uefa: "UEFA",
   "espn-core": "ESPN (backup feed)",
 };
 

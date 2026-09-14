@@ -39,7 +39,6 @@ const CLUB_ALIASES: Record<string, string> = {
   "sporting lisbon": "sporting cp",
   "sporting clube de portugal": "sporting cp",
   "fc copenhagen": "fc kobenhavn",
-  "red star belgrade": "crvena zvezda",
   "crvena zvezda": "red star belgrade",
   olympiakos: "olympiacos",
   "olympiakos piraeus": "olympiacos",
@@ -206,6 +205,41 @@ const CLUB_ALIASES: Record<string, string> = {
   "lausanne": "lausanne sport",
   "lausanne-sport": "lausanne sport",
   "jagiellonia": "jagiellonia bialystok",
+  // How UEFA's own feed writes these, where no general rule would get there.
+  atleti: "atletico madrid",
+  paris: "paris saint-germain",
+  "iberia tbilisi": "iberia 1999",
+  hearts: "heart of midlothian",
+  "at escaldes": "atletic club descaldes",
+  "atletic escaldes": "atletic club descaldes",
+  "h boltfelag": "hb torshavn",
+  "havnar boltfelag": "hb torshavn",
+  thun: "fc thun",
+  copenhagen: "fc kobenhavn",
+  kobenhavn: "fc kobenhavn",
+  "inter escaldes": "inter descaldes",
+  "sk rapid": "rapid vienna",
+  "rapid wien": "rapid vienna",
+  "sk rapid wien": "rapid vienna",
+  "austria wien": "austria vienna",
+  "fk austria wien": "austria vienna",
+  borac: "borac banja luka",
+  celje: "nk celje",
+  aarhus: "agf",
+  "gnk dinamo": "dinamo zagreb",
+  "h beer-sheva": "hapoel beer",
+  "hapoel beer-sheva": "hapoel beer",
+  "inter turku": "inter turku",
+  "gyori eto": "gyori eto fc",
+  "the new saints": "the new saints",
+  "b dortmund": "borussia dortmund",
+  "s bratislava": "slovan bratislava",
+  "m tel-aviv": "maccabi tel aviv",
+  "sh donetsk": "shakhtar donetsk",
+  "d zagreb": "dinamo zagreb",
+  "r madrid": "real madrid",
+  "a madrid": "atletico madrid",
+
   "sturm graz": "sk sturm graz",
   "young boys": "bsc young boys",
   "celtic fc": "celtic",
@@ -282,6 +316,23 @@ function tokens(name: string): string[] {
     .filter((t) => t && !NOISE.has(t));
 }
 
+/**
+ * Whether two name tokens refer to the same thing. UEFA abbreviates where
+ * ESPN spells out — "S. Bratislava" for Slovan, "B. Dortmund" for Borussia,
+ * "Vikingur R." for Reykjavík — so an initial matches a word starting with
+ * it, and a shortened word matches the longer one it opens. Both sides of a
+ * fixture still have to clear the bar in `resolveMatch`, and an ambiguous
+ * best refuses to guess, so loosening this cannot silently mis-assign a score.
+ */
+function tokenMatches(a: string, b: string): boolean {
+  if (a === b) return true;
+  if (a.length === 1) return b.startsWith(a);
+  if (b.length === 1) return a.startsWith(b);
+  if (a.length >= 5 && b.startsWith(a)) return true;
+  if (b.length >= 5 && a.startsWith(b)) return true;
+  return false;
+}
+
 // 0..1 similarity between two team names. 1 = canonical-equal. Otherwise the
 // Dice coefficient over identity tokens, with a floor bonus when one name is
 // wholly contained in the other ("Sabah" ⊂ "Sabah FK").
@@ -292,8 +343,15 @@ export function teamSimilarity(a: string, b: string): number {
   const ta = tokens(a);
   const tb = tokens(b);
   if (ta.length === 0 || tb.length === 0) return 0;
-  const setB = new Set(tb);
-  const shared = ta.filter((t) => setB.has(t)).length;
+  const used = new Set<number>();
+  let shared = 0;
+  for (const t of ta) {
+    const i = tb.findIndex((u, idx) => !used.has(idx) && tokenMatches(t, u));
+    if (i >= 0) {
+      used.add(i);
+      shared += 1;
+    }
+  }
   if (shared === 0) return 0;
   const dice = (2 * shared) / (ta.length + tb.length);
   const contained = shared === Math.min(ta.length, tb.length);
