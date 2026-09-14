@@ -31,7 +31,6 @@ import { BankoCard } from "@/components/soccer/BankoCard";
 import { CouponCard } from "@/components/soccer/CouponCard";
 import { MatchRow } from "@/components/soccer/MatchRow";
 import { HomeCountdown } from "@/components/soccer/HomeCountdown";
-import { HomeFixtureRow } from "@/components/soccer/HomeFixtureRow";
 import { HomeMovers } from "@/components/soccer/HomeMovers";
 import { HomeReplay } from "@/components/soccer/HomeReplay";
 import { HomeStorylines } from "@/components/soccer/HomeStorylines";
@@ -323,6 +322,17 @@ async function BetweenMatchdays({
 
   const nextKickoff =
     next?.matches.find((m) => m.datetime)?.datetime ?? (next ? `${next.from}T12:00:00Z` : null);
+  // Group the next round's fixtures by day, the way the schedule page does,
+  // and show the first day in full rather than an arbitrary slice.
+  const nextShown = (next?.matches ?? []).slice(0, 6);
+  const nextShownCount = nextShown.length;
+  const nextByDate: Array<[string, MatchRowT[]]> = [];
+  for (const m of nextShown) {
+    const last = nextByDate[nextByDate.length - 1];
+    if (last && last[0] === m.date) last[1].push(m);
+    else nextByDate.push([m.date, [m]]);
+  }
+
   const days = nextKickoff ? daysUntil(nextKickoff) : null;
   const countdownLabel =
     days === null ? "" : days === 0 ? "today" : days === 1 ? "tomorrow" : `in ${days} days`;
@@ -402,15 +412,25 @@ async function BetweenMatchdays({
               {". "}
               Odds and picks land the day before kickoff.
             </p>
-            <div className="divide-y divide-border/40 overflow-hidden rounded-2xl border border-border/60 bg-card/30">
-              {next.matches.slice(0, 9).map((m) => (
-                <HomeFixtureRow key={m.id} match={m} />
+            <div className="space-y-6">
+              {nextByDate.map(([day, dayMatches]) => (
+                <div key={day} className="space-y-2">
+                  <h3 className="text-center text-[11px] font-semibold uppercase tracking-[0.22em] text-foreground/45 sm:text-left">
+                    {dayHeading(day, today)}
+                  </h3>
+                  {dayMatches.map((m) => (
+                    <MatchRow key={m.id} match={m} />
+                  ))}
+                </div>
               ))}
             </div>
-            {next.matches.length > 9 ? (
-              <p className="text-xs text-foreground/45">
-                and {next.matches.length - 9} more on the schedule.
-              </p>
+            {nextShownCount < next.matches.length ? (
+              <Link
+                href={`/football/schedule?round=${encodeURIComponent(next.key)}`}
+                className="inline-block text-sm font-semibold text-primary hover:text-primary-hover"
+              >
+                All {next.matches.length} fixtures →
+              </Link>
             ) : null}
           </div>
         </section>

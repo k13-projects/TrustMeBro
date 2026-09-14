@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { Highlight, RoundEngineSummary } from "@/lib/sports/soccer/home-queries";
 import type { Round } from "@/lib/sports/soccer/queries";
-import { HomeFixtureRow } from "./HomeFixtureRow";
+import { MatchRow } from "./MatchRow";
 
 // The round just played, for someone arriving in the gap between matchdays:
 // what stood out, how the engine did on it, and every result.
@@ -16,6 +16,9 @@ export function HomeReplay({
 }) {
   const results = round.matches.filter((m) => m.finished);
   if (results.length === 0) return null;
+  // A round is eighteen matches; the home page shows a handful in the
+  // section's own style and links out for the rest.
+  const shown = results.slice(0, 6);
 
   return (
     <div className="space-y-5">
@@ -69,11 +72,20 @@ export function HomeReplay({
         </div>
       ) : null}
 
-      <div className="divide-y divide-border/40 overflow-hidden rounded-2xl border border-border/60 bg-card/30">
-        {results.map((m) => (
-          <HomeFixtureRow key={m.id} match={m} showResult />
+      <div className="space-y-3">
+        {shown.map((m) => (
+          <MatchRow key={m.id} match={m} />
         ))}
       </div>
+
+      {results.length > shown.length ? (
+        <Link
+          href={`/football/schedule?round=${encodeURIComponent(round.key)}`}
+          className="inline-block text-sm font-semibold text-primary hover:text-primary-hover"
+        >
+          All {results.length} results →
+        </Link>
+      ) : null}
     </div>
   );
 }
