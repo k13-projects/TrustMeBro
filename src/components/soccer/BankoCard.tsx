@@ -4,9 +4,11 @@ import { marketLabel, sideLabel } from "@/lib/sports/soccer/labels";
 import { AddToCouponButton } from "@/components/cart/AddToCouponButton";
 import { toSoccerCartPick } from "@/lib/sports/soccer/cart";
 import { MatchBanner } from "./MatchBanner";
+import { ShareButton } from "./ShareButton";
 
 // The most-trusted single pick. Bold, gold, "lock it in" energy.
 export function BankoCard({ pick }: { pick: PredictionDetail }) {
+  const pickTitle = sideLabel(pick.market, pick.side, pick.line, pick.home, pick.away);
   return (
     <div className="rounded-3xl border border-primary/40 bg-gradient-to-br from-primary/15 to-transparent p-5">
       <div className="flex items-center justify-between">
@@ -46,8 +48,13 @@ export function BankoCard({ pick }: { pick: PredictionDetail }) {
           </span>
         ) : null}
       </div>
-      <div className="mt-4 flex">
+      <div className="mt-4 flex items-center gap-2">
         <AddToCouponButton pick={toSoccerCartPick(pick)} variant="card" />
+        <ShareButton
+          url={`/football/match/${pick.match_id}?pick=${pick.id}`}
+          title={`${pickTitle} — TrustMeBro`}
+          text={`Engine pick: ${pickTitle} (${Math.round(pick.confidence)}% confidence)`}
+        />
       </div>
     </div>
   );

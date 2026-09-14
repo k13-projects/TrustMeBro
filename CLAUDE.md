@@ -302,6 +302,22 @@ API key, logo, theme.
 - **Live competitions (2026-09-10):** Champions League, Europa League,
   Conference League (`uefa.champions`, `uefa.europa`, `uefa.europa.conf`, each
   with its `*_qual` ESPN feed). World Cup archived.
+- **ESPN host (2026-09-13).** `site.api.espn.com` returns 403 to Vercel;
+  every call goes through `site.web.api.espn.com` with a 403 fallback to the
+  other host (`src/lib/sports/soccer/espn.ts`). See `.claude/Lessons.md`.
+- **Pages (Wave 1, 2026-09-13).** `/football/match/[id]` (ESPN summary:
+  form, stats, lineups, commentary + our picks, rates, odds movement),
+  `/football/club/[id]` (profile, cross-competition schedule, squad, engine
+  record, news), `/football/value` (edge board, 15% floor, pre-match only),
+  `/football/bracket` (ties via `bracket.ts`; needs `winner_team_id` for
+  shoot-outs, migration 0025), scoreboard breakdown (`getEngineBreakdown`).
+- **Wave 2 (2026-09-13).** Live tracker on match pages (`LiveTracker` +
+  `/api/soccer/matches/[id]/live`; in-play win probability from
+  `live-prob.ts`, Poisson on the pre-match consensus), bro score predictions
+  (`/football/predictions`, `soccer_score_predictions` migration 0024,
+  3 pts exact / 1 pt result, graded in settle-bets via `grade-calls.ts`),
+  share cards (`next/og`: match OG image, `/api/og/pick/[id]`,
+  `/api/og/coupon/[id]`, `ShareButton`).
 
 ## Cron Schedule (Vercel)
 

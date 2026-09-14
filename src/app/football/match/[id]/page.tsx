@@ -15,21 +15,35 @@ import {
   type NewsLite,
   type PredictionDetail,
 } from "@/lib/sports/soccer/queries";
-import { getMatchLeagueSlug } from "@/lib/sports/soccer/match-queries";
+import { buildLiveSnapshot, getMatchLeagueSlug } from "@/lib/sports/soccer/match-queries";
+import {
+  getOwnScoreCalls,
+  getPublicCallSummary,
+} from "@/lib/sports/soccer/predictions-queries";
+import { hasKickedOff } from "@/lib/date";
 import { getSoccerRates, type MarketRates } from "@/lib/sports/soccer/rates";
 import { soccerProvider } from "@/lib/sports/soccer";
 import type { MatchDetail, RecentResult } from "@/lib/sports/soccer/provider";
 import { BankoCard } from "@/components/soccer/BankoCard";
 import { CountryFlag } from "@/components/soccer/CountryFlag";
 import { LiveMatch } from "@/components/soccer/LiveMatch";
+import { LiveTracker } from "@/components/soccer/LiveTracker";
 import { MatchEvents } from "@/components/soccer/MatchEvents";
 import { MatchRates } from "@/components/soccer/MatchRates";
 import { OddsMovement } from "@/components/soccer/OddsMovement";
 import { PickLine } from "@/components/soccer/PickLine";
+import { ScoreCall } from "@/components/soccer/ScoreCall";
 import { SettledPickRow } from "@/components/soccer/SettledPickRow";
+import { ShareButton } from "@/components/soccer/ShareButton";
 import { TeamCrest } from "@/components/soccer/TeamCrest";
 
 export const dynamic = "force-dynamic";
+
+// Isolated behind a plain function (not the component body) so the
+// live-tracker-window check below reads as a pure computation off `now`.
+function nowMs(): number {
+  return Date.now();
+}
 
 type PageProps = { params: Promise<{ id: string }> };
 
@@ -90,7 +104,7 @@ export default async function MatchPage({ params }: PageProps) {
   const meta = COMPETITIONS[match.competition];
   const kind: "flag" | "crest" = meta.kind === "national" ? "flag" : "crest";
 
-  const [predictions, oddsHistory, rounds, ratesByMatch, h2h, news, detail] = await Promise.all([
+  const [predictions, oddsHistory, rounds, ratesByMatch, h2h, news, detailAndEvents, ownCalls, callSummary] = await Promise.all([
     getPredictionsForMatch(matchId),
     getOddsHistory(matchId),
     getRounds(match.competition),
@@ -98,15 +112,33 @@ export default async function MatchPage({ params }: PageProps) {
     getHeadToHead(match.home.id, match.away.id, matchId),
     getNewsForMatch(matchId, [match.home.id, match.away.id]),
     leagueSlug
-      ? soccerProvider(match.competition, leagueSlug)
-          .getMatchDetail(matchId)
-          .catch(() => null)
-      : Promise.resolve(null),
+      ? (async () => {
+          const provider = soccerProvider(match.competition, leagueSlug);
+          const [d, e] = await Promise.all([
+            provider.getMatchDetail(matchId).catch(() => null),
+            provider.getMatchEvents(matchId).catch(() => []),
+          ]);
+          return { detail: d, events: e };
+        })()
+      : Promise.resolve({ detail: null, events: [] }),
+    getOwnScoreCalls([matchId]),
+    getPublicCallSummary([matchId]),
   ]);
+  const { detail, events } = detailAndEvents;
+  const callLocked = Boolean(match.datetime && hasKickedOff(match.datetime));
 
   const round = rounds.find((r) => r.matches.some((m) => m.id === match.id)) ?? null;
   const roundLabel = roundLabelFor(match, rounds);
   const markets = ratesByMatch.get(matchId) ?? [];
+
+  // Live tracker: renders while in-play, within 20 min of kickoff (catches the
+  // state flip pre → in), or finished (final snapshot, no polling). Beyond
+  // that window pre-match, a small pill stands in its place.
+  const withinTrackerWindow = match.datetime
+    ? Math.abs(new Date(match.datetime).getTime() - nowMs()) <= 20 * 60_000
+    : false;
+  const trackerEligible = match.state !== "pre" || withinTrackerWindow;
+  const liveSnapshot = trackerEligible && detail ? await buildLiveSnapshot(matchId, detail, events) : null;
 
   const pending = predictions.filter((p) => p.status === "pending");
   const graded = predictions.filter((p) => p.status !== "pending");
@@ -137,11 +169,62 @@ export default async function MatchPage({ params }: PageProps) {
           {matchWhen(match)}
         </p>
         {subLine ? <p className="text-xs text-foreground/45">{subLine}</p> : null}
+        <div className="flex justify-center pt-1">
+          <ShareButton
+            url={`/football/match/${match.id}`}
+            title={`${match.home.name} v ${match.away.name} · ${meta.label}`}
+            text={
+              match.state === "post"
+                ? `${match.home.name} ${match.home_score}–${match.away_score} ${match.away.name} · ${meta.label} on TrustMeBro`
+                : `${match.home.name} v ${match.away.name} · ${meta.label} · picks, odds and live tracker on TrustMeBro`
+            }
+          />
+        </div>
       </section>
+
+      {liveSnapshot ? (
+        <LiveTracker
+          matchId={match.id}
+          competition={match.competition}
+          datetime={match.datetime}
+          home={match.home}
+          away={match.away}
+          initial={liveSnapshot}
+        />
+      ) : match.state === "pre" ? (
+        <p className="mx-auto w-fit rounded-full border border-border/60 bg-card/40 px-4 py-1.5 text-xs font-semibold uppercase tracking-wide text-foreground/50">
+          Live tracker starts at kickoff
+        </p>
+      ) : null}
 
       <div className="grid gap-8 lg:grid-cols-3">
         <div className="space-y-10 lg:col-span-2">
           <EngineSection pending={pending} graded={graded} finished={match.state === "post"} />
+
+          <section className="space-y-4">
+            <div className="flex items-baseline justify-between gap-3">
+              <h2 className="font-display text-xl uppercase tracking-tight">Call the score</h2>
+              <Link
+                href="/football/predictions"
+                className="text-sm font-semibold text-primary hover:text-primary-hover"
+              >
+                Whole matchday →
+              </Link>
+            </div>
+            <div className="max-w-md">
+              <ScoreCall
+                matchId={match.id}
+                competition={match.competition}
+                home={{ name: match.home.name, abbreviation: match.home.abbreviation, crest: match.home.crest }}
+                away={{ name: match.away.name, abbreviation: match.away.abbreviation, crest: match.away.crest }}
+                kickoff={match.datetime ?? new Date(`${match.date}T00:00:00Z`).toISOString()}
+                initial={ownCalls.get(match.id) ?? null}
+                locked={callLocked}
+                finalScore={match.finished ? { home: match.home_score, away: match.away_score } : null}
+                publicSummary={callSummary.get(match.id) ?? null}
+              />
+            </div>
+          </section>
 
           <OddsSection match={match} markets={markets} oddsHistory={oddsHistory} />
 

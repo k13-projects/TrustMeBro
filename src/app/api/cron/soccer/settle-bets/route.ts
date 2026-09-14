@@ -9,6 +9,7 @@ import {
 } from "@/lib/sports/soccer/competitions";
 import { syncCompetition } from "@/lib/sports/soccer/live";
 import { settleSoccer } from "@/lib/analysis/soccer/settle";
+import { gradeScoreCalls } from "@/lib/analysis/soccer/grade-calls";
 import { settleSoccerCoupons } from "@/lib/scoring/settle-coupons";
 
 export const runtime = "nodejs";
@@ -50,7 +51,9 @@ export async function GET(req: Request) {
       standings: true,
     });
     const settled = await settleSoccer(competition);
-    results[competition] = { refreshed_matches: sync.matches, ...settled };
+    // Bros' score calls grade off the same final scores (3 exact / 1 result).
+    const calls_graded = await gradeScoreCalls(competition);
+    results[competition] = { refreshed_matches: sync.matches, ...settled, calls_graded };
   }
   const userCoupons = await settleSoccerCoupons();
 

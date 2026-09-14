@@ -17,10 +17,13 @@ export function Bracket({
 }) {
   const flags = COMPETITIONS[competition].kind === "national";
   return (
-    <div className="-mx-4 overflow-x-auto px-4 pb-4 [scrollbar-width:thin]">
-      <div className="flex w-max items-start gap-6">
+    // Phones stack the rounds top to bottom (a side-scrolling row would be as
+    // tall as its tallest round, leaving dead space under the short ones);
+    // from sm the rounds sit side by side and scroll horizontally.
+    <div className="-mx-4 px-4 pb-4 sm:overflow-x-auto sm:[scrollbar-width:thin]">
+      <div className="flex flex-col gap-8 sm:w-max sm:flex-row sm:items-start sm:gap-6">
         {columns.map((col) => (
-          <section key={col.stage} className="w-[17rem] shrink-0 space-y-3">
+          <section key={col.stage} className="w-full shrink-0 space-y-3 sm:w-[17rem]">
             <header className="flex items-baseline justify-between border-b border-border/60 pb-2">
               <h2 className="font-display text-base uppercase tracking-[0.08em]">{col.label}</h2>
               <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-foreground/40">
