@@ -14,11 +14,11 @@ const COLS = [
     ],
   },
   {
-    heading: "Legal",
+    heading: "How it works",
     links: [
-      { href: "/legal/terms", label: "Terms of Service" },
-      { href: "/legal/privacy", label: "Privacy Policy" },
-      { href: "/legal/disclaimer", label: "Disclaimer" },
+      { href: "/football/glossary", label: "How to read this" },
+      { href: "/football/scoreboard", label: "Engine scoreboard" },
+      { href: "/football/value", label: "Best value" },
     ],
   },
 ];
@@ -102,9 +102,12 @@ export function Footer() {
 
       <div className="border-t border-border/70">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 py-5 flex items-center justify-between text-xs text-muted-foreground flex-wrap gap-3">
-          <p>© 2026 TrustMeBro. All rights reserved.</p>
+          <p>© 2026 TrustMeBro. A personal project, for entertainment.</p>
           <TimeZoneToggle />
-          <p>Data: ESPN · The Odds API · balldontlie</p>
+          <p>
+            Analysis only. We don&apos;t take bets or handle money. Data: ESPN ·
+            The Odds API · balldontlie.
+          </p>
         </div>
       </div>
     </footer>
