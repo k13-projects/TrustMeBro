@@ -31,3 +31,10 @@ export function isoDateOffset(iso: string, deltaDays: number): string {
 export function isValidIsoDate(s: string | undefined): s is string {
   return !!s && /^\d{4}-\d{2}-\d{2}$/.test(s);
 }
+
+// Has this ISO instant already passed? Used to gate "locked at kickoff"
+// features (score calls, live odds) consistently between API routes and the
+// Server Components that render their initial state.
+export function hasKickedOff(iso: string): boolean {
+  return Date.now() >= new Date(iso).getTime();
+}

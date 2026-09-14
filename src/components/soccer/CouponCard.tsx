@@ -1,5 +1,6 @@
 import type { CouponView } from "@/lib/sports/soccer/queries";
 import { PickLine } from "./PickLine";
+import { ShareButton } from "./ShareButton";
 
 function headline(coupon: CouponView): { badge: string; title: string; tone: string } {
   if (coupon.kind === "surprise") {
@@ -25,7 +26,7 @@ export function CouponCard({ coupon }: { coupon: CouponView }) {
       : null;
 
   return (
-    <div className={`rounded-3xl border bg-gradient-to-br ${tone} p-5`}>
+    <div id={`coupon-${coupon.id}`} className={`rounded-3xl border bg-gradient-to-br ${tone} p-5`}>
       <div className="flex items-center justify-between">
         <span className="rounded-full bg-background/60 px-3 py-1 text-sm font-black tracking-wide">
           {badge}
@@ -49,6 +50,14 @@ export function CouponCard({ coupon }: { coupon: CouponView }) {
         {coupon.legs.map((leg) => (
           <PickLine key={leg.id} pick={leg} />
         ))}
+      </div>
+
+      <div className="mt-4 flex">
+        <ShareButton
+          url={`/football/picks#coupon-${coupon.id}`}
+          title={`${title} — TrustMeBro`}
+          text={`${coupon.combined_odds.toFixed(2)}× payout · ${coupon.legs.length} legs`}
+        />
       </div>
     </div>
   );
