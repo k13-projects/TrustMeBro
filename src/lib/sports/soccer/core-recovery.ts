@@ -3,6 +3,8 @@ import "server-only";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { COMPETITIONS, type SoccerCompetition } from "./competitions";
 import { recordFailure, recordSuccess } from "./provider-health";
+import { resolveMatch } from "./team-match";
+import { fetchUefaSeason } from "./uefa";
 
 // Last resort when both scoreboard hosts refuse us. ESPN's core API sits on
 // different infrastructure and honours dates, but it hands back reference
@@ -90,38 +92,111 @@ async function recoverOne(
   };
 }
 
+type StaleRow = {
+  id: number;
+  league_slug: string;
+  date: string;
+  home_team_id: number;
+  away_team_id: number;
+  home: { id: number; name: string } | { id: number; name: string }[] | null;
+  away: { id: number; name: string } | { id: number; name: string }[] | null;
+};
+
+const one = <T,>(v: T | T[] | null): T | null =>
+  Array.isArray(v) ? (v[0] ?? null) : v;
+
 /**
- * Brings matches that should have finished up to date using the backup feed,
- * and writes the result straight to the rows we already hold. Returns how
- * many it managed to close out.
+ * Brings matches that should have finished up to date, and writes the result
+ * to the rows we already hold. Tries UEFA first — one request covers a whole
+ * season and it shares no infrastructure with ESPN — then falls through to
+ * ESPN's core feed for anything still unresolved.
  */
 export async function recoverFinishedMatches(
   competition: SoccerCompetition,
   limit = 20,
-): Promise<{ checked: number; updated: number }> {
+): Promise<{ checked: number; updated: number; viaUefa: number; viaCore: number }> {
   const supabase = supabaseAdmin();
   const cutoff = new Date(Date.now() - 3 * 3600 * 1000).toISOString();
   const { data } = await supabase
     .from("soccer_matches")
-    .select("id, league_slug")
+    .select(
+      "id, league_slug, date, home_team_id, away_team_id, " +
+        "home:soccer_teams!soccer_matches_home_team_id_fkey(id, name), " +
+        "away:soccer_teams!soccer_matches_away_team_id_fkey(id, name)",
+    )
     .eq("competition", competition)
     .eq("finished", false)
     .lt("datetime", cutoff)
     .order("datetime", { ascending: false })
     .limit(limit);
-  const stale = data ?? [];
-  if (stale.length === 0) return { checked: 0, updated: 0 };
+  const stale = (data ?? []) as unknown as StaleRow[];
+  if (stale.length === 0) {
+    return { checked: 0, updated: 0, viaUefa: 0, viaCore: 0 };
+  }
+
+  const now = new Date().toISOString();
+  const resolved = new Set<number>();
+  let viaUefa = 0;
+
+  try {
+    const season = await fetchUefaSeason(competition);
+    if (season.length > 0) {
+      await recordSuccess("uefa");
+      const candidates = stale.map((row) => ({
+        match: row,
+        home: one(row.home)?.name ?? "",
+        away: one(row.away)?.name ?? "",
+      }));
+      for (const u of season) {
+        if (!u.finished || u.homeScore === null || u.awayScore === null) continue;
+        const sameDay = candidates.filter(
+          (c) => !resolved.has(c.match.id) && c.match.date === u.date,
+        );
+        if (sameDay.length === 0) continue;
+        const hit = resolveMatch({ home_team: u.home, away_team: u.away }, sameDay);
+        if (!hit) continue;
+
+        const winner =
+          u.homeScore > u.awayScore
+            ? hit.home_team_id
+            : u.awayScore > u.homeScore
+              ? hit.away_team_id
+              : u.shootoutWinner === u.home
+                ? hit.home_team_id
+                : u.shootoutWinner === u.away
+                  ? hit.away_team_id
+                  : null;
+
+        await supabase
+          .from("soccer_matches")
+          .update({
+            home_score: u.homeScore,
+            away_score: u.awayScore,
+            status: u.shootoutWinner ? "Final Score - After Penalties" : "Full Time",
+            state: "post",
+            finished: true,
+            winner_team_id: winner,
+            updated_at: now,
+          })
+          .eq("id", hit.id);
+        resolved.add(hit.id);
+        viaUefa += 1;
+      }
+    }
+  } catch (err) {
+    await recordFailure("uefa", err instanceof Error ? err.message : String(err));
+  }
 
   const fallbackSlug = COMPETITIONS[competition].espnSlugs[0];
-  let updated = 0;
-  let anySuccess = false;
+  let viaCore = 0;
+  let coreOk = false;
   let lastError = "";
-
   for (const row of stale) {
+    if (resolved.has(row.id)) continue;
     try {
       const state = await recoverOne(row.league_slug || fallbackSlug, row.id);
       if (!state) continue;
-      anySuccess = true;
+      coreOk = true;
       if (!state.finished) continue;
       await supabase
         .from("soccer_matches")
@@ -134,17 +209,16 @@ export async function recoverFinishedMatches(
           period: state.period,
           finished: true,
           winner_team_id: state.winnerTeamId,
-          updated_at: new Date().toISOString(),
+          updated_at: now,
         })
         .eq("id", row.id);
-      updated += 1;
+      viaCore += 1;
     } catch (err) {
       lastError = err instanceof Error ? err.message : String(err);
     }
   }
+  if (coreOk) await recordSuccess("espn-core");
+  else if (lastError && viaUefa === 0) await recordFailure("espn-core", lastError);
 
-  if (anySuccess) await recordSuccess("espn-core");
-  else if (lastError) await recordFailure("espn-core", lastError);
-
-  return { checked: stale.length, updated };
+  return { checked: stale.length, updated: viaUefa + viaCore, viaUefa, viaCore };
 }
