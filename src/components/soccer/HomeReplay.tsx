@@ -65,7 +65,7 @@ export function HomeReplay({
           </div>
           <Link
             href="/football/scoreboard"
-            className="text-sm font-semibold text-primary hover:text-primary-hover"
+            className="inline-block py-1 -my-1 text-sm font-semibold text-primary hover:text-primary-hover"
           >
             Full ledger →
           </Link>
@@ -81,7 +81,7 @@ export function HomeReplay({
       {results.length > shown.length ? (
         <Link
           href={`/football/schedule?round=${encodeURIComponent(round.key)}`}
-          className="inline-block text-sm font-semibold text-primary hover:text-primary-hover"
+          className="inline-block py-1 -my-1 text-sm font-semibold text-primary hover:text-primary-hover"
         >
           All {results.length} results →
         </Link>

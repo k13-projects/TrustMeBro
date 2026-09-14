@@ -36,7 +36,7 @@ export function MyClubsStrip({ fixtures }: { fixtures: FollowedFixture[] }) {
             >
               <Link
                 href={`/football/club/${team.id}`}
-                className="flex items-center gap-2 hover:text-primary"
+                className="flex items-center gap-2 py-1 -my-1 hover:text-primary"
               >
                 <TeamCrest crest={team.crest} name={team.name} size={22} />
                 <span className="min-w-0 truncate text-sm font-semibold">{team.name}</span>

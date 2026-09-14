@@ -189,6 +189,10 @@ export default async function MatchPage({ params }: PageProps) {
     <div className="mx-auto max-w-6xl space-y-10 px-4 py-10">
       {/* Hero */}
       <section className="space-y-3 text-center">
+        <h1 className="sr-only">
+          {match.home.name} v {match.away.name} — {meta.fullName}
+          {roundLabel ? `, ${roundLabel}` : ""}
+        </h1>
         <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-foreground/45">
           {meta.label}
           {roundLabel ? ` · ${roundLabel}` : ""}
@@ -248,7 +252,7 @@ export default async function MatchPage({ params }: PageProps) {
               <h2 className="font-display text-xl uppercase tracking-tight">Call the score</h2>
               <Link
                 href="/football/predictions"
-                className="text-sm font-semibold text-primary hover:text-primary-hover"
+                className="inline-block py-1 -my-1 text-sm font-semibold text-primary hover:text-primary-hover"
               >
                 Whole matchday →
               </Link>
@@ -695,7 +699,7 @@ function NewsCard({ item }: { item: NewsLite }) {
           href={item.source_url}
           target="_blank"
           rel="noopener noreferrer"
-          className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-primary hover:opacity-80"
+          className="mt-2 inline-flex items-center gap-1 py-1 text-[11px] font-semibold text-primary hover:opacity-80"
         >
           Read on {item.outlet} <ExternalLink size={11} />
         </a>

@@ -81,14 +81,22 @@ function extractImage(block: string): string | null {
   const media =
     block.match(/<media:content[^>]+url="([^"]+)"/i) ??
     block.match(/<media:thumbnail[^>]+url="([^"]+)"/i);
-  if (media) return media[1];
+  if (media) return imageUrl(media[1]);
   const enclosure = block.match(
     /<enclosure[^>]+url="([^"]+)"[^>]*type="image\/[^"]+"/i,
   );
-  if (enclosure) return enclosure[1];
+  if (enclosure) return imageUrl(enclosure[1]);
   const img = block.match(/<img[^>]+src="([^"]+)"/i);
-  if (img) return img[1];
+  if (img) return imageUrl(img[1]);
   return null;
+}
+
+// URLs come out of the XML attribute still escaped, so a query string reads
+// "?t=max&amp;s=abc" and the request 404s. Decode, and drop anything that
+// isn't a plain http(s) URL rather than rendering a broken thumbnail.
+function imageUrl(raw: string): string | null {
+  const url = unescape(raw.trim());
+  return /^https?:\/\//i.test(url) ? url : null;
 }
 
 /** Trim to first N sentences (≤ ~360 chars). */

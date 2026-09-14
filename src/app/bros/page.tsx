@@ -55,6 +55,7 @@ export default async function BroBoardPage({ searchParams }: PageProps) {
     <div className="mx-auto max-w-7xl px-4 py-10 space-y-8">
       <header className="space-y-3">
         <SectionHeading
+          as="h1"
           eyebrow={`${SPORTS[sport].competition} · The Feed`}
           title={
             <>
@@ -240,7 +241,7 @@ function ScoreCallersCard({
       )}
       <Link
         href="/football/predictions"
-        className="block text-center text-[11px] font-semibold uppercase tracking-widest text-primary hover:text-primary-hover"
+        className="block py-1.5 text-center text-[11px] font-semibold uppercase tracking-widest text-primary hover:text-primary-hover"
       >
         Call the Scores →
       </Link>

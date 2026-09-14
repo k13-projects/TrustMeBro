@@ -82,7 +82,7 @@ export default async function PicksPage() {
             <h2 className="font-display text-2xl uppercase tracking-tight">Recently graded</h2>
             <Link
               href="/football/scoreboard"
-              className="text-sm font-semibold text-primary hover:text-primary-hover"
+              className="inline-block py-1 -my-1 text-sm font-semibold text-primary hover:text-primary-hover"
             >
               Full ledger →
             </Link>

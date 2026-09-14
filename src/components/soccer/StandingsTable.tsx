@@ -98,7 +98,7 @@ export function StandingsTable({
                       )}
                       <Link
                         href={`/football/club/${r.team.id}`}
-                        className="flex min-w-0 items-center gap-2 font-semibold transition-colors hover:text-primary hover:underline hover:underline-offset-2"
+                        className="flex min-w-0 items-center gap-2 py-1 -my-1 font-semibold transition-colors hover:text-primary hover:underline hover:underline-offset-2"
                       >
                         <span className="truncate">{r.team.name}</span>
                         {accent ? (

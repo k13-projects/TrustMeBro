@@ -85,7 +85,7 @@ export default async function SchedulePage({ searchParams }: PageProps) {
           {round.kind === "league" ? (
             <Link
               href="/football/standings"
-              className="text-sm font-semibold text-primary hover:text-primary-hover"
+              className="inline-block py-1 -my-1 text-sm font-semibold text-primary hover:text-primary-hover"
             >
               League table →
             </Link>

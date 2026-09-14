@@ -389,7 +389,7 @@ function ClubHeader({
             </span>
             <Link
               href="/football/standings"
-              className="shrink-0 text-xs font-semibold text-primary hover:text-primary-hover"
+              className="shrink-0 py-1 -my-1 text-xs font-semibold text-primary hover:text-primary-hover"
             >
               Full table →
             </Link>

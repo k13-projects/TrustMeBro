@@ -181,7 +181,7 @@ export default async function FootballHome() {
             trailing={
               <Link
                 href="/football/picks"
-                className="text-sm font-semibold text-primary hover:text-primary-hover"
+                className="inline-block py-1 -my-1 text-sm font-semibold text-primary hover:text-primary-hover"
               >
                 All picks →
               </Link>
@@ -233,7 +233,7 @@ export default async function FootballHome() {
           trailing={
             <Link
               href="/football/schedule"
-              className="text-sm font-semibold text-primary hover:text-primary-hover"
+              className="inline-block py-1 -my-1 text-sm font-semibold text-primary hover:text-primary-hover"
             >
               Full schedule →
             </Link>
@@ -265,7 +265,7 @@ export default async function FootballHome() {
             trailing={
               <Link
                 href="/football/standings"
-                className="text-sm font-semibold text-primary hover:text-primary-hover"
+                className="inline-block py-1 -my-1 text-sm font-semibold text-primary hover:text-primary-hover"
               >
                 Full 36-team table →
               </Link>
@@ -372,7 +372,7 @@ async function BetweenMatchdays({
             trailing={
               <Link
                 href="/football/clubs"
-                className="text-sm font-semibold text-primary hover:text-primary-hover"
+                className="inline-block py-1 -my-1 text-sm font-semibold text-primary hover:text-primary-hover"
               >
                 All clubs →
               </Link>
@@ -394,7 +394,7 @@ async function BetweenMatchdays({
             trailing={
               <Link
                 href="/football/schedule"
-                className="text-sm font-semibold text-primary hover:text-primary-hover"
+                className="inline-block py-1 -my-1 text-sm font-semibold text-primary hover:text-primary-hover"
               >
                 Full schedule →
               </Link>
@@ -427,7 +427,7 @@ async function BetweenMatchdays({
             {nextShownCount < next.matches.length ? (
               <Link
                 href={`/football/schedule?round=${encodeURIComponent(next.key)}`}
-                className="inline-block text-sm font-semibold text-primary hover:text-primary-hover"
+                className="inline-block py-1 -my-1 text-sm font-semibold text-primary hover:text-primary-hover"
               >
                 All {next.matches.length} fixtures →
               </Link>
@@ -482,7 +482,7 @@ async function BetweenMatchdays({
             trailing={
               <Link
                 href="/football/news"
-                className="text-sm font-semibold text-primary hover:text-primary-hover"
+                className="inline-block py-1 -my-1 text-sm font-semibold text-primary hover:text-primary-hover"
               >
                 All news →
               </Link>
@@ -569,7 +569,7 @@ async function ArchiveHome({
           trailing={
             <Link
               href="/football/scoreboard"
-              className="text-sm font-semibold text-primary hover:text-primary-hover"
+              className="inline-block py-1 -my-1 text-sm font-semibold text-primary hover:text-primary-hover"
             >
               Units graph →
             </Link>
