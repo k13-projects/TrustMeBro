@@ -361,6 +361,9 @@ export type PredictionDetail = {
   away_color: string | null;
   datetime: string | null;
   stage: string | null;
+  /** Final score, once the match has been played — null while it is pending. */
+  home_score: number | null;
+  away_score: number | null;
 };
 
 type RawPrediction = {
@@ -376,14 +379,24 @@ type RawPrediction = {
   is_banko: boolean;
   status: PredictionDetail["status"];
   soccer_matches:
-    | { datetime: string | null; stage: string | null; home: RawTeam | RawTeam[] | null; away: RawTeam | RawTeam[] | null }
-    | Array<{ datetime: string | null; stage: string | null; home: RawTeam | RawTeam[] | null; away: RawTeam | RawTeam[] | null }>
+    | RawPredictionMatch
+    | RawPredictionMatch[]
     | null;
+};
+
+type RawPredictionMatch = {
+  datetime: string | null;
+  stage: string | null;
+  finished: boolean | null;
+  home_score: number | null;
+  away_score: number | null;
+  home: RawTeam | RawTeam[] | null;
+  away: RawTeam | RawTeam[] | null;
 };
 
 const PREDICTION_SELECT =
   "id, competition, match_id, market, side, line, confidence, best_odds, expected_value, is_banko, status, " +
-  "soccer_matches(datetime, stage, " +
+  "soccer_matches(datetime, stage, finished, home_score, away_score, " +
   `home:soccer_teams!soccer_matches_home_team_id_fkey(${TEAM_COLS}), ` +
   `away:soccer_teams!soccer_matches_away_team_id_fkey(${TEAM_COLS}))`;
 
@@ -413,6 +426,8 @@ function toPredictionDetail(p: RawPrediction): PredictionDetail {
     away_color: away?.color ?? null,
     datetime: match?.datetime ?? null,
     stage: match?.stage ?? null,
+    home_score: match?.finished ? (match.home_score ?? null) : null,
+    away_score: match?.finished ? (match.away_score ?? null) : null,
   };
 }
 
