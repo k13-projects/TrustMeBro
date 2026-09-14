@@ -433,4 +433,18 @@ NBA crons (top group) early-exit while `NBA_LIGHT_MODE=true` — the season is o
 ### 2026-09-02 · Merged means deployed: verify the live deploy from the host, never from a note
 **On a project with a live address, `hm++` is finished when the production deployment made from the merge commit is READY and the URL was actually fetched, not at the merge.** Report "merged and live", or say exactly which of the two is missing. Underneath it: (1) **Deploy state is verified from the host (Vercel: `vercel projects ls`, or the REST API for a project linked to this repo), never from a `CLAUDE.md` line.** Those notes go stale: Lobster Lab's said "Vercel (planned)" for weeks while lobsterlab.us was live and auto-deploying, and trusting it led a session on 2026-09-02 to declare a live site "not wired", create a duplicate Vercel project, and briefly flip the real site to `noindex`. The Vercel project name may not equal the shortcode (`lobster-lab` vs `lobster`). (2) **A project that is not auto-deploying from `main` is a broken setup, not a state to report**: wire it (`Deploy Preview <shortcode>` adopts an existing project by its GitHub link and never touches Production's `NEXT_PUBLIC_SITE_URL` when the project serves another domain), then record the Vercel project, production branch, domains and the production site URL in this file's Deploy section, and keep that section true. Golden rule (Kazim, 2026-09-02): we learn from our mistakes once; the same one never gets a second session.
 
+<!--bc:account-check-json-not-context-2026-09-14-->
+### 2026-09-14 · Verify the logged-in account from ~/.claude.json, never from the session context line
+**`~/.claude.json` → `oauthAccount.emailAddress` is the only source of truth for which account a terminal holds.** The session's injected context line ("The user's email address is …") is **not** — the two can disagree. On 2026-09-14 the context line said `algosift@gmail.com` while the real login was `eren@tigerhospitalitygroup.com`; a session took the context line at face value, declared a K13 Vercel verification blocked by the Gold Rule, and shipped that phantom caveat inside a delivered audit report. Kazim caught it.
+
+Run the check **before** stating which account is active, and **before** declining any work on account grounds:
+
+```
+python3 -c "import json;print(json.load(open('/Users/k13/.claude.json'))['oauthAccount']['emailAddress'])"
+```
+
+**Brief subagents with the verified account.** A subagent inherits the same context line and will repeat the same wrong inference in its own handoff — which is exactly how the phantom caveat reached a delivered artifact instead of dying in one session's scratch.
+
+**Wrong is wrong in both directions.** The Gold Rule guards against touching Halil's EDISYN accounts, but the opposite failure is just as real: falsely blocking legitimate K13 work, leaving a verification undone, and burying an untrue blocker in a deliverable. Neither counts as the safe side.
+
 <!--K13_BROADCAST_END-->
