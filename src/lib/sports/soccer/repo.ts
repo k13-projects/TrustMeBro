@@ -17,6 +17,13 @@ export async function upsertTeams(teams: SoccerTeam[]): Promise<void> {
     crest_url: t.crest_url,
     color: t.color,
     alt_color: t.alt_color,
+    // Accent-folded haystack for the search palette (migration 0027).
+    name_search: `${t.name} ${t.abbreviation} ${t.country}`
+      .toLowerCase()
+      .normalize("NFKD")
+      .replace(/\p{Diacritic}/gu, "")
+      .replace(/ø/g, "o")
+      .replace(/ł/g, "l"),
     updated_at: new Date().toISOString(),
   }));
   const { error } = await supabase.from("soccer_teams").upsert(rows);

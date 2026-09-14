@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import type { RecentResult, SquadPlayer } from "@/lib/sports/soccer";
 import { soccerProvider } from "@/lib/sports/soccer";
 import { activeCompetition } from "@/lib/sports/soccer/competition-cookie";
+import { isFollowing } from "@/lib/sports/soccer/follow-queries";
 import { COMPETITIONS, type SoccerCompetition } from "@/lib/sports/soccer/competitions";
 import {
   getMatchesForTeam,
@@ -16,6 +17,7 @@ import {
   type TeamRow,
 } from "@/lib/sports/soccer/queries";
 import { CountryFlag } from "@/components/soccer/CountryFlag";
+import { FollowButton } from "@/components/soccer/FollowButton";
 import { accentColor } from "@/components/soccer/MatchBanner";
 import { MatchRow } from "@/components/soccer/MatchRow";
 import { PickLine } from "@/components/soccer/PickLine";
@@ -60,7 +62,8 @@ export default async function ClubPage({ params }: PageProps) {
 
   const provider = soccerProvider(competition);
 
-  const [standing, matches, predictions, news, profile, schedule, squad] = await Promise.all([
+  const [standing, matches, predictions, news, profile, schedule, squad, following] =
+    await Promise.all([
     getStandingForTeam(competition, teamId),
     getMatchesForTeam(teamId),
     getPredictionsForTeam(teamId),
@@ -68,6 +71,7 @@ export default async function ClubPage({ params }: PageProps) {
     provider.getTeamProfile(teamId),
     provider.getTeamSchedule(teamId),
     provider.getTeamSquad(teamId),
+    isFollowing(teamId),
   ]);
 
   const now = nowMs();
@@ -153,6 +157,7 @@ export default async function ClubPage({ params }: PageProps) {
         venue={profile?.venue ?? null}
         standingSummary={profile?.standing_summary ?? null}
         isNational={isNational}
+        following={following}
       />
 
       <section className="space-y-4">
@@ -321,6 +326,7 @@ function ClubHeader({
   venue,
   standingSummary,
   isNational,
+  following,
 }: {
   team: TeamRow;
   competition: SoccerCompetition;
@@ -328,6 +334,7 @@ function ClubHeader({
   venue: string | null;
   standingSummary: string | null;
   isNational: boolean;
+  following: boolean;
 }) {
   const meta = COMPETITIONS[competition];
   const accent = isNational ? null : accentColor(team.color);
@@ -363,6 +370,11 @@ function ClubHeader({
             </p>
           ) : null}
         </div>
+        <FollowButton
+          teamId={team.id}
+          teamName={team.name}
+          initialFollowing={following}
+        />
       </div>
 
       {accent ? (

@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { LocalTime } from "@/components/site/LocalTime";
 import {
   COMPETITIONS,
   DEFAULT_COMPETITION,
@@ -137,9 +138,12 @@ export function MatchBanner({
   const pill = sm
     ? `${pillBase} gap-3 py-1.5 text-xs`
     : `${pillBase} gap-3 py-2.5 text-[13px] sm:gap-6 sm:py-3 sm:text-xl`;
+  // Phones wrap to two lines. A long single word ("Internazionale") has no
+  // break opportunity, so allow one inside the word rather than slicing the
+  // name off mid-glyph; from sm there is room to truncate with an ellipsis.
   const name = sm
     ? "min-w-0 flex-1 truncate font-display uppercase tracking-wide text-white"
-    : "min-w-0 flex-1 font-display uppercase tracking-wide leading-[1.05] text-white line-clamp-2 sm:line-clamp-none sm:truncate";
+    : "min-w-0 flex-1 font-display uppercase tracking-wide leading-[1.05] text-white line-clamp-2 [overflow-wrap:anywhere] sm:line-clamp-none sm:truncate sm:[overflow-wrap:normal]";
 
   return (
     <div className="relative mx-auto flex w-full max-w-3xl items-stretch">
@@ -202,7 +206,7 @@ export function MatchBanner({
             ) : pending ? (
               "KICKOFF"
             ) : (
-              kickoff(datetime)
+              <LocalTime iso={datetime} fallback={kickoff(datetime)} />
             )}
           </span>
         ) : null}

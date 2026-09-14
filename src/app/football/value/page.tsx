@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { isoDateOffset, todayIsoDate } from "@/lib/date";
 import { activeCompetition } from "@/lib/sports/soccer/competition-cookie";
 import { getMatchesBetween, type MatchRow } from "@/lib/sports/soccer/queries";
@@ -6,11 +5,28 @@ import { getSoccerRates } from "@/lib/sports/soccer/rates";
 import { sideLabel } from "@/lib/sports/soccer/labels";
 import type { SoccerMarket } from "@/lib/sports/types";
 import { MatchBanner } from "@/components/soccer/MatchBanner";
+import { FilterBar } from "@/components/soccer/FilterBar";
+import { Term } from "@/components/soccer/Term";
 import { FootballHeader } from "@/components/soccer/FootballHeader";
 
 export const dynamic = "force-dynamic";
 
-type PageProps = { searchParams: Promise<{ market?: string }> };
+type PageProps = {
+  searchParams: Promise<{ market?: string; sort?: string; edge?: string }>;
+};
+
+const SORTS = [
+  { key: "edge", label: "Edge" },
+  { key: "ev", label: "EV" },
+  { key: "kickoff", label: "Kickoff" },
+];
+
+const EDGE_FLOORS = [
+  { key: "all", label: "Any", min: -Infinity },
+  { key: "1", label: "+1 pt", min: 0.01 },
+  { key: "2", label: "+2 pts", min: 0.02 },
+  { key: "3", label: "+3 pts", min: 0.03 },
+];
 
 type ValueRow = {
   match: MatchRow;
@@ -30,7 +46,7 @@ const FILTERS: Array<{ key: string; label: string; market: SoccerMarket | null }
 ];
 
 export default async function ValuePage({ searchParams }: PageProps) {
-  const [{ market }, competition] = await Promise.all([
+  const [{ market, sort, edge }, competition] = await Promise.all([
     searchParams,
     activeCompetition(),
   ]);
@@ -67,8 +83,21 @@ export default async function ValuePage({ searchParams }: PageProps) {
     }
   }
 
-  const filtered = active.market ? rows.filter((r) => r.market === active.market) : rows;
-  const ranked = [...filtered].sort((a, b) => b.edge - a.edge).slice(0, 20);
+  const sortKey = SORTS.find((s) => s.key === sort)?.key ?? "edge";
+  const floor = EDGE_FLOORS.find((f) => f.key === edge) ?? EDGE_FLOORS[0];
+
+  const filtered = rows
+    .filter((r) => (active.market ? r.market === active.market : true))
+    .filter((r) => r.edge >= floor.min);
+  const ranked = [...filtered]
+    .sort((a, b) => {
+      if (sortKey === "ev") return b.ev - a.ev;
+      if (sortKey === "kickoff") {
+        return (a.match.datetime ?? "").localeCompare(b.match.datetime ?? "");
+      }
+      return b.edge - a.edge;
+    })
+    .slice(0, 20);
 
   return (
     <div className="mx-auto max-w-3xl space-y-8 px-4 py-10">
@@ -80,33 +109,44 @@ export default async function ValuePage({ searchParams }: PageProps) {
           <span className="text-foreground/80">not</span> mean the pick is
           likely to win, only that it looks under-priced at the price on offer.
           Outcomes we rate under 15% are left off so a freak exchange price on a
-          long shot can&apos;t top the board.
+          long shot can&apos;t top the board.{" "}
+          <a href="/football/glossary" className="font-semibold text-primary">
+            How to read this
+          </a>
+          .
         </p>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        {FILTERS.map((f) => {
-          const href = f.key === "all" ? "/football/value" : `/football/value?market=${f.key}`;
-          const isActive = active.key === f.key;
-          return (
-            <Link
-              key={f.key}
-              href={href}
-              className={`inline-flex shrink-0 items-center rounded-full px-3 py-1.5 text-xs font-semibold uppercase tracking-wide ring-1 transition-colors ${
-                isActive
-                  ? "bg-primary text-black ring-primary"
-                  : "bg-foreground/5 text-foreground/85 ring-border hover:bg-foreground/10"
-              }`}
-            >
-              {f.label}
-            </Link>
-          );
-        })}
-      </div>
+      <FilterBar
+        base="/football/value"
+        params={{ market: active.key, sort: sortKey, edge: floor.key }}
+        groups={[
+          {
+            param: "market",
+            label: "Market",
+            active: active.key,
+            options: FILTERS.map((f) => ({ key: f.key, label: f.label })),
+          },
+          { param: "sort", label: "Sort by", active: sortKey, options: SORTS },
+          {
+            param: "edge",
+            label: "Min edge",
+            active: floor.key,
+            options: EDGE_FLOORS.map((f) => ({ key: f.key, label: f.label })),
+          },
+        ]}
+        summary={`${ranked.length} of ${rows.length} priced outcomes${
+          active.market ? ` · ${active.label.toLowerCase()}` : ""
+        }${floor.min > 0 ? ` · edge ${floor.label} or better` : ""} · sorted by ${
+          SORTS.find((s) => s.key === sortKey)?.label.toLowerCase() ?? "edge"
+        }`}
+      />
 
       {ranked.length === 0 ? (
         <p className="rounded-2xl border border-dashed border-border/60 bg-card/20 px-6 py-10 text-center text-sm text-foreground/45">
-          Prices load in the days before a matchday.
+          {rows.length === 0
+            ? "Prices load in the days before a matchday."
+            : "No outcome clears those filters. Loosen the minimum edge or pick another market."}
         </p>
       ) : (
         <div className="space-y-3">
@@ -151,7 +191,9 @@ function ValueRowCard({ row }: { row: ValueRow }) {
               {edgePts > 0 ? "+" : ""}
               {edgePts.toFixed(1)}
             </div>
-            <div className="text-[10px] uppercase tracking-wide text-foreground/40">Edge</div>
+            <div className="text-[10px] uppercase tracking-wide text-foreground/40">
+              <Term k="edge">Edge</Term>
+            </div>
           </div>
           <div className="text-right">
             <div
@@ -160,7 +202,9 @@ function ValueRowCard({ row }: { row: ValueRow }) {
               {evPositive ? "+" : ""}
               {Math.round(row.ev * 100)}%
             </div>
-            <div className="text-[10px] uppercase tracking-wide text-foreground/40">EV</div>
+            <div className="text-[10px] uppercase tracking-wide text-foreground/40">
+              <Term k="ev">EV</Term>
+            </div>
           </div>
         </div>
       </div>

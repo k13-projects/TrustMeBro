@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Camera, MessageCircle, Play, Send } from "lucide-react";
+import { TimeZoneToggle } from "@/components/site/TimeZoneToggle";
 
 const COLS = [
   {
@@ -102,6 +103,7 @@ export function Footer() {
       <div className="border-t border-border/70">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 py-5 flex items-center justify-between text-xs text-muted-foreground flex-wrap gap-3">
           <p>© 2026 TrustMeBro. All rights reserved.</p>
+          <TimeZoneToggle />
           <p>Data: ESPN · The Odds API · balldontlie</p>
         </div>
       </div>

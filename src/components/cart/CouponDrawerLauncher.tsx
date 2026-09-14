@@ -35,7 +35,7 @@ export function CouponDrawerLauncher() {
       onClick={cart.open}
       aria-label={ariaLabel}
       className={cx(
-        "fixed bottom-[5.5rem] sm:bottom-20 right-5 z-40 inline-flex items-center justify-center sm:gap-2 rounded-full size-12 sm:size-auto sm:px-5 sm:py-2.5 text-sm uppercase tracking-[0.18em] transition-colors transition-shadow",
+        "fixed bottom-[8.25rem] md:bottom-20 right-5 z-40 inline-flex items-center justify-center sm:gap-2 rounded-full size-12 sm:size-auto sm:px-5 sm:py-2.5 text-sm uppercase tracking-[0.18em] transition-colors transition-shadow",
         empty
           ? "bg-primary text-primary-foreground font-extrabold border border-primary/60 shadow-[0_20px_50px_-10px_rgba(255,184,0,0.65),0_0_0_1px_rgba(255,184,0,0.35)] hover:bg-primary-hover hover:shadow-[0_24px_60px_-10px_rgba(255,184,0,0.85),0_0_0_1px_rgba(255,184,0,0.55)]"
           : "glass-strong border border-primary/35 text-primary font-semibold shadow-[0_18px_40px_-14px_rgba(255,184,0,0.45)] hover:bg-primary/12",
