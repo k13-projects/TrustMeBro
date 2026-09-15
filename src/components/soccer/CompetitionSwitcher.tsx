@@ -15,10 +15,22 @@ function rememberCompetition(next: SoccerCompetition) {
   document.cookie = `${COMPETITION_COOKIE}=${next}; path=/; max-age=${COMPETITION_COOKIE_MAX_AGE}; samesite=lax`;
 }
 
+// A match or club page is keyed by an id that exists in one competition only,
+// so it can't carry across; every other football page has a per-competition
+// version and the viewer stays where they were.
+const ENTITY_ROUTES = ["/football/match/", "/football/club/"];
+
+function destinationFor(pathname: string) {
+  if (!pathname.startsWith("/football")) return "/football";
+  if (ENTITY_ROUTES.some((r) => pathname.startsWith(r))) return "/football";
+  return pathname;
+}
+
 // Segmented switch between football competitions. Writes the cookie
-// client-side then hard-navigates to the football home, so SSR reads the new
-// competition on the very next request (same approach as the sport toggle —
-// no server-action/redirect cookie race).
+// client-side then hard-navigates, so SSR reads the new competition on the
+// very next request (same approach as the sport toggle — no
+// server-action/redirect cookie race). Search params are dropped: a filter
+// naming a club from the old competition means nothing in the new one.
 export function CompetitionSwitcher({
   active,
   className,
@@ -32,7 +44,7 @@ export function CompetitionSwitcher({
     if (next === current) return;
     setCurrent(next);
     rememberCompetition(next);
-    window.location.assign("/football");
+    window.location.assign(destinationFor(window.location.pathname));
   }
 
   return (
