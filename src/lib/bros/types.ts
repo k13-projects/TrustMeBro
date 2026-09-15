@@ -60,11 +60,15 @@ export type SharedCouponPick = {
 export type SharedCouponSoccerPick = {
   pick_order: number;
   prediction: {
+    // A user-picked leg has no prediction id — this is the leg's own row id
+    // (soccer_coupon_legs.id), always present regardless of leg source.
     id: string;
     market: SoccerMarket;
     side: MatchSide;
     line: number | null;
     status: BetStatus;
+    // Per-leg attribution (migration 0029) — "our pick" vs. the bro's own.
+    leg_source: "engine" | "user";
     home: string;
     away: string;
     home_abbr: string;

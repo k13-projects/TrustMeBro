@@ -8,9 +8,9 @@ import {
   type SoccerCompetition,
 } from "@/lib/sports/soccer/competitions";
 import { syncCompetition } from "@/lib/sports/soccer/live";
-import { settleSoccer } from "@/lib/analysis/soccer/settle";
+import { settleSoccer, voidStaleSoccerRows } from "@/lib/analysis/soccer/settle";
 import { gradeScoreCalls } from "@/lib/analysis/soccer/grade-calls";
-import { settleSoccerCoupons } from "@/lib/scoring/settle-coupons";
+import { settleSoccerCoupons, settleSoccerCouponLegs } from "@/lib/scoring/settle-coupons";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,9 +19,15 @@ const QuerySchema = z.object({ competition: z.string().optional() });
 
 // Refreshes recent scores from ESPN (yesterday + today) for every LIVE
 // competition, then settles pending predictions whose match is finished —
-// updating that competition's ledger and resolving its engine coupons. Once
-// predictions grade, user-built soccer coupons are settled too. NBA's ledger
-// and archived competitions' ledgers are never touched.
+// updating that competition's ledger and resolving its engine coupons.
+// Stuck/postponed matches are force-voided (voidStaleSoccerRows), then
+// soccer_coupon_legs.status is written directly for both engine and
+// user-picked legs (settleSoccerCouponLegs), and only then are user-built
+// coupons graded off that leg status (settleSoccerCoupons) — see
+// docs/handoffs/user-coupons-plan_2026-09-14.md section 2 for why the leg's
+// own status, not a join through soccer_predictions, has to be the source of
+// truth here. NBA's ledger and archived competitions' ledgers are never
+// touched.
 export async function GET(req: Request) {
   const unauth = assertCronAuth(req);
   if (unauth) return unauth;
@@ -59,11 +65,15 @@ export async function GET(req: Request) {
     const calls_graded = await gradeScoreCalls(competition);
     results[competition] = { refreshed_matches: sync.matches, ...settled, calls_graded };
   }
+  const staleness = await voidStaleSoccerRows();
+  const legsSettled = await settleSoccerCouponLegs();
   const userCoupons = await settleSoccerCoupons();
 
   return NextResponse.json({
     ok: true,
     competitions: results,
+    staleness,
+    coupon_legs_settled: legsSettled,
     user_coupons: userCoupons,
   });
 }

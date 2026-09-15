@@ -111,6 +111,15 @@ export function SharedCouponCard({
                 <span className="text-foreground/55">
                   {soccerMarketLabel(pred.market)}
                 </span>
+                {pred.leg_source === "engine" ? (
+                  <span className="text-[9px] uppercase tracking-widest text-primary/70">
+                    ★ engine
+                  </span>
+                ) : (
+                  <span className="text-[9px] uppercase tracking-widest text-foreground/35">
+                    their pick
+                  </span>
+                )}
                 <span className="ml-auto text-[10px] uppercase tracking-wide text-foreground/35">
                   {st === "won" ? "hit" : st === "lost" ? "miss" : st === "void" ? "void" : "—"}
                 </span>

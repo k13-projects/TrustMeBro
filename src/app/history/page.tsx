@@ -130,9 +130,14 @@ export default async function HistoryPage({ searchParams }: PageProps) {
       .limit(100),
   ]);
 
-  // Soccer coupons keep their legs in soccer_coupon_legs (FK → soccer_predictions),
-  // so the user_coupon_picks join above comes back empty for them. Fetch those
-  // legs separately and key them by coupon id for rendering.
+  // Soccer coupons keep their legs in soccer_coupon_legs, which now stores its
+  // own match/market/side/line/status directly (migration 0029) rather than
+  // only through soccer_prediction_id — a user-picked leg has no prediction
+  // to join through, so reading the leg's own columns is required, not just
+  // an alternative: joining through soccer_predictions here would silently
+  // drop every user-built leg from this page (the exact failure class this
+  // feature is built to avoid). Fetch legs separately and key them by coupon
+  // id for rendering.
   const soccerCouponIds = (couponsRaw ?? [])
     .filter((c) => (c as { sport?: string }).sport === "soccer")
     .map((c) => (c as { id: string }).id);
@@ -140,32 +145,28 @@ export default async function HistoryPage({ searchParams }: PageProps) {
     ? await reader
         .from("soccer_coupon_legs")
         .select(
-          `coupon_id, pick_order, prediction:soccer_predictions(id, market, side, line,
+          `coupon_id, pick_order, market, side, line, leg_source,
              soccer_matches(
                home:soccer_teams!soccer_matches_home_team_id_fkey(name, abbreviation),
-               away:soccer_teams!soccer_matches_away_team_id_fkey(name, abbreviation)))`,
+               away:soccer_teams!soccer_matches_away_team_id_fkey(name, abbreviation))`,
         )
         .in("coupon_id", soccerCouponIds)
     : { data: [] };
 
   const soccerLegsByCoupon = new Map<string, SoccerLegView[]>();
   for (const raw of (soccerLegsRaw ?? []) as unknown as RawSoccerLeg[]) {
-    const pred = Array.isArray(raw.prediction)
-      ? raw.prediction[0] ?? null
-      : raw.prediction;
-    if (!pred) continue;
-    const match = Array.isArray(pred.soccer_matches)
-      ? pred.soccer_matches[0] ?? null
-      : pred.soccer_matches;
+    const match = Array.isArray(raw.soccer_matches)
+      ? raw.soccer_matches[0] ?? null
+      : raw.soccer_matches;
     const home = match ? (Array.isArray(match.home) ? match.home[0] : match.home) : null;
     const away = match ? (Array.isArray(match.away) ? match.away[0] : match.away) : null;
     const list = soccerLegsByCoupon.get(raw.coupon_id) ?? [];
     list.push({
       pick_order: raw.pick_order,
-      id: pred.id,
-      market: pred.market,
-      side: pred.side,
-      line: pred.line === null ? null : Number(pred.line),
+      market: raw.market,
+      side: raw.side,
+      line: raw.line === null ? null : Number(raw.line),
+      leg_source: raw.leg_source,
       home: home?.name ?? "Home",
       away: away?.name ?? "Away",
       home_abbr: home?.abbreviation ?? "",
@@ -374,10 +375,10 @@ type CouponPickPrediction = {
 
 type SoccerLegView = {
   pick_order: number;
-  id: string;
   market: SoccerMarket;
   side: MatchSide;
   line: number | null;
+  leg_source: "engine" | "user";
   home: string;
   away: string;
   home_abbr: string;
@@ -386,34 +387,19 @@ type SoccerLegView = {
 
 type RawSoccerTeamLite = { name: string; abbreviation: string };
 
+type RawSoccerMatch = {
+  home: RawSoccerTeamLite | RawSoccerTeamLite[] | null;
+  away: RawSoccerTeamLite | RawSoccerTeamLite[] | null;
+};
+
 type RawSoccerLeg = {
   coupon_id: string;
   pick_order: number;
-  prediction:
-    | {
-        id: string;
-        market: SoccerMarket;
-        side: MatchSide;
-        line: number | string | null;
-        soccer_matches:
-          | {
-              home: RawSoccerTeamLite | RawSoccerTeamLite[] | null;
-              away: RawSoccerTeamLite | RawSoccerTeamLite[] | null;
-            }
-          | {
-              home: RawSoccerTeamLite | RawSoccerTeamLite[] | null;
-              away: RawSoccerTeamLite | RawSoccerTeamLite[] | null;
-            }[]
-          | null;
-      }
-    | {
-        id: string;
-        market: SoccerMarket;
-        side: MatchSide;
-        line: number | string | null;
-        soccer_matches: unknown;
-      }[]
-    | null;
+  market: SoccerMarket;
+  side: MatchSide;
+  line: number | string | null;
+  leg_source: "engine" | "user";
+  soccer_matches: RawSoccerMatch | RawSoccerMatch[] | null;
 };
 
 type CouponRow = {
@@ -521,7 +507,7 @@ function CouponRowCard({
         {isSoccer
           ? soccerLegs.map((leg) => (
               <li
-                key={leg.id}
+                key={leg.pick_order}
                 className="flex items-center gap-2 text-xs flex-wrap"
               >
                 <span className="size-1.5 rounded-full bg-amber-300/70" aria-hidden />
@@ -534,6 +520,15 @@ function CouponRowCard({
                 <span className="text-foreground/55">
                   {soccerMarketLabel(leg.market)}
                 </span>
+                {leg.leg_source === "engine" ? (
+                  <span className="ml-auto text-[9px] uppercase tracking-widest text-primary/70">
+                    ★ engine pick
+                  </span>
+                ) : (
+                  <span className="ml-auto text-[9px] uppercase tracking-widest text-foreground/35">
+                    your pick
+                  </span>
+                )}
               </li>
             ))
           : coupon.picks.map((p) =>

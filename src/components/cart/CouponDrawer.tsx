@@ -14,8 +14,23 @@ import {
 } from "@/lib/sports/soccer/labels";
 import { useCart, combinedConfidence, type CartPick } from "./CartContext";
 import type { PayoutMap } from "@/lib/analysis/payouts";
+import type { SoccerLegInput } from "@/lib/sports/soccer/coupon-legs";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json() as Promise<PayoutMap>);
+
+// Server error codes → what the user should actually do next. Anything not
+// listed here falls back to the raw `error.message` the server sent.
+const ERROR_MESSAGES: Record<string, string> = {
+  match_already_started: "One of these matches has already kicked off — remove it and try again.",
+  odds_mismatch: "Prices moved since you picked this — remove it, re-add it, and try again.",
+  line_mismatch: "The line for this market moved — remove this pick, re-add it, and try again.",
+  line_not_allowed_for_market: "That pick's line doesn't match its market — remove it and re-add it.",
+  no_odds_for_leg: "We no longer have live odds for one of your picks — remove it and try again.",
+  invalid_side_for_market: "One of your picks doesn't match its market — remove it and try again.",
+  duplicate_picks: "This coupon has the same outcome picked twice.",
+  prediction_already_settled: "One of these picks has already been graded — remove it and try again.",
+  unauthorized: "Sign in to save this coupon.",
+};
 
 function relativeTime(iso: string | null): string {
   if (!iso) return "rates not yet verified";
@@ -107,17 +122,40 @@ export function CouponDrawer({ isSignedIn }: { isSignedIn: boolean }) {
     setSubmitting(true);
     setError(null);
     try {
+      const isSoccer = cart.sport === "soccer";
+      const body = isSoccer
+        ? {
+            sport: "soccer" as const,
+            mode: cart.mode,
+            stake: cart.stake,
+            legs: cart.picks.map((p): SoccerLegInput => {
+              if (p.sport !== "soccer") throw new Error("mixed_sport_cart");
+              return p.kind === "engine"
+                ? { kind: "engine", prediction_id: p.prediction_id }
+                : {
+                    kind: "user",
+                    match_id: p.match_id,
+                    market: p.market,
+                    side: p.side,
+                    line: p.line,
+                    odds_taken: p.odds_taken,
+                  };
+            }),
+            payout_multiplier: activeMultiplier,
+            potential_payout: potential,
+          }
+        : {
+            sport: "nba" as const,
+            mode: cart.mode,
+            stake: cart.stake,
+            prediction_ids: cart.picks.map((p) => p.prediction_id),
+            payout_multiplier: activeMultiplier,
+            potential_payout: potential,
+          };
       const res = await fetch("/api/coupons", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sport: cart.sport ?? "nba",
-          mode: cart.mode,
-          stake: cart.stake,
-          prediction_ids: cart.picks.map((p) => p.prediction_id),
-          payout_multiplier: activeMultiplier,
-          potential_payout: potential,
-        }),
+        body: JSON.stringify(body),
       });
       // Safety net: if the server genuinely couldn't see the session, send the
       // user to login (preserving where they were) instead of a dead error.
@@ -126,8 +164,9 @@ export function CouponDrawer({ isSignedIn }: { isSignedIn: boolean }) {
         return;
       }
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error ?? `Save failed (${res.status})`);
+        const resBody = await res.json().catch(() => ({}));
+        const code = resBody.error as string | undefined;
+        throw new Error((code && ERROR_MESSAGES[code]) ?? code ?? `Save failed (${res.status})`);
       }
       cart.clear();
       cart.close();
@@ -237,10 +276,12 @@ export function CouponDrawer({ isSignedIn }: { isSignedIn: boolean }) {
                 </span>
               </div>
 
-              <div className="flex items-center justify-between text-[11px] text-foreground/55">
-                <span>Combined confidence (independence)</span>
-                <span className="font-mono tabular-nums">{confidence.toFixed(1)}%</span>
-              </div>
+              {confidence !== null ? (
+                <div className="flex items-center justify-between text-[11px] text-foreground/55">
+                  <span>Combined confidence (independence)</span>
+                  <span className="font-mono tabular-nums">{confidence.toFixed(1)}%</span>
+                </div>
+              ) : null}
 
               <p className="text-[10px] leading-relaxed text-foreground/50">
                 Multipliers mirror PrizePicks at last sync ({relativeTime(payouts?.latestVerifiedAt ?? null)}). Verify on PrizePicks before you enter.
@@ -345,6 +386,7 @@ function DrawerPickRow({ pick }: { pick: CartPick }) {
               <span className="text-sm font-medium truncate">
                 {pick.home_abbr || pick.home} v {pick.away_abbr || pick.away}
               </span>
+              <LegSourceTag kind={pick.kind} />
             </div>
             <div className="mt-0.5 flex items-baseline gap-1.5 text-xs">
               <span className="font-medium text-amber-200">
@@ -352,7 +394,7 @@ function DrawerPickRow({ pick }: { pick: CartPick }) {
               </span>
               <span className="text-foreground/55">{soccerMarketLabel(pick.market)}</span>
               <span className="text-foreground/40 font-mono tabular-nums ml-auto">
-                {Math.round(pick.confidence)}%
+                {pick.kind === "engine" ? `${Math.round(pick.confidence)}%` : pick.odds_taken.toFixed(2)}
               </span>
             </div>
           </>
@@ -392,5 +434,15 @@ function DrawerPickRow({ pick }: { pick: CartPick }) {
         </svg>
       </button>
     </div>
+  );
+}
+
+// Quiet, per-leg attribution — never a loud badge. Distinguishes a user's own
+// pick from one the engine also liked, at a glance.
+function LegSourceTag({ kind }: { kind: "engine" | "user" }) {
+  return kind === "engine" ? (
+    <span className="text-[9px] uppercase tracking-widest text-primary/70">★ engine pick</span>
+  ) : (
+    <span className="text-[9px] uppercase tracking-widest text-foreground/35">your pick</span>
   );
 }

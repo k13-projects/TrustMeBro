@@ -7,6 +7,7 @@ import type { PredictionDetail } from "./queries";
 export function toSoccerCartPick(p: PredictionDetail): SoccerCartPick {
   return {
     sport: "soccer",
+    kind: "engine",
     prediction_id: p.id,
     match_id: p.match_id,
     market: p.market,

@@ -1,0 +1,44 @@
+{
+  "feature": "user-built soccer coupons",
+  "date": "2026-09-14",
+  "branch": "tmb_sep14_v11",
+  "tester": "Olga (qa-test-engineer)",
+  "verdict": "PASS_WITH_ONE_DECLARED_GAP",
+  "test_account": {
+    "method": "supabase.auth.admin.createUser via service-role key, no Google OAuth, no Kazim credentials",
+    "user_id": "93a33653-0fb6-4bdf-a265-fb23b169aee6",
+    "deleted_after_test": true,
+    "cascade_verified": true
+  },
+  "screenshots_dir": "/private/tmp/claude-501/-Users-k13-Desktop-PROJECTS-TrustMeBro/693433ee-6ebd-4bbb-80cb-002855b51f7e/scratchpad/shots_qa/",
+  "checks": [
+    { "item": "authenticated save -> /history -> share -> onboarding -> Bro Board, mixed coupon", "verified": "browser", "result": "pass" },
+    { "item": "authenticated journey, all-user coupon", "verified": "browser", "result": "pass" },
+    { "item": "regression: engine-only coupon unchanged", "verified": "browser", "result": "pass" },
+    { "item": "mixed coupon: both legs display + tagged legibly", "verified": "browser", "result": "pass_after_fix", "note": "Bro Board was missing the user-leg tag; fixed in SharedCouponCard.tsx" },
+    { "item": "zero preselection on load (old gold top-tile gone)", "verified": "browser_dom_inspection", "result": "pass" },
+    { "item": "zero-engine-picks match fully usable", "verified": "browser", "result": "pass", "note": "per-match case (Sept 20 Super Lig fixture, id 401888382); no competition-wide zero-pick+priced case exists live right now" },
+    { "item": "hostile: match kicks off between selection and save", "verified": "browser_with_db_state_flip", "result": "pass" },
+    { "item": "hostile: forged odds_taken under real auth session", "verified": "browser_direct_fetch", "result": "pass", "response": "400 odds_mismatch" },
+    { "item": "hostile: forged line under real auth session", "verified": "browser_direct_fetch", "result": "pass", "response": "400 line_mismatch" },
+    { "item": "settlement reaches user leg, from UI", "verified": "not_verified", "result": "declared_gap", "note": "sandbox denied UPDATE soccer_matches for a controlled test; backend already proved this at DB/API layer; no real match settles in-window (next kickoff 2026-09-16)" },
+    { "item": "five competition palettes, no banned colors", "verified": "browser_computed_style", "result": "pass" },
+    { "item": "mobile 320/375/1024x768-landscape, zero overflow, 44px tap targets", "verified": "browser", "result": "pass" },
+    { "item": "prefers-reduced-motion", "verified": "browser_emulated_media", "result": "pass", "note": "no new transform/keyframe motion introduced by this diff" },
+    { "item": "console/network regression on rates, scoreboard, standings, /results", "verified": "browser", "result": "pass", "note": "/football/results does not exist as a route; tested closest real equivalents" },
+    { "item": "bro_stats returns to exact pre-test baseline", "verified": "db_query", "result": "pass" },
+    { "item": "tsc --noEmit / lint / build", "verified": "cli", "result": "pass" }
+  ],
+  "bug_fixed": {
+    "file": "src/components/bros/SharedCouponCard.tsx",
+    "description": "user-leg source tag was entirely missing on Bro Board (feed + profile), contradicting the UI handoff's claim; added 'their pick' tag"
+  },
+  "cleanup_confirmed": {
+    "user_coupons_count": 22,
+    "soccer_coupon_legs_count": 14,
+    "soccer_coupon_legs_by_source": { "engine": 14, "user": 0 },
+    "orphaned_test_users": 0,
+    "orphaned_test_profiles": 0,
+    "bro_stats_matches_baseline": true
+  }
+}

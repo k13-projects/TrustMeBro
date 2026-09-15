@@ -101,7 +101,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "locked" }, { status: 409 });
   }
 
-  const writer = requester.kind === "auth" ? supabase : supabaseAdmin();
+  // Always through the service-role client (migration 0033 — authenticated
+  // has no write grant left on this table; this route is now the only
+  // door). user_id/guest_name still come only from getRequester()'s
+  // server-verified session, never from anything the client sends, so this
+  // doesn't weaken identity — it just removes the RLS-write grant that made
+  // the direct-PostgREST self-award possible (see the migration).
+  const writer = supabaseAdmin();
   const identityCol = requester.kind === "auth" ? "user_id" : "guest_name";
   const identityVal =
     requester.kind === "auth" ? requester.user_id : requester.guest_name;
@@ -194,7 +200,9 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ error: "locked" }, { status: 409 });
   }
 
-  const writer = requester.kind === "auth" ? supabase : supabaseAdmin();
+  // Always through the service-role client — same reasoning as POST above
+  // (migration 0033).
+  const writer = supabaseAdmin();
   const identityCol = requester.kind === "auth" ? "user_id" : "guest_name";
   const identityVal =
     requester.kind === "auth" ? requester.user_id : requester.guest_name;

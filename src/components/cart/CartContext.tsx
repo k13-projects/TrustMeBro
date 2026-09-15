@@ -27,6 +27,15 @@ export type NbaCartPick = {
   jersey_number: string | null;
 };
 
+// An engine leg is a soccer_predictions row the engine already generated —
+// `prediction_id` is its real UUID. A user leg is a rates-board outcome the
+// viewer picked directly, with no prediction behind it; `prediction_id` here
+// is a synthetic, deterministic key (`user:<outcomeKey>`, see coupon-legs.ts)
+// so re-clicking the same tile toggles it off via the existing has()/add()
+// dedupe instead of creating a duplicate. Naming debt, called out in the plan
+// (docs/handoffs/user-coupons-plan_2026-09-14.md §4): kept as `prediction_id`
+// on both variants so every existing call site (has/remove/AddToCouponButton)
+// keeps working unchanged.
 export type SoccerCartPick = {
   sport: "soccer";
   prediction_id: string;
@@ -34,13 +43,14 @@ export type SoccerCartPick = {
   market: SoccerMarket;
   side: MatchSide;
   line: number | null;
-  confidence: number;
-  best_odds: number;
   home: string;
   away: string;
   home_abbr: string;
   away_abbr: string;
-};
+} & (
+  | { kind: "engine"; confidence: number; best_odds: number }
+  | { kind: "user"; odds_taken: number }
+);
 
 // A coupon is single-sport (NBA player props and soccer match markets settle
 // and price differently), so picks always share one `sport` discriminator.
@@ -238,8 +248,18 @@ export function useCart(): CartContextValue {
   return ctx;
 }
 
-export function combinedConfidence(picks: CartPick[]): number {
+function pickConfidence(p: CartPick): number | null {
+  return p.sport === "soccer" && p.kind === "user" ? null : p.confidence;
+}
+
+// null when any leg has no confidence to combine — a user-picked leg has no
+// engine probability estimate, so multiplying one in would misrepresent it
+// as engine-backed. Callers should hide the combined-confidence row in that
+// case rather than show a partial/misleading number.
+export function combinedConfidence(picks: CartPick[]): number | null {
   if (picks.length < 2) return 0;
-  const product = picks.reduce((acc, p) => acc * (p.confidence / 100), 1);
+  const confidences = picks.map(pickConfidence);
+  if (confidences.some((c) => c === null)) return null;
+  const product = (confidences as number[]).reduce((acc, c) => acc * (c / 100), 1);
   return Math.floor(product * 1000) / 10;
 }

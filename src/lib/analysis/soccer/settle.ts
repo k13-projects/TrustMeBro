@@ -7,7 +7,12 @@ import type { MatchSide, SoccerMarket } from "@/lib/sports/types";
 type BetStatus = "pending" | "won" | "lost" | "void";
 
 // Decide a single pick against a final score. null ⇒ push/void.
-function outcome(
+// Exported: this is the leg-agnostic grading core the plan calls out as
+// already decoupled from predictions (docs/handoffs/user-coupons-plan_2026-09-14.md
+// section 2) — settleSoccerCouponLegs() in src/lib/scoring/settle-coupons.ts
+// reuses it verbatim to grade a user-picked coupon leg, which has no
+// prediction row to read a status from.
+export function outcome(
   market: SoccerMarket,
   side: MatchSide,
   line: number | null,
@@ -176,4 +181,100 @@ async function settleCoupons(competition: SoccerCompetition): Promise<number> {
     settled += 1;
   }
   return settled;
+}
+
+const STALE_AFTER_MS = 5 * 24 * 3600 * 1000; // 5 days
+
+export type StalenessResult = {
+  matches_stale: number;
+  predictions_voided: number;
+  legs_voided: number;
+};
+
+// Safety net for postponed/abandoned matches — a pre-existing gap, not
+// introduced by user coupons: this codebase has never parsed ESPN's
+// postponed/abandoned statuses, and verified live, soccer_matches.state only
+// ever takes 'pre'/'post' today (see
+// docs/handoffs/user-coupons-plan_2026-09-14.md section 2). Without this, a
+// stuck fixture leaves its predictions AND any coupon legs built on it
+// pending forever — worse once users can build coupons on any outcome, since
+// a stuck leg now reads as a real (if silent) money commitment instead of an
+// abstract engine stat. Anything still `pending` on a match whose kickoff was
+// more than 5 days ago and that still hasn't finished gets force-voided —
+// both soccer_predictions and soccer_coupon_legs directly, since a stale
+// match never reaches `finished = true` and so would never be picked up by
+// the normal finished-match settlement paths (settleSoccer above,
+// settleSoccerCouponLegs in src/lib/scoring/settle-coupons.ts). This is the
+// "smallest honest change" the plan calls for, not full ESPN status parsing
+// (distinguishing postponed vs. abandoned vs. delayed) — a match that's
+// merely late to get a final posted after 5 days would be wrongly voided;
+// accepted risk given how rare that is versus a stuck bet.
+export async function voidStaleSoccerRows(): Promise<StalenessResult> {
+  const supabase = supabaseAdmin();
+  const staleBefore = new Date(Date.now() - STALE_AFTER_MS).toISOString();
+
+  const { data: staleMatches, error: mErr } = await supabase
+    .from("soccer_matches")
+    .select("id")
+    .eq("finished", false)
+    .lt("datetime", staleBefore);
+  if (mErr) throw new Error(`load stale matches: ${mErr.message}`);
+  if (!staleMatches || staleMatches.length === 0) {
+    return { matches_stale: 0, predictions_voided: 0, legs_voided: 0 };
+  }
+  const matchIds = staleMatches.map((m) => m.id as number);
+  const now = new Date().toISOString();
+
+  const { data: pendingPreds } = await supabase
+    .from("soccer_predictions")
+    .select("id, competition")
+    .eq("status", "pending")
+    .in("match_id", matchIds);
+  const predsToVoid = (pendingPreds ?? []) as Array<{ id: string; competition: string }>;
+  if (predsToVoid.length > 0) {
+    await supabase
+      .from("soccer_predictions")
+      .update({ status: "void", settled_side: null, settled_at: now })
+      .in(
+        "id",
+        predsToVoid.map((p) => p.id),
+      );
+
+    const byCompetition = new Map<string, number>();
+    for (const p of predsToVoid) {
+      byCompetition.set(p.competition, (byCompetition.get(p.competition) ?? 0) + 1);
+    }
+    for (const [competition, count] of byCompetition) {
+      const { data: agg } = await supabase
+        .from("soccer_ledgers")
+        .select("voids")
+        .eq("competition", competition)
+        .maybeSingle();
+      await supabase
+        .from("soccer_ledgers")
+        .upsert({ competition, voids: Number(agg?.voids ?? 0) + count, updated_at: now });
+    }
+  }
+
+  const { data: pendingLegs } = await supabase
+    .from("soccer_coupon_legs")
+    .select("id")
+    .eq("status", "pending")
+    .in("match_id", matchIds);
+  const legsToVoid = (pendingLegs ?? []) as Array<{ id: string }>;
+  if (legsToVoid.length > 0) {
+    await supabase
+      .from("soccer_coupon_legs")
+      .update({ status: "void", settled_side: null, settled_at: now })
+      .in(
+        "id",
+        legsToVoid.map((l) => l.id),
+      );
+  }
+
+  return {
+    matches_stale: staleMatches.length,
+    predictions_voided: predsToVoid.length,
+    legs_voided: legsToVoid.length,
+  };
 }

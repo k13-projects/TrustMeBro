@@ -67,22 +67,30 @@ type CouponRow = {
 
 type SoccerTeamLite = { name: string; abbreviation: string };
 
-type RawSoccerPred = {
+type SoccerMatchEmbed =
+  | {
+      home: SoccerTeamLite | SoccerTeamLite[] | null;
+      away: SoccerTeamLite | SoccerTeamLite[] | null;
+    }
+  | {
+      home: SoccerTeamLite | SoccerTeamLite[] | null;
+      away: SoccerTeamLite | SoccerTeamLite[] | null;
+    }[]
+  | null;
+
+// A leg's own columns (migration 0029) are the source of truth for both leg
+// sources — a user-picked leg has no soccer_prediction_id to join through, so
+// reading soccer_coupon_legs directly (not via soccer_predictions) is
+// required, not just an alternative. See docs/handoffs/user-coupons-plan_2026-09-14.md §2.
+type RawSoccerLeg = {
   id: string;
+  pick_order: number;
   market: SoccerMarket;
   side: MatchSide;
   line: number | string | null;
   status: "pending" | "won" | "lost" | "void";
-  soccer_matches:
-    | {
-        home: SoccerTeamLite | SoccerTeamLite[] | null;
-        away: SoccerTeamLite | SoccerTeamLite[] | null;
-      }
-    | {
-        home: SoccerTeamLite | SoccerTeamLite[] | null;
-        away: SoccerTeamLite | SoccerTeamLite[] | null;
-      }[]
-    | null;
+  leg_source: "engine" | "user";
+  soccer_matches: SoccerMatchEmbed;
 };
 
 type SoccerCouponRow = {
@@ -98,10 +106,7 @@ type SoccerCouponRow = {
   shared_at: string | null;
   settled_at: string | null;
   created_at: string;
-  legs: Array<{
-    pick_order: number;
-    prediction: RawSoccerPred | RawSoccerPred[] | null;
-  }>;
+  legs: RawSoccerLeg[];
 };
 
 const NBA_COUPON_SELECT = `id, user_id, mode, pick_count, stake, payout_multiplier, potential_payout,
@@ -112,11 +117,10 @@ const NBA_COUPON_SELECT = `id, user_id, mode, pick_count, stake, payout_multipli
 
 const SOCCER_COUPON_SELECT = `id, user_id, mode, pick_count, stake, payout_multiplier, potential_payout,
    status, result_payout, shared_at, settled_at, created_at,
-   legs:soccer_coupon_legs(pick_order,
-     prediction:soccer_predictions(id, market, side, line, status,
-       soccer_matches(
-         home:soccer_teams!soccer_matches_home_team_id_fkey(name, abbreviation),
-         away:soccer_teams!soccer_matches_away_team_id_fkey(name, abbreviation))))`;
+   legs:soccer_coupon_legs(id, pick_order, market, side, line, status, leg_source,
+     soccer_matches(
+       home:soccer_teams!soccer_matches_home_team_id_fkey(name, abbreviation),
+       away:soccer_teams!soccer_matches_away_team_id_fkey(name, abbreviation)))`;
 
 function one<T>(v: T | T[] | null | undefined): T | null {
   return Array.isArray(v) ? (v[0] ?? null) : (v ?? null);
@@ -181,19 +185,18 @@ function normalizeSoccerCoupon(
 ): SharedCoupon {
   const picks: SharedCouponSoccerPick[] = row.legs
     .map((l) => {
-      const pred = one(l.prediction);
-      if (!pred) return { pick_order: l.pick_order, prediction: null };
-      const match = one(pred.soccer_matches);
+      const match = one(l.soccer_matches);
       const home = one(match?.home ?? null);
       const away = one(match?.away ?? null);
       return {
         pick_order: l.pick_order,
         prediction: {
-          id: pred.id,
-          market: pred.market,
-          side: pred.side,
-          line: pred.line === null ? null : Number(pred.line),
-          status: pred.status,
+          id: l.id,
+          market: l.market,
+          side: l.side,
+          line: l.line === null ? null : Number(l.line),
+          status: l.status,
+          leg_source: l.leg_source,
           home: home?.name ?? "Home",
           away: away?.name ?? "Away",
           home_abbr: home?.abbreviation ?? "",
