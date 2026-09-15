@@ -41,7 +41,9 @@ export default async function PicksPage() {
         <p className="rounded-2xl border border-border/60 bg-card/40 px-4 py-12 text-center text-sm text-foreground/55">
           {meta.status === "archived"
             ? "No open picks — every pick from the tournament has been graded."
-            : "No picks yet for the next matchday. The engine generates them once odds are in — usually the day before kickoff."}
+            : meta.oddsKey === null
+              ? "No bookmaker odds for this competition yet — the engine needs a priced market to make a pick."
+              : "No picks yet for the next matchday. The engine generates them once odds are in — usually the day before kickoff."}
         </p>
       ) : null}
 

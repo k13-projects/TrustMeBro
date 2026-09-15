@@ -10,7 +10,7 @@ import { ShareButton } from "./ShareButton";
 export function BankoCard({ pick }: { pick: PredictionDetail }) {
   const pickTitle = sideLabel(pick.market, pick.side, pick.line, pick.home, pick.away);
   return (
-    <div className="rounded-3xl border border-primary/40 bg-gradient-to-br from-primary/15 to-transparent p-5">
+    <div className="min-w-0 rounded-3xl border border-primary/40 bg-gradient-to-br from-primary/15 to-transparent p-5">
       <div className="flex items-center justify-between">
         <span className="rounded-full bg-primary px-3 py-1 text-xs font-black uppercase tracking-wider text-primary-foreground">
           🔒 Banko

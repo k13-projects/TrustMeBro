@@ -122,6 +122,8 @@ export default async function RootLayout({
             stats={engineStats}
             sport={sport}
             competitionLabel={competitionMeta.fullName}
+            competitionTagline={competitionMeta.tagline}
+            hasOdds={competitionMeta.oddsKey !== null}
           />
           <Navbar
             sport={sport}

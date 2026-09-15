@@ -40,7 +40,14 @@ export function CompetitionSwitcher({
       role="tablist"
       aria-label="Competition"
       className={cx(
-        "inline-flex items-center gap-1 rounded-full border border-border/70 bg-black/40 p-1 shadow-[inset_0_1px_2px_rgba(0,0,0,0.45)]",
+        // A 5th tab (Süper Lig) made this row wider than a 320px viewport
+        // has room for — inline-flex with five icon+label pills doesn't fit
+        // next to the competition identity block even on its own wrapped
+        // row. min-w-0 lets it shrink inside the flex-wrap parent instead of
+        // forcing the page wider; overflow-x-auto makes the pills themselves
+        // swipeable so every competition (including the archive) stays
+        // reachable at any width, same pattern as RoundNav's round strip.
+        "inline-flex min-w-0 max-w-full items-center gap-1 overflow-x-auto rounded-full border border-border/70 bg-black/40 p-1 shadow-[inset_0_1px_2px_rgba(0,0,0,0.45)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
         className,
       )}
     >

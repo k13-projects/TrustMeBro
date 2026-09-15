@@ -4,6 +4,7 @@ import { assertCronAuth } from "../../_auth";
 import { isoDateOffset, isValidIsoDate, todayIsoDate } from "@/lib/date";
 import { generateSoccerPredictions } from "@/lib/analysis/soccer/run";
 import {
+  COMPETITIONS,
   isCompetition,
   liveCompetitions,
   type SoccerCompetition,
@@ -59,6 +60,10 @@ export async function GET(req: Request) {
 
   const results: Record<string, unknown> = {};
   for (const competition of competitions) {
+    if (COMPETITIONS[competition].oddsKey === null) {
+      results[competition] = { skipped: "no odds source for this competition yet (oddsKey null)" };
+      continue;
+    }
     results[competition] = await generateSoccerPredictions(competition, dates);
   }
   return NextResponse.json({ ok: true, dates, competitions: results });

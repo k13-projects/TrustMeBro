@@ -1,4 +1,8 @@
 {
+  "env": {
+    "CHROMIUM_PROFILE": "~/.gstack/berths/tmb",
+    "BROWSE_PORT": "39136"
+  },
   "permissions": {
     "allow": [
       "Bash(curl -s -H 'Cookie: tmb_sport=soccer' http://localhost:3100/)",

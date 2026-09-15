@@ -327,6 +327,36 @@ body {
   font-weight: 700;
 }
 
+/* Turkish Süper Lig: flag red on near-black. Distinct from the cooler,
+   pinker rose-400 (#fb7185) reserved for negative-delta semantics. */
+[data-competition="tur.1"] {
+  --primary: #e30a17;
+  --primary-foreground: #fff5f5;
+  --primary-hover: #ff2e3d;
+  --accent: rgba(227, 10, 23, 0.14);
+  --accent-foreground: var(--primary);
+  --ring: var(--primary);
+  --sidebar-primary: var(--primary);
+  --sidebar-accent: rgba(227, 10, 23, 0.12);
+  --sidebar-accent-foreground: var(--primary);
+  --surface: #170808;
+  --surface-2: #200d0d;
+  --card: var(--surface);
+  --popover: var(--surface);
+  --border: rgba(255, 190, 190, 0.12);
+  --muted-foreground: #ab8f8f;
+  --chart-1: var(--primary);
+  --font-display: var(--font-ucl);
+  --font-heading: var(--font-ucl);
+  background:
+    radial-gradient(70rem 42rem at 50% -8rem, rgba(227, 10, 23, 0.2), transparent 62%),
+    linear-gradient(180deg, #1a0808 0%, #0d0707 34rem, var(--background) 70rem);
+}
+[data-competition="tur.1"] .font-display {
+  letter-spacing: 0.02em;
+  font-weight: 700;
+}
+
 /* One lit word in a section title, in the competition's own accent. */
 @utility accent-text {
   background: linear-gradient(180deg, var(--primary-hover) 0%, var(--primary) 60%, color-mix(in srgb, var(--primary) 80%, black) 100%);

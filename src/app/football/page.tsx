@@ -3,7 +3,11 @@ import Link from "next/link";
 import { todayIsoDate } from "@/lib/date";
 import { maybeRefresh } from "@/lib/ingest/refresh";
 import { activeCompetition } from "@/lib/sports/soccer/competition-cookie";
-import { COMPETITIONS, type SoccerCompetition } from "@/lib/sports/soccer/competitions";
+import {
+  COMPETITIONS,
+  type CompetitionTheme,
+  type SoccerCompetition,
+} from "@/lib/sports/soccer/competitions";
 import {
   daysUntil,
   deriveMovement,
@@ -59,7 +63,7 @@ function Accent({
   theme,
   children,
 }: {
-  theme: "ucl" | "uel" | "uecl" | "wc";
+  theme: CompetitionTheme;
   children: React.ReactNode;
 }) {
   return theme === "wc" ? (
@@ -158,13 +162,14 @@ export default async function FootballHome() {
   const tableKey = [...standings.keys()][0];
   const tableRows = tableKey ? (standings.get(tableKey) ?? []) : [];
   const leaguePhase = standings.size === 1 && tableRows.length > 8;
+  const qualificationZones = meta.qualificationZones;
 
   return (
     <div className="fade-up">
       <Hero
         stats={stats}
         eyebrow={`${meta.label} · ${focusRound.label}`}
-        subtitle="Europe's elite, priced by forty books and de-vigged to the real probability, nudged by the league table. Every pick graded after the final whistle."
+        subtitle={`${meta.tagline}. Priced across the books and de-vigged to the real probability, nudged by the league table. Every pick graded after the final whistle.`}
         primaryCta={{ href: "/football/picks", label: "This Matchday's Picks" }}
         secondaryCta={{ href: "/football/standings", label: "League Table" }}
       />
@@ -267,16 +272,17 @@ export default async function FootballHome() {
                 href="/football/standings"
                 className="inline-block py-1 -my-1 text-sm font-semibold text-primary hover:text-primary-hover"
               >
-                Full 36-team table →
+                Full {tableRows.length}-team table →
               </Link>
             }
           />
           <div className="mx-auto max-w-4xl">
             <StandingsTable
-              group="Round of 16 places"
+              group={qualificationZones ? "Round of 16 places" : meta.phaseLabel}
               rows={tableRows.slice(0, 8)}
               format="league-phase"
               competition={competition}
+              qualificationZones={qualificationZones}
             />
           </div>
         </section>
@@ -465,6 +471,7 @@ async function BetweenMatchdays({
               moves={movement.moves}
               firstTable={movement.firstTable}
               roundLabel={last.label}
+              qualificationZones={meta.qualificationZones}
             />
           </div>
         </section>

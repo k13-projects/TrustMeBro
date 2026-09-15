@@ -277,6 +277,23 @@ const CLUB_ALIASES: Record<string, string> = {
   "chelsea fc": "chelsea",
   "aston villa fc": "aston villa",
   "bayern": "bayern munich",
+
+  // Süper Lig (tur.1) — verified against a live The Odds API pull for
+  // soccer_turkey_super_league (2026-09-14) diffed against all 18 clubs'
+  // stored ESPN names. Fenerbahce/Galatasaray/Besiktas already had entries
+  // above from UEFA play. Most of the other 14 already clear the fuzzy
+  // token-overlap threshold on their own (NOISE already strips "sk"/"fk"),
+  // but these four genuinely diverge — a sponsor/former-club-name prefix on
+  // one side, a fuller legal suffix on the other — and are made explicit
+  // rather than left to the 0.75 "contained" fuzzy floor:
+  "amed sk": "amed sfk",
+  "basaksehir": "istanbul basaksehir",
+  "gazisehir gaziantep": "gaziantep fk",
+  "torku konyaspor": "konyaspor",
+  // Explicit for consistency with the fenerbahce/besiktas/galatasaray
+  // pattern above, even though NOISE-stripping "sk" already resolves these:
+  "kasimpasa sk": "kasimpasa",
+  "genclerbirligi sk": "genclerbirligi",
 };
 
 // Tokens that carry no identity (legal forms, generic words, founding years).
@@ -297,6 +314,13 @@ export function normalizeTeamName(name: string): string {
     .replace(/đ/g, "d")
     .replace(/æ/g, "ae")
     .replace(/ß/g, "ss")
+    // Turkish dotless ı (U+0131) has no NFKD decomposition, so the
+    // diacritic strip above leaves it untouched — "Kasımpaşa" would fold to
+    // "kasımpasa" (still carrying the ı) while "Kasimpasa" folds to
+    // "kasimpasa", and the two never matched. Confirmed live: searching the
+    // real Turkish spelling of any Süper Lig club with a dotless ı (e.g.
+    // Kasımpaşa) returned zero Cmd-K results before this line existed.
+    .replace(/ı/g, "i")
     .replace(/[.'’]/g, "")
     .replace(/\s+/g, " ")
     .trim();

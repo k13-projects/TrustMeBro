@@ -11,12 +11,32 @@ export type SoccerCompetition =
   | "fifa.world"
   | "uefa.champions"
   | "uefa.europa"
-  | "uefa.europa.conf";
+  | "uefa.europa.conf"
+  | "tur.1";
 
 export const COMPETITION_COOKIE = "tmb_competition";
 export const COMPETITION_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 
-export type CompetitionTheme = "wc" | "ucl" | "uel" | "uecl";
+export type CompetitionTheme = "wc" | "ucl" | "uel" | "uecl" | "sl";
+
+/**
+ * Throttle for `/api/cron/soccer/track-odds`. `null` keeps the original,
+ * unbounded behavior (pull whenever the lookahead window has an unfinished
+ * match) — correct for UEFA's competitions, whose matchdays cluster every
+ * few weeks so most days already cost nothing. A weekly domestic league
+ * satisfies "an unfinished match in the window" on almost every day, so it
+ * needs an actual rate limit:
+ *
+ * - `minHours` is a hard floor — a pull never happens sooner than this many
+ *   hours after the previous one, full stop. This is what bounds monthly
+ *   credit spend (30.4 days × 24h / minHours pulls/month × 4 credits/pull).
+ * - `freshWithinHours` lets a pull move *earlier* than its next `minHours`
+ *   slot — but only up to `freshWithinHours` early — when doing so would
+ *   otherwise mean the nearest unfinished match kicks off before the next
+ *   slot arrives. It never adds an extra pull; it only re-times the existing
+ *   one so the price isn't stale by kickoff. See `odds-cadence.ts`.
+ */
+export type OddsCadence = { minHours: number; freshWithinHours: number } | null;
 
 export type CompetitionMeta = {
   id: SoccerCompetition;
@@ -29,8 +49,13 @@ export type CompetitionMeta = {
   kind: "national" | "club";
   /** ESPN league slugs that feed this competition. First = main phase. */
   espnSlugs: string[];
-  /** The Odds API sport key for the main phase. */
-  oddsKey: string;
+  /** The Odds API sport key for the main phase, or null with no odds source yet
+   *  (skip guards in track-odds/generate-predictions gate on this). */
+  oddsKey: string | null;
+  /** Odds-pull rate limit — see `OddsCadence`. Null for every UEFA
+   *  competition (unthrottled, unchanged) and for any competition with
+   *  `oddsKey: null` (irrelevant — never pulled at all). */
+  oddsCadence: OddsCadence;
   /** ESPN league logo (light-on-dark variant) — used as emblem + toggle knob. */
   logo: string;
   emoji: string;
@@ -39,6 +64,14 @@ export type CompetitionMeta = {
   tagline: string;
   /** Name for the current phase as a human label (headers, chat). */
   phaseLabel: string;
+  /** True only for UEFA's 36-team league phase, where a single table above
+   *  8 rows carries real Round of 16 / play-off / out qualification zones.
+   *  A domestic single-table league (Süper Lig) also renders as one table
+   *  above 8 rows but has no such zones — this flag keeps the zone legend,
+   *  the "Round of 16 places" heading, and the hardcoded "36-team" copy from
+   *  bleeding onto a competition where they'd describe something that isn't
+   *  real. */
+  qualificationZones: boolean;
 };
 
 export const COMPETITIONS: Record<SoccerCompetition, CompetitionMeta> = {
@@ -53,11 +86,13 @@ export const COMPETITIONS: Record<SoccerCompetition, CompetitionMeta> = {
     kind: "club",
     espnSlugs: ["uefa.champions", "uefa.champions_qual"],
     oddsKey: "soccer_uefa_champs_league",
+    oddsCadence: null,
     logo: "https://a.espncdn.com/i/leaguelogos/soccer/500-dark/2.png",
     emoji: "⭐",
     theme: "ucl",
     tagline: "The best of Europe, every matchday",
     phaseLabel: "League Phase",
+    qualificationZones: true,
   },
   "uefa.europa": {
     id: "uefa.europa",
@@ -70,11 +105,13 @@ export const COMPETITIONS: Record<SoccerCompetition, CompetitionMeta> = {
     kind: "club",
     espnSlugs: ["uefa.europa", "uefa.europa_qual"],
     oddsKey: "soccer_uefa_europa_league",
+    oddsCadence: null,
     logo: "https://a.espncdn.com/i/leaguelogos/soccer/500-dark/2310.png",
     emoji: "🟠",
     theme: "uel",
     tagline: "Thursday nights, the long road to the final",
     phaseLabel: "League Phase",
+    qualificationZones: true,
   },
   "uefa.europa.conf": {
     id: "uefa.europa.conf",
@@ -87,11 +124,13 @@ export const COMPETITIONS: Record<SoccerCompetition, CompetitionMeta> = {
     kind: "club",
     espnSlugs: ["uefa.europa.conf", "uefa.europa.conf_qual"],
     oddsKey: "soccer_uefa_europa_conference_league",
+    oddsCadence: null,
     logo: "https://a.espncdn.com/i/leaguelogos/soccer/500-dark/20296.png",
     emoji: "🟢",
     theme: "uecl",
     tagline: "Europe's third tier, first-time finalists every year",
     phaseLabel: "League Phase",
+    qualificationZones: true,
   },
   "fifa.world": {
     id: "fifa.world",
@@ -104,11 +143,38 @@ export const COMPETITIONS: Record<SoccerCompetition, CompetitionMeta> = {
     kind: "national",
     espnSlugs: ["fifa.world"],
     oddsKey: "soccer_fifa_world_cup",
+    oddsCadence: null,
     logo: "https://a.espncdn.com/i/leaguelogos/soccer/500-dark/4.png",
     emoji: "🏆",
     theme: "wc",
     tagline: "Tournament complete — the full record, preserved",
     phaseLabel: "Final",
+    qualificationZones: false,
+  },
+  "tur.1": {
+    id: "tur.1",
+    label: "Süper Lig",
+    fullName: "Turkish Süper Lig",
+    shortLabel: "SL",
+    season: 2026,
+    seasonLabel: "2026-27",
+    status: "live",
+    kind: "club",
+    espnSlugs: ["tur.1"],
+    oddsKey: "soccer_turkey_super_league",
+    // Süper Lig plays Fri-Mon nearly every week Aug-May, so the plain
+    // "unfinished match in the lookahead window" gate (used by every UEFA
+    // competition) would fire almost daily. Simulated a full 10-month season
+    // of weekly Fri-Mon rounds against this cadence (no international
+    // breaks, i.e. worst case): ~8.7 pulls/month = ~35 credits/month, under
+    // the 40/month budget. See docs/handoffs/superlig-odds_2026-09-14.md.
+    oddsCadence: { minHours: 78, freshWithinHours: 24 },
+    logo: "https://a.espncdn.com/i/leaguelogos/soccer/500-dark/18.png",
+    emoji: "🔴",
+    theme: "sl",
+    tagline: "18 clubs, one table, every Turkish derby",
+    phaseLabel: "Regular Season",
+    qualificationZones: false,
   },
 };
 
@@ -116,6 +182,7 @@ export const COMPETITION_ORDER: SoccerCompetition[] = [
   "uefa.champions",
   "uefa.europa",
   "uefa.europa.conf",
+  "tur.1",
   "fifa.world",
 ];
 

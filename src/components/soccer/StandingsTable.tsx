@@ -5,16 +5,23 @@ import { accentColor } from "./MatchBanner";
 import { CountryFlag } from "./CountryFlag";
 import { TeamCrest } from "./TeamCrest";
 
-// League-phase zones (36-team format): 1–8 straight to the Round of 16,
-// 9–24 into the knockout play-offs, 25–36 out. World Cup groups: top two go
-// through. `format` picks which rule paints the rows.
+// League-phase zones (UEFA's 36-team format only): 1–8 straight to the
+// Round of 16, 9–24 into the knockout play-offs, 25–36 out. World Cup
+// groups: top two go through. A domestic single-table league (Süper Lig)
+// also renders as one table above 8 rows but has no such zones — callers
+// must pass `qualificationZones={competitionMeta(id).qualificationZones}`
+// (false for it) so the legend/bars don't describe qualification that
+// doesn't exist. `format` still picks the row-count shape.
 export type StandingsFormat = "league-phase" | "group";
 
-function zoneFor(rank: number, format: StandingsFormat) {
+function zoneFor(rank: number, format: StandingsFormat, qualificationZones: boolean) {
   if (format === "group") {
     return rank <= 2
       ? { key: "adv", rankClass: "text-primary font-bold", bar: "bg-primary" }
       : { key: "out", rankClass: "text-foreground/40", bar: "bg-transparent" };
+  }
+  if (!qualificationZones) {
+    return { key: "none", rankClass: "text-foreground/70", bar: "bg-transparent" };
   }
   if (rank <= 8) return { key: "r16", rankClass: "text-primary font-bold", bar: "bg-primary" };
   if (rank <= 24) return { key: "po", rankClass: "text-foreground/80", bar: "bg-[var(--ucl-silver,#c9d3e6)]/70" };
@@ -26,18 +33,21 @@ export function StandingsTable({
   rows,
   format = "group",
   competition,
+  qualificationZones = false,
 }: {
   group: string;
   rows: StandingRow[];
   format?: StandingsFormat;
   competition: SoccerCompetition;
+  /** Only true for UEFA's league phase — see the note above `zoneFor`. */
+  qualificationZones?: boolean;
 }) {
   const clubs = competition !== "fifa.world";
   return (
     <div className="overflow-hidden rounded-2xl border border-border/60 bg-card/40">
       <div className="flex items-center justify-between border-b border-border/60 px-4 py-2.5">
         <span className="font-display text-sm uppercase tracking-[0.08em]">{group}</span>
-        {format === "league-phase" ? (
+        {format === "league-phase" && qualificationZones ? (
           <span className="hidden items-center gap-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-foreground/50 sm:flex">
             <span className="inline-flex items-center gap-1.5">
               <span className="h-2.5 w-1 rounded-full bg-primary" /> Round of 16
@@ -68,9 +78,9 @@ export function StandingsTable({
           </thead>
           <tbody>
             {rows.map((r) => {
-              const zone = zoneFor(r.rank, format);
+              const zone = zoneFor(r.rank, format, qualificationZones);
               const cut =
-                format === "league-phase" && (r.rank === 8 || r.rank === 24);
+                format === "league-phase" && qualificationZones && (r.rank === 8 || r.rank === 24);
               const accent = clubs ? accentColor(r.team.color) : null;
               return (
                 <tr

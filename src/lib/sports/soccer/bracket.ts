@@ -52,8 +52,12 @@ const STAGE_LABEL: Record<string, string> = {
   final: "Final",
 };
 
+// Allowlist, not a denylist: a single-table league's stage is one constant
+// slug that never appears here (e.g. Süper Lig's ESPN season.slug), so it
+// correctly reads as "no bracket" instead of every fixture reading as a
+// fabricated knockout tie.
 export function isKnockoutStage(stage: string | null): boolean {
-  return !!stage && stage !== "league-phase" && stage !== "group-stage";
+  return !!stage && STAGE_ORDER.includes(stage);
 }
 
 export function groupIntoTies(matches: MatchRow[]): Tie[] {

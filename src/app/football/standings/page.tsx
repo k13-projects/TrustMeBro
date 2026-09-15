@@ -11,7 +11,9 @@ export default async function StandingsPage() {
   const meta = COMPETITIONS[competition];
   const byGroup = await getStandings(competition);
   const groups = [...byGroup.keys()].sort();
-  const leaguePhase = groups.length === 1 && (byGroup.get(groups[0])?.length ?? 0) > 8;
+  const totalTeams = groups.length === 1 ? (byGroup.get(groups[0])?.length ?? 0) : 0;
+  const leaguePhase = groups.length === 1 && totalTeams > 8;
+  const qualificationZones = meta.qualificationZones;
 
   return (
     <div className={`mx-auto space-y-8 px-4 py-10 ${leaguePhase ? "max-w-4xl" : "max-w-5xl"}`}>
@@ -20,11 +22,15 @@ export default async function StandingsPage() {
           title={leaguePhase ? "League Table" : "Standings"}
           competition={competition}
         />
-        {leaguePhase ? (
+        {leaguePhase && qualificationZones ? (
           <p className="mt-2 max-w-2xl text-sm text-foreground/55">
-            One 36-team table, eight matchdays. Top eight go straight to the
+            One {totalTeams}-team table, eight matchdays. Top eight go straight to the
             Round of 16; ninth to twenty-fourth play off for the remaining
             eight places; the bottom twelve go out of Europe.
+          </p>
+        ) : leaguePhase ? (
+          <p className="mt-2 max-w-2xl text-sm text-foreground/55">
+            One {totalTeams}-team table, {meta.phaseLabel.toLowerCase()}.
           </p>
         ) : meta.status === "archived" ? (
           <p className="mt-2 text-sm text-foreground/55">
@@ -40,6 +46,7 @@ export default async function StandingsPage() {
             rows={byGroup.get(groups[0]) ?? []}
             format="league-phase"
             competition={competition}
+            qualificationZones={qualificationZones}
           />
         ) : (
           <div className="grid gap-5 md:grid-cols-2">

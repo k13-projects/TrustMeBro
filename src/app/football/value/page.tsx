@@ -1,5 +1,6 @@
 import { isoDateOffset, todayIsoDate } from "@/lib/date";
 import { activeCompetition } from "@/lib/sports/soccer/competition-cookie";
+import { COMPETITIONS } from "@/lib/sports/soccer/competitions";
 import { getMatchesBetween, type MatchRow } from "@/lib/sports/soccer/queries";
 import { getSoccerRates } from "@/lib/sports/soccer/rates";
 import { sideLabel } from "@/lib/sports/soccer/labels";
@@ -51,6 +52,7 @@ export default async function ValuePage({ searchParams }: PageProps) {
     activeCompetition(),
   ]);
   const active = FILTERS.find((f) => f.key === market) ?? FILTERS[0];
+  const hasOddsSource = COMPETITIONS[competition].oddsKey !== null;
 
   const today = todayIsoDate();
   const matches = await getMatchesBetween(competition, today, isoDateOffset(today, 8));
@@ -145,7 +147,9 @@ export default async function ValuePage({ searchParams }: PageProps) {
       {ranked.length === 0 ? (
         <p className="rounded-2xl border border-dashed border-border/60 bg-card/20 px-6 py-10 text-center text-sm text-foreground/45">
           {rows.length === 0
-            ? "Prices load in the days before a matchday."
+            ? hasOddsSource
+              ? "Prices load in the days before a matchday."
+              : "No bookmaker odds for this competition yet — value needs a priced market to compare against."
             : "No outcome clears those filters. Loosen the minimum edge or pick another market."}
         </p>
       ) : (

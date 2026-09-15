@@ -34,9 +34,11 @@ export default async function BracketPage({ searchParams }: PageProps) {
       <div>
         <FootballHeader title="Bracket" competition={competition} />
         <p className="mt-2 max-w-2xl text-sm text-foreground/55">
-          {meta.kind === "club"
+          {meta.kind === "club" && meta.qualificationZones
             ? "Every knockout tie, both legs and the aggregate. The road into the league phase in summer; the road to the final from February."
-            : "The knockout rounds as they were played, from the Round of 32 to the final."}
+            : meta.kind === "club"
+              ? `${meta.label} is a single-table league — no knockout ties, no bracket.`
+              : "The knockout rounds as they were played, from the Round of 32 to the final."}
         </p>
       </div>
 
@@ -55,12 +57,26 @@ export default async function BracketPage({ searchParams }: PageProps) {
         <Bracket columns={columns} competition={competition} />
       ) : (
         <p className="rounded-2xl border border-dashed border-border/60 bg-card/20 px-6 py-10 text-center text-sm text-foreground/45">
-          No knockout ties on record yet. The bracket fills in as the league
-          phase ends — see the{" "}
-          <Link href="/football/standings" className="font-semibold text-primary">
-            table
-          </Link>{" "}
-          for who&apos;s on course.
+          {meta.kind === "club" && meta.qualificationZones ? (
+            <>
+              No knockout ties on record yet. The bracket fills in as the
+              league phase ends — see the{" "}
+              <Link href="/football/standings" className="font-semibold text-primary">
+                table
+              </Link>{" "}
+              for who&apos;s on course.
+            </>
+          ) : meta.kind === "club" ? (
+            <>
+              No bracket for {meta.label} — it&apos;s decided on the{" "}
+              <Link href="/football/standings" className="font-semibold text-primary">
+                table
+              </Link>
+              , not a knockout tree.
+            </>
+          ) : (
+            "No knockout matches on record yet."
+          )}
         </p>
       )}
     </div>

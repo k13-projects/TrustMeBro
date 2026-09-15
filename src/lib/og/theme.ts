@@ -14,6 +14,7 @@ export const SHARE_THEME: Record<CompetitionTheme, ShareTheme> = {
   uel: { accent: "#FF7A1A", bg: "#0A0A0C", bgTo: "#000000" },
   uecl: { accent: "#22C55E", bg: "#0A0A0C", bgTo: "#000000" },
   wc: { accent: "#FFD700", bg: "#000000", bgTo: "#0A0A0C" },
+  sl: { accent: "#E30A17", bg: "#170808", bgTo: "#0D0707" },
 };
 
 // TrustMeBro gold — the brand wordmark, constant across every competition.

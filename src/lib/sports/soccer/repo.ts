@@ -195,6 +195,34 @@ export async function loadLatestSoccerOdds(
   return out;
 }
 
+// Odds-pull cadence bookkeeping (see odds-cadence.ts), reusing the
+// competition-agnostic ingest_state table (migration 0021) rather than a new
+// one — one row per competition, keyed "soccer_odds:<competition>".
+export async function getLastOddsPullAt(
+  competition: SoccerCompetition,
+): Promise<Date | null> {
+  const supabase = supabaseAdmin();
+  const { data, error } = await supabase
+    .from("ingest_state")
+    .select("last_run_at")
+    .eq("key", `soccer_odds:${competition}`)
+    .maybeSingle();
+  if (error) throw new Error(`ingest_state read: ${error.message}`);
+  return data?.last_run_at ? new Date(data.last_run_at) : null;
+}
+
+export async function recordOddsPull(competition: SoccerCompetition): Promise<void> {
+  const supabase = supabaseAdmin();
+  const now = new Date().toISOString();
+  const { error } = await supabase
+    .from("ingest_state")
+    .upsert(
+      { key: `soccer_odds:${competition}`, last_run_at: now, updated_at: now },
+      { onConflict: "key" },
+    );
+  if (error) throw new Error(`ingest_state write: ${error.message}`);
+}
+
 // Most recent standings snapshot per team within a competition → form.
 export async function loadTeamForm(
   competition: SoccerCompetition,

@@ -73,7 +73,9 @@ export default async function ScoreboardPage() {
         <div className="rounded-3xl border border-dashed border-border/60 bg-card/20 px-6 py-10 text-center text-sm text-foreground/45">
           {archived
             ? "No graded picks were recorded for this competition."
-            : "The units graph appears once a couple of picks have settled — the first Champions League picks grade after the next matchday."}
+            : meta.oddsKey === null
+              ? "No bookmaker odds for this competition yet, so the engine has nothing to pick — and nothing to grade."
+              : `The units graph appears once a couple of picks have settled — the first ${meta.label} picks grade after the next matchday.`}
         </div>
       )}
 
