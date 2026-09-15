@@ -50,6 +50,10 @@ export async function GET(req: Request) {
       to: today,
       standings: true,
     });
+    // No skip guard needed here for an oddsKey: null competition — with no
+    // engine predictions ever generated (see generate-predictions), this is
+    // already a zero-row no-op, and fixture sync + score-call grading below
+    // must still run regardless of odds.
     const settled = await settleSoccer(competition);
     // Bros' score calls grade off the same final scores (3 exact / 1 result).
     const calls_graded = await gradeScoreCalls(competition);

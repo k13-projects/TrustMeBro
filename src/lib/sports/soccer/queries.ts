@@ -183,11 +183,27 @@ const QUALIFYING_LABEL: Record<string, string> = {
   "playoff-round": "Play-off Round",
 };
 
+// A stage that spans a whole single-table regular season with one constant
+// slug (UEFA's literal "league-phase", or a domestic league's ESPN
+// season.slug, e.g. Süper Lig's "2026-27-turkish-super-lig") has no round
+// number in the payload, so ISO week stands in for matchday. Named stages
+// that already carry real bracket/group structure — qualifying rounds,
+// knockout rounds, and the World Cup's "group-stage" — keep their own
+// stage-keyed bucket instead.
+function isLeaguePhaseStage(stage: string | null): boolean {
+  return (
+    !!stage &&
+    stage !== "group-stage" &&
+    !QUALIFYING_STAGES.has(stage) &&
+    !(stage in KNOCKOUT_LABEL)
+  );
+}
+
 export function groupIntoRounds(matches: MatchRow[]): Round[] {
   const byKey = new Map<string, Round>();
   const leagueWeeks = [
     ...new Set(
-      matches.filter((m) => m.stage === "league-phase").map((m) => isoWeekKey(m.date)),
+      matches.filter((m) => isLeaguePhaseStage(m.stage)).map((m) => isoWeekKey(m.date)),
     ),
   ].sort();
 
@@ -195,7 +211,7 @@ export function groupIntoRounds(matches: MatchRow[]): Round[] {
     let key: string;
     let label: string;
     let kind: Round["kind"];
-    if (m.stage === "league-phase") {
+    if (isLeaguePhaseStage(m.stage)) {
       const md = leagueWeeks.indexOf(isoWeekKey(m.date)) + 1;
       key = `md${md}`;
       label = `Matchday ${md}`;

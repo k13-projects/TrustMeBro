@@ -16,12 +16,15 @@ import {
   type SoccerCompetition,
 } from "@/lib/sports/soccer/competitions";
 import {
+  getLastOddsPullAt,
   insertOddsHistory,
   insertSoccerOdds,
   pruneSoccerOdds,
+  recordOddsPull,
   type OddsHistoryRow,
   type SoccerOddsRow,
 } from "@/lib/sports/soccer/repo";
+import { shouldPullOdds } from "@/lib/sports/soccer/odds-cadence";
 import { resolveMatch } from "@/lib/sports/soccer/team-match";
 import { consensus, modalLine, SIDES, type EngineQuote } from "@/lib/analysis/soccer/engine";
 import type { SoccerMarket } from "@/lib/sports/types";
@@ -130,10 +133,23 @@ export async function GET(req: Request) {
   const results: Record<string, CompetitionOddsResult> = {};
 
   for (const competition of competitions) {
+    const oddsKey = COMPETITIONS[competition].oddsKey;
+    if (oddsKey === null) {
+      results[competition] = {
+        events_returned: 0,
+        quotes_collected: 0,
+        snapshots_inserted: 0,
+        history_rows: 0,
+        unmatched: [],
+        credits: null,
+        skipped: "no odds source for this competition yet (oddsKey null)",
+      };
+      continue;
+    }
     const { data: matches, error } = await supabase
       .from("soccer_matches")
       .select(
-        "id, date, home:soccer_teams!soccer_matches_home_team_id_fkey(name), away:soccer_teams!soccer_matches_away_team_id_fkey(name)",
+        "id, date, datetime, home:soccer_teams!soccer_matches_home_team_id_fkey(name), away:soccer_teams!soccer_matches_away_team_id_fkey(name)",
       )
       .eq("competition", competition)
       .in("date", dates)
@@ -147,10 +163,11 @@ export async function GET(req: Request) {
     const candidates = ((matches ?? []) as unknown as Array<{
       id: number;
       date: string;
+      datetime: string | null;
       home: { name: string } | { name: string }[] | null;
       away: { name: string } | { name: string }[] | null;
     }>).map((m) => ({
-      match: { id: m.id, date: m.date },
+      match: { id: m.id, date: m.date, datetime: m.datetime },
       home: (Array.isArray(m.home) ? m.home[0] : m.home)?.name ?? "",
       away: (Array.isArray(m.away) ? m.away[0] : m.away)?.name ?? "",
     }));
@@ -167,9 +184,30 @@ export async function GET(req: Request) {
       continue;
     }
 
-    const { data: events, credits } = await fetchSoccerOdds(
-      COMPETITIONS[competition].oddsKey,
-    );
+    const cadence = COMPETITIONS[competition].oddsCadence;
+    if (cadence) {
+      const lastPulledAt = await getLastOddsPullAt(competition);
+      const earliestKickoff = candidates.reduce<Date | null>((min, c) => {
+        if (!c.match.datetime) return min;
+        const dt = new Date(c.match.datetime);
+        return !min || dt < min ? dt : min;
+      }, null);
+      if (!shouldPullOdds(cadence, lastPulledAt, earliestKickoff, new Date())) {
+        results[competition] = {
+          events_returned: 0,
+          quotes_collected: 0,
+          snapshots_inserted: 0,
+          history_rows: 0,
+          unmatched: [],
+          credits: null,
+          skipped: `cadence: next pull not due yet (min ${cadence.minHours}h between pulls, last pulled ${lastPulledAt?.toISOString() ?? "never"})`,
+        };
+        continue;
+      }
+    }
+
+    const { data: events, credits } = await fetchSoccerOdds(oddsKey);
+    if (cadence) await recordOddsPull(competition);
 
     const rows: SoccerOddsRow[] = [];
     const history: OddsHistoryRow[] = [];

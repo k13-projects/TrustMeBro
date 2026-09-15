@@ -1,0 +1,70 @@
+{
+  "report": "superlig-odds-qa_2026-09-14",
+  "date": "2026-09-14",
+  "branch": "tmb_sep14_v8",
+  "gate": "two-agent-chrome-qa",
+  "tester": "Olga (qa-test-engineer)",
+  "target": "http://localhost:9136",
+  "driver": "gstack headless browser ($B), berth=tmb, BROWSE_PORT=39136 (Aside not running)",
+  "odds_api_calls_made": 0,
+  "verdict": "PASS",
+  "areas": {
+    "picks_render_correctly": "PASS",
+    "empty_state_copy": "PASS (2 new bugs found + fixed: hardcoded Europe subtitle, hardcoded European book count)",
+    "turkish_club_names": "PASS (aliases + dotless-i search both hold)",
+    "regression_uefa_and_world_cup": "PASS (World Cup 107W-91L, 198 settled, +16 exact; UCL +4/7-3-0 distinct; UEL/UECL unaffected)",
+    "ledgers_separate": "PASS (tur.1 0.0, uefa.champions +4, fifa.world +16 - all distinct)",
+    "mobile_320_to_1920_plus_landscape": "PASS after fixing 2 overflow regressions"
+  },
+  "bugs_found_and_fixed": [
+    {
+      "id": 1,
+      "file": "src/app/football/page.tsx",
+      "issue": "Hardcoded 'Europe's elite, priced by forty books...' hero subtitle shown for every live competition including Süper Lig",
+      "fix": "Derived from meta.tagline instead of hardcoded European-flavored copy",
+      "verified_live": true
+    },
+    {
+      "id": 2,
+      "file": "src/app/football/rates/page.tsx",
+      "issue": "Hardcoded 'Best price across ~40 European books' shown for Süper Lig too",
+      "fix": "Changed to 'Best price across every tracked book'",
+      "verified_live": true
+    },
+    {
+      "id": 3,
+      "file": "src/components/soccer/BankoCard.tsx, src/components/soccer/CouponCard.tsx, src/components/cart/AddToCouponButton.tsx",
+      "issue": "55px page-level horizontal overflow at 320px width — grid items lacked min-w-0, action-button row (whitespace-nowrap 'Add to Coupon' + Share) forced min-content wider than the mobile grid track. Only visible now because Süper Lig previously had zero priced picks/coupons.",
+      "fix": "Added min-w-0 to both card roots; AddToCouponButton's card variant shows shorter '+ Coupon' label below sm",
+      "verified_live": true,
+      "cross_checked": "Same latent bug also present on Champions League's real Banko cards - fixed for both, no regression above sm breakpoint"
+    },
+    {
+      "id": 4,
+      "file": "src/app/football/club/[id]/loading.tsx",
+      "issue": "24px transient overflow at 320px during the Suspense loading skeleton — fixed w-64 placeholder inside a shrinkable column",
+      "fix": "w-64 -> w-full max-w-64",
+      "verified_live": true
+    }
+  ],
+  "verification": {
+    "tsc_noEmit": "clean",
+    "npm_run_lint": "clean",
+    "npm_run_build": "clean, all routes compiled"
+  },
+  "screenshots_dir": ".gstack/browse-reports/2026-09-14-1526-superlig-odds-qa/screenshots/",
+  "screenshots": [
+    "home-desktop.jpg",
+    "home-mobile.jpg",
+    "home-mobile-320.jpg",
+    "picks-desktop.jpg",
+    "picks-mobile.jpg",
+    "value-desktop.jpg"
+  ],
+  "open_risks": [
+    "UCL's matchday-slate hero subtitle fix not visually re-exercised (UCL currently between matchdays) - verified by code reading only, cannot regress since tagline is non-null for every competition",
+    "Europa League's previously-reported mobile home overflow did not reproduce this session - not chased further per brief, flagging in case its trigger is state-dependent"
+  ],
+  "next": ["security-auditor", "release-engineer"],
+  "human_gate": "none"
+}

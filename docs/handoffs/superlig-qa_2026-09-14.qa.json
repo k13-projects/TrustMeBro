@@ -1,0 +1,42 @@
+{
+  "date": "2026-09-14",
+  "project": "TrustMeBro",
+  "feature": "Süper Lig — 4th football competition (ESPN-only)",
+  "branch": "tmb_sep14_v8",
+  "reviewer": "Olga (qa-test-engineer)",
+  "verdict": "PASS",
+  "gate": "two-agent Chrome QA gate",
+  "p0_checks": [
+    { "item": "Rounds render as weekly matchdays, not one lumped round", "result": "PASS", "detail": "MD1-6, 8/9/8/9/10/1 matches, total 45 matching backfill" },
+    { "item": "Bracket shows clean empty state, no fabricated ties", "result": "PASS", "detail": "confirmed via DOM text read, not status-only" },
+    { "item": "Regression: UCL/UEL/UECL rounds+bracket unchanged", "result": "PASS" },
+    { "item": "Regression: World Cup 2026 archive unchanged", "result": "PASS", "detail": "107W/91L = 198 settled, +16 net units, matches frozen record" }
+  ],
+  "bugs_found_and_fixed": [
+    "Standings home + /standings hardcoded UEFA-only qualification zone legend and '36-team' copy onto Süper Lig's 18-team table",
+    "HomeMovers.tsx (between-matchdays widget) had the same hardcoded Round-of-16/bubble copy",
+    "RoundNav schedule strip hardcoded 'League Phase' label for a domestic league",
+    "/football/value, /picks, /rates, /scoreboard empty-state copy implied odds were coming for a competition with oddsKey=null",
+    "/football/scoreboard also hardcoded 'Champions League' regardless of active competition",
+    "Cmd-K search returned zero results for Turkish dotless-ı spellings (e.g. Kasımpaşa) — normalizeTeamName() gap",
+    "CompetitionSwitcher overflowed the page ~10px at 320px viewport after adding the 5th tab"
+  ],
+  "found_not_fixed": [
+    {
+      "item": "Europa League home page ~49px horizontal overflow at 320px viewport",
+      "reason": "pre-existing, unrelated to Süper Lig build, root cause is a global chat-drawer position:fixed/translate interaction that only reproduces on one page/competition combination",
+      "recommendation": "full-site fitcheck or next chat-drawer change"
+    }
+  ],
+  "verification": {
+    "tsc": "clean",
+    "lint": "clean",
+    "build": "clean",
+    "console_errors_on_superlig_pages": "none observed",
+    "pre_existing_after_cookies_warning": "confirmed pre-existing via git log, not newly introduced"
+  },
+  "viewports_tested": ["320x812", "375x812", "390x844", "768x1024", "1024x768", "1280x800", "1920x1080", "812x375"],
+  "competitions_tested": ["tur.1", "uefa.champions", "uefa.europa", "uefa.europa.conf", "fifa.world"],
+  "screenshots_dir": ".gstack/browse-reports/2026-09-14-1339-superlig-qa/screenshots/",
+  "handoff_report": "docs/handoffs/superlig-qa_2026-09-14.md"
+}

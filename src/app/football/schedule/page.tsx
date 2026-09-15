@@ -69,7 +69,12 @@ export default async function SchedulePage({ searchParams }: PageProps) {
       <FootballHeader title="Schedule" competition={competition} />
 
       {rounds.length > 0 ? (
-        <RoundNav rounds={rounds} activeKey={round?.key ?? null} basePath="/football/schedule" />
+        <RoundNav
+          rounds={rounds}
+          activeKey={round?.key ?? null}
+          basePath="/football/schedule"
+          leagueLabel={meta.phaseLabel}
+        />
       ) : null}
 
       {round ? (

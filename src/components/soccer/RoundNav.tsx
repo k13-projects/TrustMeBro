@@ -9,10 +9,17 @@ export function RoundNav({
   rounds,
   activeKey,
   basePath,
+  leagueLabel = "League Phase",
 }: {
   rounds: Round[];
   activeKey: string | null;
   basePath: string;
+  /** Group heading for `kind === "league"` rounds — "League Phase" only
+   *  means something for UEFA's competitions. A domestic single-table
+   *  league (Süper Lig) hits the same `kind: "league"` bucket for its
+   *  weekly matchdays but has no such phase; pass the competition's own
+   *  `phaseLabel` (e.g. "Regular Season") instead. */
+  leagueLabel?: string;
 }) {
   const short = (r: Round) => {
     if (r.kind === "league") return r.label.replace("Matchday ", "MD");
@@ -31,7 +38,7 @@ export function RoundNav({
   };
   const groups: Array<{ title: string; items: Round[] }> = [
     { title: "Qualifying", items: rounds.filter((r) => r.kind === "qualifying") },
-    { title: "League Phase", items: rounds.filter((r) => r.kind === "league") },
+    { title: leagueLabel, items: rounds.filter((r) => r.kind === "league") },
     { title: "Knockouts", items: rounds.filter((r) => r.kind === "knockout") },
   ].filter((g) => g.items.length > 0);
 

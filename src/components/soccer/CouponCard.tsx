@@ -26,7 +26,7 @@ export function CouponCard({ coupon }: { coupon: CouponView }) {
       : null;
 
   return (
-    <div id={`coupon-${coupon.id}`} className={`rounded-3xl border bg-gradient-to-br ${tone} p-5`}>
+    <div id={`coupon-${coupon.id}`} className={`min-w-0 rounded-3xl border bg-gradient-to-br ${tone} p-5`}>
       <div className="flex items-center justify-between">
         <span className="rounded-full bg-background/60 px-3 py-1 text-sm font-black tracking-wide">
           {badge}

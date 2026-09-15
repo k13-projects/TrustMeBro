@@ -33,9 +33,13 @@ export default async function RatesPage() {
     matches: priced.filter((m) => m.date === date),
   }));
 
-  // When nothing is priced yet, say when the next round kicks off.
+  // When nothing is priced yet, say when the next round kicks off. Only
+  // meaningful when this competition actually has an odds source — for one
+  // that doesn't (oddsKey === null), no round start date will ever change
+  // that, so naming "starts <date>" would misleadingly imply prices are
+  // coming.
   let nextUp: string | null = null;
-  if (byDate.length === 0 && meta.status === "live") {
+  if (byDate.length === 0 && meta.status === "live" && meta.oddsKey !== null) {
     const round = currentRound(await getRounds(competition), today);
     if (round && round.from >= today) {
       nextUp = `${round.label} starts ${new Date(`${round.from}T12:00:00`).toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })}`;
@@ -49,8 +53,8 @@ export default async function RatesPage() {
         <p className="mt-2 text-sm text-foreground/55">
           De-vigged win odds for <span className="text-foreground/80">every</span>{" "}
           game — the market&apos;s real probability per outcome, not just the
-          matches the engine picked. Best price across ~40 European books shown
-          under each rate.
+          matches the engine picked. Best price across every tracked book
+          shown under each rate.
         </p>
       </div>
 
@@ -58,7 +62,9 @@ export default async function RatesPage() {
         <p className="rounded-2xl border border-dashed border-border/60 bg-card/20 px-6 py-10 text-center text-sm text-foreground/45">
           {meta.status === "archived"
             ? "The tournament is over — live prices are no longer tracked."
-            : `No priced matches right now — odds populate in the day or so before kickoff.${nextUp ? ` ${nextUp}.` : ""}`}
+            : meta.oddsKey === null
+              ? "No bookmaker odds for this competition yet."
+              : `No priced matches right now — odds populate in the day or so before kickoff.${nextUp ? ` ${nextUp}.` : ""}`}
         </p>
       ) : (
         <div className="space-y-10">

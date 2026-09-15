@@ -6,28 +6,46 @@ import { TeamCrest } from "./TeamCrest";
 // How the table changed over the last round. When there is no "before" to
 // compare against (the opening round of a league phase) we say so plainly
 // and show the first table instead of pretending to have movement.
+//
+// `qualificationZones` gates every UEFA-specific claim (Round of 16, the
+// ninth-to-twenty-fourth play-off "bubble"). A domestic single-table league
+// (Süper Lig) hits this same component whenever it has an idle week, but has
+// no such zones — showing them would be wrong data presented as real, the
+// same failure mode the Süper Lig scope doc flagged for Bracket.
 export function HomeMovers({
   moves,
   firstTable,
   roundLabel,
+  qualificationZones = false,
 }: {
   moves: TableMove[];
   firstTable: boolean;
   roundLabel: string;
+  qualificationZones?: boolean;
 }) {
   if (moves.length === 0) return null;
   const top = moves.filter((m) => m.row.rank <= 8);
-  const bubble = moves.filter((m) => m.row.rank >= 9 && m.row.rank <= 12);
+  const bubble = qualificationZones
+    ? moves.filter((m) => m.row.rank >= 9 && m.row.rank <= 12)
+    : [];
 
   return (
     <div className="space-y-4">
       <p className="text-sm text-foreground/55">
-        {firstTable
-          ? `The first table of the league phase, after ${roundLabel}. The top eight go straight to the Round of 16; ninth to twenty-fourth play off.`
-          : `Position changes over ${roundLabel}. The top eight go straight to the Round of 16; ninth to twenty-fourth play off.`}
+        {qualificationZones
+          ? firstTable
+            ? `The first table of the league phase, after ${roundLabel}. The top eight go straight to the Round of 16; ninth to twenty-fourth play off.`
+            : `Position changes over ${roundLabel}. The top eight go straight to the Round of 16; ninth to twenty-fourth play off.`
+          : firstTable
+            ? `The first table of the season, after ${roundLabel}.`
+            : `Position changes over ${roundLabel}.`}
       </p>
       <div className="overflow-hidden rounded-2xl border border-border/60 bg-card/40">
-        <Group title="Round of 16 places" rows={top} firstTable={firstTable} />
+        <Group
+          title={qualificationZones ? "Round of 16 places" : "Top of the table"}
+          rows={top}
+          firstTable={firstTable}
+        />
         {bubble.length > 0 ? (
           <Group title="On the bubble" rows={bubble} firstTable={firstTable} muted />
         ) : null}

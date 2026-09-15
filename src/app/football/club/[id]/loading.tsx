@@ -9,7 +9,7 @@ export default function ClubLoading() {
           <div className="size-14 shrink-0 animate-pulse rounded-full bg-foreground/10" />
           <div className="min-w-0 flex-1 space-y-2">
             <div className="h-3 w-40 animate-pulse rounded bg-foreground/10" />
-            <div className="h-9 w-64 animate-pulse rounded bg-foreground/10" />
+            <div className="h-9 w-full max-w-64 animate-pulse rounded bg-foreground/10" />
           </div>
         </div>
         <div className="h-12 w-full animate-pulse rounded-2xl bg-foreground/10" />

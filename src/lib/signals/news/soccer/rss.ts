@@ -169,6 +169,23 @@ const CLUB_ALIASES: Record<string, string[]> = {
   "Club Brugge": ["Brugge", "Bruges"],
   Fenerbahce: ["Fenerbahçe", "Fener"],
   Galatasaray: ["Gala", "Cimbom"],
+  Besiktas: ["Beşiktaş", "BJK"],
+  // Süper Lig-only clubs (verified against the live 2026-27 roster, not
+  // assumed — the actual 18 differs from an offhand guess at the league).
+  Alanyaspor: ["Alanya"],
+  "Amed SFK": ["Amed", "Amedspor"],
+  "Caykur Rizespor": ["Çaykur Rizespor", "Rizespor", "Çaykur"],
+  "Çorum FK": ["Çorumspor"],
+  "Erzurum BB": ["Erzurumspor", "BB Erzurumspor"],
+  Eyupspor: ["Eyüpspor"],
+  "Gaziantep FK": ["Gaziantep"],
+  Genclerbirligi: ["Gençlerbirliği"],
+  Goztepe: ["Göztepe"],
+  "Istanbul Basaksehir": ["İstanbul Başakşehir", "Başakşehir", "Basaksehir"],
+  Kasimpasa: ["Kasımpaşa"],
+  Konyaspor: ["Konya"],
+  Samsunspor: ["Samsun"],
+  Trabzonspor: ["Trabzon"],
   "Slavia Prague": ["Slavia Praha", "Slavia"],
   "Shakhtar Donetsk": ["Shakhtar"],
   "Bodo/Glimt": ["Bodø/Glimt", "Bodo Glimt", "Bodø"],
@@ -381,6 +398,18 @@ const COMPETITION_FEEDS: Record<SoccerCompetition, SoccerRssFeed[]> = {
       url: "https://news.google.com/rss/search?q=%22Konferans+Ligi%22&hl=tr&gl=TR&ceid=TR:tr",
       outlet: "Google Haberler",
       source: "rss:gnews-uecl-tr",
+    },
+  ],
+  "tur.1": [
+    {
+      url: "https://news.google.com/rss/search?q=%22Super+Lig%22&hl=en-GB&gl=GB&ceid=GB:en",
+      outlet: "Google News",
+      source: "rss:gnews-sl-en",
+    },
+    {
+      url: "https://news.google.com/rss/search?q=S%C3%BCper+Lig&hl=tr&gl=TR&ceid=TR:tr",
+      outlet: "Google Haberler",
+      source: "rss:gnews-sl-tr",
     },
   ],
 };

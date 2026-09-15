@@ -27,6 +27,8 @@ function buildItems(
   stats: EngineStats,
   sport: Sport,
   competitionLabel: string,
+  competitionTagline: string,
+  hasOdds: boolean,
 ): Item[] {
   const items: Item[] = [];
 
@@ -86,9 +88,11 @@ function buildItems(
   items.push({
     Icon: Trophy,
     text:
-      sport === "soccer"
-        ? `${competitionLabel.toUpperCase()} · DE-VIGGED CONSENSUS ODDS`
-        : "NBA TODAY · MORE SPORTS COMING",
+      sport !== "soccer"
+        ? "NBA TODAY · MORE SPORTS COMING"
+        : hasOdds
+          ? `${competitionLabel.toUpperCase()} · DE-VIGGED CONSENSUS ODDS`
+          : `${competitionLabel.toUpperCase()} · ${competitionTagline.toUpperCase()}`,
   });
 
   return items;
@@ -98,12 +102,22 @@ export function MarqueeTicker({
   stats,
   sport,
   competitionLabel = "Football",
+  competitionTagline = "",
+  hasOdds = true,
 }: {
   stats: EngineStats;
   sport: Sport;
   competitionLabel?: string;
+  competitionTagline?: string;
+  hasOdds?: boolean;
 }) {
-  const items = buildItems(stats, sport, competitionLabel);
+  const items = buildItems(
+    stats,
+    sport,
+    competitionLabel,
+    competitionTagline,
+    hasOdds,
+  );
   const rendered = [...items, ...items];
   return (
     <div className="relative overflow-hidden border-y border-primary/25 bg-gradient-to-r from-background via-[#1a1408] to-background">

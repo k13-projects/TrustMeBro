@@ -21,12 +21,14 @@ const HEADERS = {
   Accept: "application/json",
 };
 
-/** UEFA's own competition ids. The World Cup is FIFA's, so it has none. */
+/** UEFA's own competition ids. The World Cup is FIFA's and Süper Lig is the
+ *  Turkish federation's, so neither has one. */
 export const UEFA_COMPETITION_ID: Record<SoccerCompetition, number | null> = {
   "uefa.champions": 1,
   "uefa.europa": 14,
   "uefa.europa.conf": 2019,
   "fifa.world": null,
+  "tur.1": null,
 };
 
 export type UefaMatch = {

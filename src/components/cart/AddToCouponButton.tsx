@@ -75,7 +75,10 @@ export function AddToCouponButton({
       ) : inCart ? (
         <>✓ In coupon</>
       ) : variant === "card" ? (
-        <>+ Add to Coupon</>
+        <>
+          <span className="sm:hidden">+ Coupon</span>
+          <span className="hidden sm:inline">+ Add to Coupon</span>
+        </>
       ) : (
         <>+ Coupon</>
       )}
