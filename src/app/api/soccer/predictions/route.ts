@@ -196,9 +196,6 @@ export async function DELETE(req: Request) {
   if (!match) {
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
-  if (match.datetime && hasKickedOff(match.datetime)) {
-    return NextResponse.json({ error: "locked" }, { status: 409 });
-  }
 
   // Always through the service-role client — same reasoning as POST above
   // (migration 0033).
@@ -207,12 +204,54 @@ export async function DELETE(req: Request) {
   const identityVal =
     requester.kind === "auth" ? requester.user_id : requester.guest_name;
 
+  // A graded call is part of the record — migration 0034 makes this
+  // undeletable at the table itself (binds even a service-role write). This
+  // check runs *before* the kickoff check below and gives the specific
+  // reason ("it's graded, not just late") since a graded row is always also
+  // past kickoff — the kickoff check alone would otherwise mask why with the
+  // more generic "locked" message. The trigger is the backstop if this
+  // check and the delete below ever race.
+  const { data: existing, error: existingErr } = await writer
+    .from("soccer_score_predictions")
+    .select("id, points, graded_at")
+    .eq("match_id", match_id)
+    .eq(identityCol, identityVal)
+    .maybeSingle();
+  if (existingErr) {
+    return NextResponse.json({ error: existingErr.message }, { status: 500 });
+  }
+  if (existing && (existing.points !== null || existing.graded_at !== null)) {
+    return NextResponse.json(
+      {
+        error: "already_graded",
+        message:
+          "This call has already been graded and is part of the record — it can't be deleted.",
+      },
+      { status: 409 },
+    );
+  }
+  if (match.datetime && hasKickedOff(match.datetime)) {
+    return NextResponse.json({ error: "locked" }, { status: 409 });
+  }
+  if (!existing) {
+    return NextResponse.json({ ok: true });
+  }
+
   const { error } = await writer
     .from("soccer_score_predictions")
     .delete()
-    .eq("match_id", match_id)
-    .eq(identityCol, identityVal);
+    .eq("id", existing.id);
   if (error) {
+    if (error.message.includes("call_already_graded")) {
+      return NextResponse.json(
+        {
+          error: "already_graded",
+          message:
+            "This call has already been graded and is part of the record — it can't be deleted.",
+        },
+        { status: 409 },
+      );
+    }
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
   return NextResponse.json({ ok: true });
