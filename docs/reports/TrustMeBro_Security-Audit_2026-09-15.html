@@ -1,0 +1,790 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>TrustMeBro — Security Audit — User-Built Coupons — 2026-09-15</title>
+<style>
+  :root {
+    --background: #0a0a0c;
+    --surface: #15151a;
+    --surface-2: #1d1d24;
+    --foreground: #f7f7fa;
+    --muted: #8b8b94;
+    --primary: #FFB800;
+    --primary-foreground: #0a0a0c;
+    --positive: #10b981;
+    --negative: #ef4444;
+    --warn: #f59e0b;
+    --border: rgba(255,255,255,0.08);
+    --mono: "SF Mono", "JetBrains Mono", Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--background);
+    color: var(--foreground);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+  }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 56px 28px 96px; }
+  header.hero {
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 32px;
+    margin-bottom: 40px;
+  }
+  .kicker {
+    font-family: var(--mono);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    font-size: 12px;
+    color: var(--primary);
+    font-weight: 700;
+  }
+  h1 { font-size: 32px; margin: 10px 0 6px; letter-spacing: -0.01em; }
+  .sub { color: var(--muted); font-size: 15px; margin: 0; }
+  .meta-row {
+    display: flex; gap: 24px; flex-wrap: wrap; margin-top: 22px;
+    font-size: 13px; color: var(--muted);
+  }
+  .meta-row strong { color: var(--foreground); font-weight: 600; }
+
+  .verdict {
+    margin: 28px 0 44px;
+    border: 1px solid var(--negative);
+    background: linear-gradient(180deg, rgba(239,68,68,0.12), rgba(239,68,68,0.03));
+    border-radius: 14px;
+    padding: 22px 24px;
+  }
+  .verdict.ok {
+    border-color: var(--positive);
+    background: linear-gradient(180deg, rgba(16,185,129,0.12), rgba(16,185,129,0.03));
+  }
+  .verdict h2 { margin: 0 0 8px; font-size: 18px; display:flex; align-items:center; gap:10px;}
+  .verdict p { margin: 0; color: var(--foreground); font-size: 14.5px; }
+  .pill {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    padding: 4px 10px;
+    border-radius: 999px;
+  }
+  .pill.critical { background: rgba(239,68,68,0.18); color: #ff6b6b; border: 1px solid rgba(239,68,68,0.4); }
+  .pill.high { background: rgba(245,158,11,0.18); color: #ffb84f; border: 1px solid rgba(245,158,11,0.4); }
+  .pill.medium { background: rgba(255,184,0,0.14); color: var(--primary); border: 1px solid rgba(255,184,0,0.35); }
+  .pill.low { background: rgba(56,189,248,0.14); color: #7dd3fc; border: 1px solid rgba(56,189,248,0.3); }
+  .pill.info { background: rgba(139,139,148,0.16); color: var(--muted); border: 1px solid var(--border); }
+  .pill.pass { background: rgba(16,185,129,0.16); color: #34d399; border: 1px solid rgba(16,185,129,0.35); }
+
+  section { margin-bottom: 48px; }
+  h2.section-title {
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    font-weight: 700;
+    margin: 0 0 18px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  h2.section-title::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .finding {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 22px 24px;
+    margin-bottom: 18px;
+  }
+  .finding.crit { border-color: rgba(239,68,68,0.4); }
+  .finding.high { border-color: rgba(245,158,11,0.35); }
+  .finding-head {
+    display: flex; align-items: center; gap: 12px; margin-bottom: 10px; flex-wrap: wrap;
+  }
+  .finding-head .id { font-family: var(--mono); color: var(--muted); font-size: 12px; }
+  .finding h3 { margin: 0; font-size: 16.5px; flex: 1; min-width: 200px; }
+  .finding .desc { color: #d5d5db; font-size: 14.5px; margin: 10px 0; }
+  .finding .label { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-top: 16px; margin-bottom: 6px; }
+  pre {
+    background: #050506;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    overflow-x: auto;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    line-height: 1.6;
+    color: #c9f7d9;
+    margin: 0;
+  }
+  pre.attack { color: #ffd1d1; }
+  code { font-family: var(--mono); background: rgba(255,255,255,0.06); padding: 1px 6px; border-radius: 5px; font-size: 0.92em; }
+  .fix { color: #a7f3d0; font-size: 14px; margin: 0; }
+  .fix strong { color: var(--positive); }
+
+  table.matrix {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13.5px;
+    background: var(--surface);
+    border-radius: 14px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  table.matrix th, table.matrix td {
+    padding: 12px 16px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  table.matrix th {
+    background: var(--surface-2);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+  }
+  table.matrix tr:last-child td { border-bottom: none; }
+  table.matrix td.sev { white-space: nowrap; }
+
+  .pass-list { display: grid; gap: 10px; }
+  .pass-row {
+    display: flex; gap: 12px; align-items: flex-start;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 14px 18px; font-size: 14px;
+  }
+  .pass-row .check { color: var(--positive); font-weight: 700; font-family: var(--mono); }
+  .pass-row .body strong { color: var(--foreground); }
+  .pass-row .body span { color: var(--muted); }
+
+  .evidence-note {
+    font-size: 12.5px; color: var(--muted); font-style: italic; margin-top: 8px;
+  }
+  footer {
+    border-top: 1px solid var(--border);
+    padding-top: 24px;
+    color: var(--muted);
+    font-size: 12.5px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hero">
+    <div class="kicker">TrustMeBro · Security Audit</div>
+    <h1>User-Built Coupons &amp; the Public Bro Board</h1>
+    <p class="sub">First feature where a user's own data feeds a public ranking. Audited before ship.</p>
+    <div class="meta-row">
+      <div><strong>Date</strong> 2026-09-15</div>
+      <div><strong>Branch</strong> tmb_sep14_v11</div>
+      <div><strong>Auditor</strong> Irina (security-auditor)</div>
+      <div><strong>Scope</strong> POST /api/coupons, coupon-legs.ts, migrations 0029–0030, RLS on soccer_coupon_legs / user_coupons, bro_stats, settlement, cron auth</div>
+      <div><strong>Method</strong> Code review + live testing against the real Postgres/Supabase project with a throwaway auth user (minted and fully deleted), never against a production Vercel deploy</div>
+    </div>
+  </header>
+
+  <div class="verdict">
+    <h2><span class="pill critical">Don't ship</span> as-is <span style="font-size:12px; font-weight:400; color:var(--muted);">— superseded, see the 2026-09-15 verification addendum below</span></h2>
+    <p>
+      The endpoint's trust model (odds re-verification, line verification, kickoff enforcement) is exactly
+      as good as the backend and QA handoffs claim — that part holds up under live testing. But it is
+      bypassable entirely: a real signed-in user, using nothing more than the app's own public anon key and
+      their own session, can write directly to <code>soccer_coupon_legs</code> and <code>user_coupons</code>
+      through Supabase's PostgREST layer and land a fabricated, already-"won" coupon on the public Bro Board
+      leaderboard — proven live in this audit, then fully reverted. A hardened API route sitting in front of
+      an under-restricted table is not a hardened feature. One migration closes the hole; see Finding&nbsp;1.
+    </p>
+  </div>
+
+  <section>
+    <h2 class="section-title">Findings, ranked by real exploitability</h2>
+
+    <div class="finding crit">
+      <div class="finding-head">
+        <span class="pill critical">Critical — must fix before ship</span>
+        <h3>Leaderboard forgery via direct PostgREST writes, bypassing the API entirely</h3>
+        <span class="id">F-1</span>
+      </div>
+      <p class="desc">
+        <code>soccer_coupon_legs</code> and <code>user_coupons</code> grant <code>INSERT</code> (and, for
+        <code>user_coupons</code>, <code>UPDATE</code>) to the <code>authenticated</code> role, and every RLS
+        policy on both tables checks only <em>row ownership</em> (<code>auth.uid() = user_id</code> / the
+        coupon's owner) — never the <em>values</em> being written. <code>POST /api/coupons</code> re-derives
+        <code>odds_taken</code>, checks the modal line, and rejects a match that has kicked off — all real,
+        all verified live — but none of that is a database-level guarantee. Any authenticated client can skip
+        the route entirely and call Supabase's REST API (or the JS SDK) directly with a row that already says
+        <code>status: "won"</code>, an invented <code>odds_taken</code>, and <code>is_public: true</code>.
+        <code>refresh_bro_stats()</code> is separately granted to <code>authenticated</code>, so the same
+        client can force the public leaderboard to recompute on demand — no need to wait for the settlement
+        cron.
+      </p>
+      <div class="label">Attack narrative — reproduced live, 2026-09-15</div>
+      <pre class="attack">1. Sign up for a free Google account (this app's sign-in is Google-OAuth-only, no gate beyond that).
+2. From the browser, using the app's own public anon key + your own session (no exploit, no
+   injection — this is the exact same client the app itself uses):
+     supabase.from("user_coupons").insert({
+       user_id: <your uid>, sport: "soccer", mode: "power", pick_count: 2,
+       stake: 10, payout_multiplier: 3, potential_payout: 999999,
+       status: "won", result_payout: 999999,
+       is_public: true, shared_at: now(),
+     })
+     supabase.from("soccer_coupon_legs").insert([
+       { coupon_id: <above>, leg_source: "user", match_id: <any real match>,
+         market: "match_winner", side: "home", odds_taken: 500, status: "won", pick_order: 0 },
+       { ... second leg, same pattern ... },
+     ])
+3. supabase.rpc("refresh_bro_stats")   // granted to `authenticated`, no admin needed
+4. Create a Bro Board profile (one form, zero approval) if you haven't already.
+5. Your fabricated win is now live on the public leaderboard.</pre>
+      <div class="label">Proof — this exact sequence, run against the live database</div>
+      <pre>bro_stats for the forged user, immediately after step 3:
+{
+  "sport": "soccer", "settled": 1, "wins": 1, "losses": 0,
+  "net_units": 999989, "score": 2, "last_shared_at": "2026-09-15T07:27:31Z"
+}</pre>
+      <p class="evidence-note">
+        Reproduced with a throwaway Supabase auth user minted via the service-role key, then signed in with
+        the public anon key exactly as a browser would. No service-role key or admin access was used for the
+        forged writes themselves — only for setup and for cleanup. Both test users and every row they touched
+        were deleted afterward; <code>user_coupons</code> (22), <code>soccer_coupon_legs</code> (14, all
+        <code>leg_source='engine'</code>), and all four real <code>bro_stats</code> rows verified
+        byte-identical to the pre-test baseline.
+      </p>
+      <div class="label">What did hold, in the same test</div>
+      <p class="fix">
+        RLS correctly refused this same user (a) writing a leg onto <em>someone else's</em> coupon_id
+        (<code>42501 new row violates row-level security policy</code>), and (b) updating another real user's
+        coupon row (zero rows affected, not an error — the policy silently filters). Cross-user isolation is
+        solid; the gap is specifically that <strong>within a row you're allowed to touch, no policy or
+        constraint restricts which columns or values you may set.</strong>
+      </p>
+      <div class="label">Fix — small, root-cause, before ship</div>
+      <p class="fix">
+        <strong>Don't let the client set what only settlement should set.</strong> Two changes close this
+        without touching the working odds/kickoff logic in <code>route.ts</code>:
+      </p>
+      <pre>-- 1. soccer_coupon_legs: status/settled_side/settled_at are settlement-only.
+--    A client insert must always land pending; only the service role (settlement) may change it.
+create policy "user inserts own soccer coupon legs, pending only"
+  on soccer_coupon_legs for insert
+  with check (
+    status = 'pending' and settled_side is null and settled_at is null
+    and exists (select 1 from user_coupons c
+                where c.id = soccer_coupon_legs.coupon_id and c.user_id = auth.uid())
+  );
+-- drop the old ownership-only insert policy; no UPDATE grant to authenticated (already true — keep it that way).
+
+-- 2. user_coupons: status/result_payout/settled_at/is_public/shared_at are not
+--    the client's to set on insert or to freely update.
+--    Split "insert" (status must be 'pending', is_public must be false) from
+--    "update" (narrow it to the share/unshare columns only, via a trigger or a
+--    generated/redefined policy that rejects any UPDATE touching status/result_payout/
+--    settled_at/pick_count/stake/payout_multiplier/potential_payout).
+-- Simplest correct shape: revoke UPDATE on user_coupons from authenticated entirely,
+-- and give /api/coupons/[id]/share a dedicated SECURITY DEFINER RPC that flips only
+-- is_public/shared_at for a coupon the caller owns.
+
+-- 3. refresh_bro_stats(): downgrade to service_role only — a client forcing a
+--    refresh isn't independently dangerous once #1/#2 hold, but it has no
+--    legitimate reason to be callable by every signed-in user either.
+revoke execute on function refresh_bro_stats() from authenticated;</pre>
+      <p class="fix">
+        This is a genuinely small, forward-only migration (one new policy, one revoke, one small RPC) with
+        no impact on the already-verified odds/kickoff/line logic — it closes the table-level gap without
+        touching the endpoint that's already proven correct.
+      </p>
+    </div>
+
+    <div class="finding high">
+      <div class="finding-head">
+        <span class="pill high">High — must fix before ship</span>
+        <h3>The Bro Board is honest-by-default, not honest-by-construction: sharing is free, optional, and reversible</h3>
+        <span class="id">F-2</span>
+      </div>
+      <p class="desc">
+        <code>bro_stats</code> only ever counts a coupon while <code>is_public = true</code> <em>at the
+        moment the matview is refreshed</em>. Nothing ties "share" to a point before the outcome is known:
+        a user can build a coupon, wait for it to settle, and only then decide whether to click
+        <strong>Share</strong> — and <code>DELETE /api/coupons/[id]/share</code> lets them unshare a coupon
+        (including one that already settled as a loss) at any time, which removes it from their public
+        totals on the next refresh. This is the exact abuse case the plan itself named up front
+        ("re-sharing, or toggling share state to only expose winners") and it was never mitigated in any of
+        the three implementation passes — it's a pre-existing property of the share flow, just newly load-bearing
+        now that the board is the whole point of this feature.
+      </p>
+      <div class="label">Attack narrative</div>
+      <pre class="attack">1. Build five real coupons privately (2–6 real bookmaker outcomes each, no forgery needed).
+2. Let all five settle naturally.
+3. Click "Share" only on the ones that won. Never share, or unshare, the ones that lost.
+4. Your public win rate is 100% by construction — the Bro Board has no way to know
+   five losers exist, and never will, because a private coupon leaves no public trace.</pre>
+      <div class="label">Fix — before ship or as a fast-follow, Kazim's call</div>
+      <p class="fix">
+        The cheapest honest fix: <strong>lock a coupon's shareability decision before its outcome is known</strong>
+        — e.g. "share" only settable while <code>status = 'pending'</code> (already effectively pending at
+        creation), and once a coupon is public, remove the ability to unshare a <em>settled</em> coupon (the
+        existing "unshare" DELETE route should refuse when <code>status != 'pending'</code>). That alone
+        stops the retroactive-scrub half of the abuse. The "just don't share losers" half is harder to close
+        completely without redesigning the feature (e.g. counting all coupons a user ever created toward a
+        visible-but-separate "total picks made" number, so a suspiciously small settled-vs-created ratio is
+        at least visible) — flagging as a product decision, not purely a code fix, but the retroactive-unshare
+        half is a one-line guard and should land with F-1.
+      </p>
+    </div>
+
+    <table class="matrix" style="margin-top: 28px;">
+      <thead>
+        <tr><th>#</th><th>Severity</th><th>Finding</th><th>Ship gate</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>F-1</td>
+          <td class="sev"><span class="pill critical">Critical</span></td>
+          <td>Direct PostgREST writes to <code>soccer_coupon_legs</code> / <code>user_coupons</code> bypass every server-side check in <code>route.ts</code> and let any signed-in user fabricate a winning, public leaderboard entry.</td>
+          <td><strong>Blocking</strong></td>
+        </tr>
+        <tr>
+          <td>F-2</td>
+          <td class="sev"><span class="pill high">High</span></td>
+          <td>Share/unshare is free and reversible at any point relative to settlement — the public ledger can always be scrubbed of losses.</td>
+          <td><strong>Blocking</strong> (or an explicit, documented Kazim decision to accept it for a low-stakes internal leaderboard)</td>
+        </tr>
+        <tr>
+          <td>F-3</td>
+          <td class="sev"><span class="pill medium">Medium</span></td>
+          <td><code>refresh_bro_stats()</code> is callable by any authenticated user, not just the settlement job. Not independently dangerous, but removes any friction from F-1 and has no legitimate client use.</td>
+          <td>Fix alongside F-1 (same migration)</td>
+        </tr>
+        <tr>
+          <td>F-4</td>
+          <td class="sev"><span class="pill medium">Medium</span></td>
+          <td>No rate limiting on coupon creation (pre-existing, reconfirmed). Combined with F-2, lets a user build many complementary parlays across the same matches and only surface the one guaranteed to win.</td>
+          <td>Not blocking; worth a fast-follow once F-1/F-2 land</td>
+        </tr>
+        <tr>
+          <td>F-5</td>
+          <td class="sev"><span class="pill low">Low</span></td>
+          <td>Guest identity (<code>tmb_guest_name</code> cookie) is unsigned and trivially spoofable — you can view another guest's private local history by guessing/setting their exact name string. Zero ranking impact: guest coupons have <code>user_id = null</code> and are excluded from <code>bro_stats</code> by construction. Pre-existing, unrelated to this feature.</td>
+          <td>Not blocking</td>
+        </tr>
+        <tr>
+          <td>F-6</td>
+          <td class="sev"><span class="pill info">Info</span></td>
+          <td>Kickoff-enforcement has a sub-second TOCTOU window (check <code>state='pre'</code>, then insert) — theoretically a leg could sneak in between the two. No financial stakes, no observed real-world path to exploit at any useful scale.</td>
+          <td>Not blocking</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2 class="section-title">What was checked and holds up</h2>
+    <div class="pass-list">
+      <div class="pass-row">
+        <div class="check">PASS</div>
+        <div class="body"><strong>Odds re-verification.</strong> <code>route.ts</code> never stores a client-quoted price — it recomputes the de-vigged consensus server-side and rejects on &gt;0.01 mismatch. Confirmed by code review; matches the backend/QA teams' own live proof (<code>odds_mismatch</code> on a forged 999→2.05 price).</div>
+      </div>
+      <div class="pass-row">
+        <div class="check">PASS</div>
+        <div class="body"><strong>Line verification.</strong> <code>total_goals</code> line is checked against the real modal line, not whatever the client sends; <code>match_winner</code>/<code>btts</code> reject a non-null line outright.</div>
+      </div>
+      <div class="pass-row">
+        <div class="check">PASS</div>
+        <div class="body"><strong>Kickoff enforcement, both leg sources.</strong> Every leg's match must be <code>state='pre'</code> or the whole request is rejected — closes a real pre-existing gap (engine legs previously had no kickoff check at all). This is API-layer only (see F-6 for the DB-layer note), but solid at the route.</div>
+      </div>
+      <div class="pass-row">
+        <div class="check">PASS</div>
+        <div class="body"><strong>Cross-user isolation via RLS, where policies exist.</strong> Live-tested: a signed-in user cannot read another user's private coupon, cannot update another user's coupon (silently filtered, zero rows), and cannot insert a leg onto a coupon they don't own (hard RLS rejection). The ownership half of RLS is doing its job correctly — it's the column/value half that's missing (F-1).</div>
+      </div>
+      <div class="pass-row">
+        <div class="check">PASS</div>
+        <div class="body"><strong>No secrets client-side.</strong> <code>SUPABASE_SERVICE_ROLE_KEY</code> is only referenced from <code>server-only</code>-guarded modules (<code>settle-coupons.ts</code>, <code>settle.ts</code>, <code>admin.ts</code>). <code>coupon-legs.ts</code> and <code>route.ts</code> correctly have no <code>server-only</code> guard because they carry no secret — a type/schema file and an API route respectively. <code>MatchRates.tsx</code>, <code>CartContext.tsx</code>, and <code>ChatPanel.tsx</code> (all client components in this diff) reference no <code>process.env</code> and no service-role material.</div>
+      </div>
+      <div class="pass-row">
+        <div class="check">PASS</div>
+        <div class="body"><strong>Cron protection intact.</strong> <code>/api/cron/soccer/settle-bets</code> still gates on <code>assertCronAuth</code> (bearer <code>CRON_SECRET</code>) — unchanged by this feature's wiring of the new settlement steps into the same handler.</div>
+      </div>
+      <div class="pass-row">
+        <div class="check">PASS</div>
+        <div class="body"><strong>NBA path is genuinely unaffected.</strong> <code>user_legs_soccer_only</code> rejects a <code>kind: "user"</code> leg for <code>sport: "nba"</code>; NBA's coupon legs still resolve only through the read-only <code>predictions</code> table, so the F-1 forgery technique doesn't transfer to NBA — a forged <code>user_coupons.status</code> there can't manufacture a leg win because <code>predictions.status</code> itself has no client-writable path.</div>
+      </div>
+      <div class="pass-row">
+        <div class="check">PASS</div>
+        <div class="body"><strong>No drift toward real wagering.</strong> <code>stake</code>/<code>potential_payout</code> are notional scoring units; no payment processor, no Stripe, no money-movement code anywhere in this diff. The CLAUDE.md posture ("analysis &amp; education tool... no in-app wagering") holds.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="section-title">Verification method — what "verified live" means here</h2>
+    <p style="color:#d5d5db; font-size:14.5px;">
+      Per the audit brief, RLS was tested as a real non-owner with a real anon-key session, not inferred from
+      the migration SQL. A throwaway Supabase Auth user was minted via the service-role key (setup only), then
+      signed in with the public anon key exactly as a browser would — every write attempt from that point used
+      only the anon key + that session, the same access any real visitor has. F-1 was reproduced this way, then
+      the coupon, its legs, the auth user, and every downstream <code>bro_stats</code> effect were deleted and
+      the materialized view was refreshed and re-verified byte-identical to the pre-test baseline
+      (<code>user_coupons</code>: 22, <code>soccer_coupon_legs</code>: 14, all <code>engine</code>, 4 real
+      <code>bro_stats</code> rows unchanged). No match/prediction data was mutated; no force-finish of a real
+      game was attempted, consistent with QA's own declined boundary. The API-layer claims already proven live
+      by the backend and QA handoffs (odds/line/kickoff rejection under a real authenticated session) were
+      re-verified by code review rather than re-run in a browser, per the brief's instruction not to redo that
+      work.
+    </p>
+  </section>
+
+  <section id="verification-2026-09-15">
+    <h2 class="section-title">Verification addendum — F-1 fix, re-tested independently, same day</h2>
+    <p style="color:#d5d5db; font-size:14.5px; margin-top:-6px;">
+      <code>src/db/migrations/0031_coupon_write_value_trust.sql</code> landed (applied live), plus a rewritten
+      <code>src/app/api/coupons/[id]/share/route.ts</code>, per
+      <code>docs/handoffs/user-coupons-security-fix_2026-09-15.md</code> (Mariana — the same engineer who
+      built the original feature). Per the coordinator's own instruction, none of that engineer's proof was
+      taken on faith: every attack below was re-run from scratch against the live database with fresh
+      throwaway auth users, using only the public anon key + a real session — the same access any real
+      visitor has. Full cleanup verified at the end (see last row of the table).
+    </p>
+
+    <div class="verdict ok" style="margin-top: 20px;">
+      <h2><span class="pill pass">F-1 confirmed closed</span> — but two new gaps found in the fix's own new surface</h2>
+      <p>
+        The exact original repro, and every named variant the fix's own handoff listed, are genuinely blocked
+        now — re-confirmed independently, not just re-read. But pushing past that list surfaced a real,
+        <strong>live-proven leaderboard-forgery path that still works after the fix</strong>, using nothing
+        the new RLS policies forbid. See F-1-R below — this is the headline of this addendum and changes the
+        ship verdict.
+      </p>
+    </div>
+
+    <table class="matrix" style="margin-top:24px;">
+      <thead><tr><th>#</th><th>Test</th><th>Method</th><th>Result</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>Original F-1 repro — <code>user_coupons</code> insert with <code>status:'won', result_payout:999999, is_public:true</code></td><td>Anon key + fresh session, direct insert</td><td><span class="pill pass">Blocked</span> <code>42501</code> RLS violation</td></tr>
+        <tr><td>2</td><td>Forged payout only — <code>status:'pending'</code> but <code>payout_multiplier:999, potential_payout:9990</code></td><td>Same</td><td><span class="pill pass">Blocked</span> <code>42501</code></td></tr>
+        <tr><td>3</td><td>Forged leg status — <code>soccer_coupon_legs</code> insert with <code>status:'won'</code></td><td>Same, onto own coupon</td><td><span class="pill pass">Blocked</span> <code>42501</code></td></tr>
+        <tr><td>4</td><td>Direct <code>UPDATE</code> on own <code>user_coupons</code> row</td><td>Same</td><td><span class="pill pass">Blocked</span> — permission denied, no grant</td></tr>
+        <tr><td>5</td><td>Direct <code>refresh_bro_stats()</code> RPC call</td><td>Same</td><td><span class="pill pass">Blocked</span> — permission denied for function</td></tr>
+        <tr><td>6</td><td>Un-share a coupon after real settlement, via <code>set_coupon_public(false)</code></td><td>Real settlement first (see F-1-R), then the RPC</td><td><span class="pill pass">Blocked</span> — <code>cannot_unshare_settled_coupon</code></td></tr>
+        <tr><td>7</td><td><code>SECURITY DEFINER</code> RPC abuse — flip a <em>different real user's</em> private coupon public</td><td>User B calls <code>set_coupon_public</code> on User A's real (non-test) private coupon id</td><td><span class="pill pass">Blocked</span> — silent no-op, zero rows changed, no error leak</td></tr>
+        <tr><td>8</td><td>Same RPC on a non-existent coupon id</td><td>Same</td><td><span class="pill pass">Blocked</span> — silent no-op</td></tr>
+        <tr><td>9</td><td>Payout cross-check — <code>mode:'flex', pick_count:2</code> (no real flex rate exists for a 2-pick)</td><td>Direct insert</td><td><span class="pill pass">Blocked</span> — coalesced to an impossible target, <code>42501</code></td></tr>
+        <tr><td>10</td><td><strong>Payout cross-check — unbounded <code>stake</code></strong> (ratio-correct, but no upper bound at the DB layer)</td><td>Direct insert, <code>stake: 1,000,000,000</code></td><td><span class="pill critical">Not blocked</span> — see F-1-R.b</td></tr>
+        <tr><td>11</td><td><strong><code>pick_count</code> declared without matching leg count</strong> — coupon says 6 picks (37.5× multiplier), only 2 real legs ever attached</td><td>Direct insert + 2 legs</td><td><span class="pill critical">Not blocked</span> — see F-1-R.c</td></tr>
+        <tr><td>12</td><td><strong>Backdated known-outcome legs — the core new gap</strong> — attach legs to matches that already finished long ago, picking the side that already won</td><td>Direct insert, <code>status</code> omitted (lands <code>pending</code>, satisfies the new policy)</td><td><span class="pill critical">Not blocked</span> — see F-1-R.a</td></tr>
+        <tr><td>13</td><td>Legitimate path — well-formed <code>pending</code> coupon insert, share while pending, real settlement, rank update</td><td>Direct insert matching <code>route.ts</code>'s exact shape + real cron</td><td><span class="pill pass">Works</span> — unaffected by the fix</td></tr>
+        <tr><td>14</td><td>Full cleanup — 3 throwaway auth users deleted, all their coupons/legs cascaded, no stray profiles</td><td><code>bro_stats</code> re-diffed against the session's opening snapshot</td><td><span class="pill pass">Byte-identical</span> — <code>user_coupons</code>=22, <code>soccer_coupon_legs</code>=14 (100% <code>engine</code>), all 4 real rows unchanged</td></tr>
+      </tbody>
+    </table>
+
+    <div class="finding crit" style="margin-top:28px;">
+      <div class="finding-head">
+        <span class="pill critical">Critical — still not shippable</span>
+        <h3>F-1-R: backdated known-outcome legs still forge a real, leaderboard-visible win — through the fixed policies, not around them</h3>
+        <span class="id">F-1-R</span>
+      </div>
+      <p class="desc">
+        Migration 0031 makes the client's <em>declared</em> fields internally consistent (multiplier matches
+        the real payout table, payout matches stake × multiplier, status/settled_at/is_public land safe) —
+        but kickoff/match-state enforcement was, and remains, <strong>API-only</strong>. Nothing in
+        <code>soccer_coupon_legs</code>' RLS checks whether the referenced <code>match_id</code> has already
+        finished. So a client can skip <code>POST /api/coupons</code>, attach a leg to a match that finished
+        weeks ago, pick the side that is already known to have won, and the real settlement cron — the exact
+        production code, not a simulation — grades it a legitimate win.
+      </p>
+      <div class="label">Proof — reproduced live, then fully reverted</div>
+      <pre class="attack">1. Insert a user_coupons row shaped exactly like a real pending 2-pick coupon
+   (stake:10, payout_multiplier:3, potential_payout:30, status:'pending') — passes the new check, no bypass needed here.
+2. Insert 2 soccer_coupon_legs rows onto it, status omitted (defaults to 'pending',
+   satisfying the new policy), match_id pointing at two real matches that finished
+   months ago (archived World Cup fixtures), side set to whichever side the box
+   score already shows won.
+3. Share it while still 'pending' via set_coupon_public(true) — allowed, it hasn't graded yet.
+4. Call GET /api/cron/soccer/settle-bets with the real CRON_SECRET (the same cron
+   Vercel runs daily) — no force-finish, the matches were already final.
+
+Result: coupon_legs_settled.user_legs_settled: 2, user_coupons.won: 1.
+bro_stats for the test user: { wins: 1, score: 2, net_units: 20 }</pre>
+      <p class="fix" style="color:#ffd1d1;">
+        <strong>This directly contradicts a "display-only" read of the residual risk.</strong> The coordinator's
+        working theory — coming in — was that a client bypassing the API can still attach a leg with an
+        unverified price, but since scoring counts legs won/lost rather than odds, a forged price can't inflate
+        a score, making this a display-integrity issue on the user's own coupon. <strong>That reasoning is
+        correct about the <code>odds_taken</code> field specifically</strong> (a wrong price alone changes
+        nothing about win/loss) <strong>but the actual exploitable gap isn't price forgery — it's outcome
+        certainty.</strong> Skipping kickoff enforcement doesn't just let a client claim a stale price; it lets
+        them choose <em>which matches to bet on after already knowing who won</em>. Because
+        <code>soccer_coupon_legs.status</code> starts and stays <code>pending</code> (fully compliant with the
+        new policy) until the real settlement pipeline grades it against the real final score, a backdated pick
+        settles exactly like an honest one — same code path, same leaderboard visibility, zero forged columns.
+        This is real score/rank inflation, live-proven, not a cosmetic issue.
+      </p>
+      <div class="label">Compounding gaps found in the same sweep (F-1-R.b, F-1-R.c)</div>
+      <p class="fix">
+        Two more of the payout policy's own new columns turned out to have no upper/consistency bound, and
+        both compound F-1-R rather than standing alone:
+      </p>
+      <pre>b. stake has no DB-layer ceiling (only the app's Zod .max(10000) — client-side, bypassable).
+   Proven: inserted stake=1,000,000,000 with a correctly-consistent payout_multiplier/potential_payout
+   (passes the new check — it only verifies the RATIO, not the absolute size). Attached two
+   backdated known-outcome legs (F-1-R.a) and ran the real cron:
+     result_payout: 3,000,000,000 paid for real by the settlement pipeline.
+     bro_stats: { wins: 1, net_units: 2,000,000,365 } — an arbitrary, attacker-chosen number
+     on the public leaderboard's net_units column, achieved with zero real risk.
+
+c. pick_count is never tied to the actual number of soccer_coupon_legs rows that end up
+   attached. route.ts enforces this at creation time (pick_count: legs.length) but the DB
+   does not. Proven: declared pick_count=6 (37.5x multiplier) on a coupon that only ever
+   received 2 real legs. Both legs were the same backdated known-outcome picks (F-1-R.a).
+     result_payout: 375 on a $10 stake — the FULL 6-pick payout rate for 2-pick-worth of
+     (already-guaranteed) risk. score contribution: +2, same as any legitimate 2-leg win,
+     but at 12.5x the honest multiplier.</pre>
+      <div class="label">Fix — same shape as the F-1 fix, one more migration</div>
+      <p class="fix">
+        <strong>The root cause is that kickoff/finished-state was never a database invariant</strong> — F-6 in
+        the original audit and this fix's own documented residual both named the shape of this gap without the
+        live proof that it's a real leaderboard vector, not just a display concern. Closing it cleanly needs
+        the database to know a match's state, not just the leg's own status:
+      </p>
+      <pre>-- a) soccer_coupon_legs INSERT: also require the referenced match hasn't kicked off.
+create policy "user inserts own soccer coupon legs"
+  on soccer_coupon_legs for insert
+  with check (
+    status = 'pending' and settled_side is null and settled_at is null
+    and exists (select 1 from user_coupons c
+                where c.id = soccer_coupon_legs.coupon_id and c.user_id = auth.uid())
+    and exists (select 1 from soccer_matches m
+                where m.id = soccer_coupon_legs.match_id and m.state = 'pre')
+  );
+
+-- b) user_coupons INSERT: bound stake to the app's own real ceiling (belt-and-suspenders
+--    with the Zod validator, not a replacement for it — keep both).
+  and stake <= 10000
+
+-- c) Tie pick_count to reality with a small AFTER INSERT trigger on soccer_coupon_legs
+--    (or user_coupon_picks for NBA) that re-checks count(*) for the coupon against its
+--    declared pick_count once the expected number of legs should be present — simplest
+--    version: settlement itself (settleCouponsForSport) should recompute the payout from
+--    the ACTUAL surviving leg count via the payout_multipliers table, never trust the
+--    stored potential_payout at all. That's arguably the more robust fix regardless of
+--    this specific bypass — it already re-prices on voided legs (settle-coupons.ts:150-166),
+--    extending that same re-pricing to the clean-sweep branch removes the trust in a
+--    client-supplied number entirely, closing F-1-R.c and shrinking the blast radius of any
+--    future column-trust gap on this table at the same time.</pre>
+    </div>
+
+    <div class="finding" style="margin-top:20px;">
+      <div class="finding-head">
+        <span class="pill pass">Confirmed intact</span>
+        <h3>The legitimate path — creation, sharing, settlement, ranking — is not collateral damage</h3>
+      </div>
+      <p class="desc">
+        A coupon insert shaped exactly like <code>route.ts</code>'s own insert (status <code>pending</code>,
+        no sharing columns set, correct multiplier for its <code>pick_count</code>/<code>mode</code>) passes
+        the new policy without friction. Sharing while <code>pending</code> succeeds through
+        <code>set_coupon_public(true)</code>. Real settlement (the actual cron, not a stand-in) grades the
+        legs, flips the coupon, and <code>bro_stats</code> reflects it on the next refresh — all exactly as
+        before. The fix tightens what a client may assert; it does not touch what the app itself asserts.
+      </p>
+    </div>
+
+    <div class="finding" style="margin-top:20px;">
+      <div class="finding-head">
+        <span class="pill pass">Confirmed correct</span>
+        <h3>The two new attack surfaces the fix itself introduced both hold</h3>
+      </div>
+      <p class="desc">
+        The <code>SECURITY DEFINER</code> RPC (<code>set_coupon_public</code>) correctly resolves
+        <code>auth.uid()</code> to the real calling user even under definer privileges, does its own
+        ownership check before touching a row, and fails silently-and-safely (an empty result, not an error
+        that leaks whether a coupon id exists) on someone else's coupon or a nonexistent one. The
+        payout-multiplier cross-check correctly rejects a mode/pick_count combination with no real rate
+        (<code>flex</code> at 2 picks) rather than coalescing to a false pass. Both are genuinely new trust
+        boundaries this fix created, and both were probed specifically because they're new, not because the
+        original audit named them.
+      </p>
+    </div>
+  </section>
+
+  <section id="verification-round-3-2026-09-15">
+    <h2 class="section-title">Verification addendum, round 3 — structural fix, re-tested independently, same day</h2>
+    <p style="color:#d5d5db; font-size:14.5px; margin-top:-6px;">
+      <code>src/db/migrations/0032_coupon_tables_server_only_writes.sql</code> landed (applied live):
+      <code>INSERT</code>/<code>UPDATE</code>/<code>DELETE</code> on <code>user_coupons</code>,
+      <code>user_coupon_picks</code>, and <code>soccer_coupon_legs</code> are now revoked from
+      <code>authenticated</code> and <code>public</code> entirely — a browser client holds
+      <code>SELECT</code> only. Plus a <code>BEFORE INSERT</code> trigger re-reading match state, a
+      <code>stake &lt;= 10000</code> table <code>CHECK</code>, <code>POST /api/coupons</code> writing
+      through the service role for every identity kind, and <code>settleCouponsForSport()</code>
+      recomputing payout from the real leg count instead of trusting the stored value. Per the
+      coordinator's instruction, every claim below was re-tested from scratch — none of it taken from
+      the fixing engineer's own proof.
+    </p>
+
+    <div class="verdict ok" style="margin-top:20px;">
+      <h2><span class="pill pass">Ship — this class of bug is closed</span></h2>
+      <p>
+        The central claim holds exactly as stated: a real signed-in user, anon key only, gets
+        <code>permission denied</code> on every write verb against all three tables — confirmed both
+        by direct empirical attack and by an independent read of the live grant catalog (they agree).
+        Every attack from rounds 1 and 2 — the original forgery, the backdated known-outcome leg, the
+        unbounded stake, the pick_count/leg-count mismatch — was re-run and now fails at the coarsest
+        possible layer, before RLS or any trigger even runs. The two new mechanisms the fix introduced
+        (the kickoff trigger, the stake ceiling) were independently proven to bind even a
+        <em>service-role</em> write, which is the right bar for genuine defense-in-depth. The legitimate
+        path — create a mixed engine+user coupon through the real, untouched API, share it while
+        pending, settle it through the real cron, and see it rank correctly — was reproduced end to end
+        on a synthetic fixture and works cleanly. This specific vulnerability class, across three rounds,
+        is genuinely converged.
+      </p>
+    </div>
+
+    <table class="matrix" style="margin-top:24px;">
+      <thead><tr><th>#</th><th>Test</th><th>Result</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td><strong>Central claim</strong> — every write verb (<code>INSERT</code>/<code>UPDATE</code>/<code>DELETE</code>), all 3 tables, anon key + real session</td><td><span class="pill pass">All 9 blocked</span> — <code>permission denied for table ...</code>, confirmed against the live <code>information_schema</code>/<code>pg_catalog</code> grants directly, independent of the empirical test</td></tr>
+        <tr><td>2</td><td>Original F-1 repro (forged status/payout/is_public)</td><td><span class="pill pass">Blocked</span> — permission denied</td></tr>
+        <tr><td>3</td><td>Forged leg status</td><td><span class="pill pass">Blocked</span> — permission denied</td></tr>
+        <tr><td>4</td><td>Direct <code>UPDATE</code> / <code>refresh_bro_stats()</code> / unshare-after-settle</td><td><span class="pill pass">All blocked</span> — unchanged from round 2, re-confirmed</td></tr>
+        <tr><td>5</td><td><strong>F-1-R exact repro</strong> — leg on an already-finished match, side already known to have won</td><td><span class="pill pass">Blocked</span> — permission denied before the leg ever reaches the trigger</td></tr>
+        <tr><td>6</td><td>Same F-1-R attack, run as the <em>service-role</em> writer directly (proves the trigger itself, not only the removed grant)</td><td><span class="pill pass">Blocked</span> — <code>match_already_started</code>, raised by <code>enforce_leg_prekickoff()</code></td></tr>
+        <tr><td>7</td><td>Trigger sanity check — a leg on a genuinely <code>state='pre'</code> match, service-role</td><td><span class="pill pass">Allowed</span> — trigger doesn't over-block real picks</td></tr>
+        <tr><td>8</td><td>Unbounded stake (<code>stake=1e9</code>), as the client</td><td><span class="pill pass">Blocked</span> — permission denied</td></tr>
+        <tr><td>9</td><td>Same, as service-role directly (proves the <code>CHECK</code> itself)</td><td><span class="pill pass">Blocked</span> — <code>violates check constraint "user_coupons_stake_ceiling"</code></td></tr>
+        <tr><td>10</td><td>Stake boundary — exactly <code>10000</code> vs. <code>10000.01</code>, service-role</td><td><span class="pill pass">Correct</span> — 10000 passes, 10000.01 fails</td></tr>
+        <tr><td>11</td><td><code>pick_count</code>/leg-count mismatch — a coupon tampered (service-role, simulating a future bug) to declare 6 picks/37.5× while only 2 real legs exist, then settled for real</td><td><span class="pill pass">Recomputed</span> — <code>result_payout: 30</code>, the true 2-pick rate, not the tampered 375</td></tr>
+        <tr><td>12</td><td>Legitimate full loop — real <code>POST /api/coupons</code> (mixed engine+user legs), real share-while-pending, real settlement cron, real rank</td><td><span class="pill pass">Works end to end</span> — <code>201</code> → <code>200</code> share → both legs graded <code>won</code> → <code>bro_stats: {wins:1, score:2, net_units:20}</code></td></tr>
+        <tr><td>13</td><td>Cleanup — every throwaway user, the synthetic fixture, and all forged rows removed</td><td><span class="pill pass">Byte-identical</span> to the pre-test baseline every time it was checked</td></tr>
+      </tbody>
+    </table>
+
+    <div class="finding" style="margin-top:28px;">
+      <div class="finding-head">
+        <span class="pill pass">Confirmed — the coupon write-surface is now genuinely SELECT-only</span>
+        <h3>Verified two ways, not one</h3>
+      </div>
+      <p class="desc">
+        The empirical attack (anon key, real session, all 9 write attempts) and an independent query
+        against <code>information_schema.role_table_grants</code> agree exactly:
+        <code>user_coupons</code>, <code>user_coupon_picks</code>, and <code>soccer_coupon_legs</code>
+        grant <code>anon</code>/<code>authenticated</code> only <code>SELECT</code> (plus inert
+        <code>REFERENCES</code>/<code>TRIGGER</code>/<code>TRUNCATE</code> grants that carry no write
+        capability through PostgREST). The <code>SELECT</code> policies were spot-checked for scope too
+        — a client with no session at all sees exactly the set of legs that belong to public coupons,
+        nothing more, matching the "anyone reads public coupons" policy's intent precisely.
+      </p>
+    </div>
+
+    <div class="finding" style="margin-top:20px;">
+      <div class="finding-head">
+        <span class="pill pass">Confirmed — the PUBLIC-default-grant trap was checked again, correctly this time</span>
+      </div>
+      <p class="desc">
+        <code>enforce_leg_prekickoff()</code> — the new trigger function — does carry Postgres' default
+        <code>EXECUTE</code> grant to <code>PUBLIC</code> (migration 0032 revokes table DML but doesn't
+        revoke this function's default grant, unlike round 1's careful handling of
+        <code>refresh_bro_stats()</code> and <code>set_coupon_public()</code>). Tested directly: calling
+        it via RPC as an authenticated user is rejected — not by a permission error, but because
+        PostgREST/Postgres won't invoke a bare <code>trigger</code>-typed function outside trigger
+        context at all. <strong>Not exploitable</strong>, confirmed empirically rather than assumed from
+        the function's type signature. Worth a one-line <code>revoke execute ... from public,
+        authenticated</code> anyway, purely so the grant list doesn't lie about what's reachable — cosmetic,
+        not a ship-blocker.
+      </p>
+    </div>
+
+    <div class="finding crit" style="margin-top:20px;">
+      <div class="finding-head">
+        <span class="pill critical">New — found while sweeping the blast radius, not part of the coupon feature</span>
+        <h3>F-4: <code>soccer_score_predictions</code> has the exact same unfixed bug shape, feeding its own public leaderboard</h3>
+        <span class="id">F-4</span>
+      </div>
+      <p class="desc">
+        Asked to check "other tables in this feature's blast radius that still accept client writes" —
+        this is the one that turned up. <code>soccer_score_predictions</code> (bros' score-call game,
+        migration 0024) grants <code>authenticated</code> <code>INSERT</code>/<code>UPDATE</code>/
+        <code>DELETE</code>, and the <code>UPDATE</code> policy is ownership-only —
+        <code>using (user_id = auth.uid()) with check (user_id = auth.uid())</code> — <strong>the exact
+        same shape <code>user_coupons</code> had before this round's fix.</strong> The grading columns
+        (<code>points</code>, <code>graded_at</code>) are ordinary, client-writable columns on that same
+        row. It feeds <code>soccer_prediction_leaderboard</code>, a separate but equally public view.
+        This table was never touched by either fix — both rounds scoped to
+        <code>user_coupons</code>/<code>user_coupon_picks</code>/<code>soccer_coupon_legs</code> only.
+      </p>
+      <div class="label">Proof — reproduced live, then fully reverted</div>
+      <pre class="attack">1. Insert a real, legitimate score call before kickoff (home_goals:1, away_goals:0) — the
+   intended flow, no bypass needed.
+2. UPDATE that same row directly: { points: 3, graded_at: now() } — as the owning user,
+   anon key, no exploit.
+3. soccer_prediction_leaderboard for that user, immediately:
+   { calls: 1, graded: 1, points: 3, exact_scores: 1, right_results: 1 }
+   — a perfect "exact score" call, self-awarded, with no match ever having been played.</pre>
+      <p class="fix">
+        Same root cause, same fix shape as this round's own migration: revoke
+        <code>UPDATE</code> (and probably <code>INSERT</code>/<code>DELETE</code>, moving both through a
+        narrow RPC or a server route the way coupons now work) from <code>authenticated</code> on
+        <code>soccer_score_predictions</code>, and let <code>grade-calls.ts</code> (service role) be the
+        only writer of <code>points</code>/<code>graded_at</code>. This is <strong>not part of the
+        user-coupons feature this audit was scoped to</strong> and is not what either fix round touched
+        — flagging it because the coordinator's own instruction was to look past the named feature's
+        boundary, and this is exactly the shape of bug both rounds just spent two fixes closing,
+        sitting untouched one table over.
+      </p>
+    </div>
+
+    <div class="finding" style="margin-top:20px;">
+      <div class="finding-head">
+        <span class="pill pass">Confirmed intact — the legitimate loop is not collateral damage, proven end to end</span>
+      </div>
+      <p class="desc">
+        Built a synthetic pre-kickoff fixture (two fake matches, one engine prediction, one real
+        <code>consensus()</code>-shaped odds book — never a real match, per the standing rule), and drove
+        the actual, unmodified app code: <code>POST /api/coupons</code> with a mixed engine-leg +
+        user-leg body (real odds re-verification, real kickoff check) → <code>201</code>; the coupon's
+        row was then tampered via service-role to a false <code>pick_count</code>/multiplier/payout
+        (simulating "a future bug let this through") specifically to prove
+        <code>settleCouponsForSport()</code> no longer trusts it; the fixture's two matches were finished
+        for real (never a real match); the real <code>GET /api/cron/soccer/settle-bets</code> graded both
+        legs correctly and paid the <em>true</em> 2-pick rate, ignoring the tampered numbers entirely; a
+        real profile was created and the coupon shared through the real
+        <code>/api/coupons/[id]/share</code> route; <code>bro_stats</code> reflected the correct
+        <code>wins:1, score:2, net_units:20</code>. Nothing about the fix breaks the feature it's
+        protecting.
+      </p>
+    </div>
+
+    <div class="verdict" style="margin-top:28px; border-color: var(--warn); background: linear-gradient(180deg, rgba(245,158,11,0.12), rgba(245,158,11,0.03));">
+      <h2><span class="pill medium">Bottom line</span></h2>
+      <p>
+        <strong>Yes, this is converging — and for the coupon feature specifically, it has converged.</strong>
+        Three rounds followed a real pattern: patch a column (round 1) → find the next column via the
+        same predicate approach (round 2) → stop patching predicates and remove the grant entirely
+        (round 3). That progression is the correct one, and round 3 is the right kind of fix — structural,
+        not another special case — independently verified against both the running app and the raw grant
+        catalog, not just re-read from a claim. I would ship the user-coupons feature on this migration.
+        <strong>F-4 is a genuine new finding, not a reason to distrust rounds 1–3</strong> — it's a sibling
+        table nobody was asked to look at until this round's "check the blast radius" instruction, carrying
+        the identical, now-familiar bug shape. My honest read: it is very likely worth a fourth small,
+        fast pass — the same structural fix, already fully specified above, on one more table — before
+        calling the write-trust problem across this whole "bros" surface fully closed. That is a
+        recommendation to extend the fix's scope by one table, not a verdict against what shipped here.
+      </p>
+    </div>
+  </section>
+
+  <footer>
+    TrustMeBro — Security Audit — generated 2026-09-15 — archived, dated, not to be overwritten (re-run same-day → <code>_v2</code>).
+    Verification addenda added same day, 2026-09-15, after each fix round landed. Companion handoff:
+    <code>docs/handoffs/user-coupons-security_2026-09-15.md</code>.
+  </footer>
+
+</div>
+</body>
+</html>

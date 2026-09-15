@@ -18,6 +18,32 @@ async function ensureProfile(
   return { has: !!data };
 }
 
+// Both directions go through the set_coupon_public() RPC (migration 0031) —
+// user_coupons has no client UPDATE grant any more, and unsharing a coupon
+// that already settled is rejected inside the RPC itself (F-2's guard), not
+// re-checked here.
+async function setPublic(
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
+  couponId: string,
+  makePublic: boolean,
+) {
+  const { data, error } = await supabase.rpc("set_coupon_public", {
+    p_coupon_id: couponId,
+    p_public: makePublic,
+  });
+  if (error) {
+    if (error.message.includes("cannot_unshare_settled_coupon")) {
+      return { status: 409 as const, body: { error: "cannot_unshare_settled_coupon" } };
+    }
+    return { status: 500 as const, body: { error: error.message } };
+  }
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row) {
+    return { status: 404 as const, body: { error: "not_found" } };
+  }
+  return { status: 200 as const, body: { ok: true, coupon: row } };
+}
+
 export async function POST(
   _req: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -37,20 +63,8 @@ export async function POST(
     return NextResponse.json({ error: "profile_required" }, { status: 409 });
   }
 
-  const { data, error } = await supabase
-    .from("user_coupons")
-    .update({ is_public: true, shared_at: new Date().toISOString() })
-    .eq("id", couponId)
-    .eq("user_id", requester.user_id)
-    .select("id, is_public, shared_at")
-    .maybeSingle();
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-  if (!data) {
-    return NextResponse.json({ error: "not_found" }, { status: 404 });
-  }
-  return NextResponse.json({ ok: true, coupon: data });
+  const result = await setPublic(supabase, couponId, true);
+  return NextResponse.json(result.body, { status: result.status });
 }
 
 export async function DELETE(
@@ -64,18 +78,6 @@ export async function DELETE(
   }
 
   const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase
-    .from("user_coupons")
-    .update({ is_public: false, shared_at: null })
-    .eq("id", couponId)
-    .eq("user_id", requester.user_id)
-    .select("id, is_public")
-    .maybeSingle();
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-  if (!data) {
-    return NextResponse.json({ error: "not_found" }, { status: 404 });
-  }
-  return NextResponse.json({ ok: true, coupon: data });
+  const result = await setPublic(supabase, couponId, false);
+  return NextResponse.json(result.body, { status: result.status });
 }

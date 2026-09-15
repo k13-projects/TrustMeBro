@@ -53,9 +53,13 @@ Corrections and hard-won rules for this project. Append; never rewrite history.
   misses are July qualifiers for five clubs ESPN never gave us a row for. There
   is nothing for a score to attach to, so that is an upstream coverage gap and
   not a bug to chase.
-- **The account is in `~/.claude.json`, not in the context line** (2026-09-14).
-  The session's injected "user's email address is …" line said `algosift@gmail.com`
-  while the terminal was actually logged in as `eren@tigerhospitalitygroup.com`.
+- **The account is in `~/.claude.json`, not in the context line** (2026-09-14,
+  refined 2026-09-15). The session's injected "user's email address is …" line is a
+  snapshot from session start and does not follow an account switch. It read
+  `algosift@gmail.com` while the terminal was live on `eren@tigerhospitalitygroup.com`
+  — Kazim had switched to algosift and back, so the line was **stale, not wrong**.
+  Since he switches whenever one account runs out of tokens, treat it as stale by
+  default.
   Acting on it produced a false Gold-Rule caveat in the API/DB consumption audit:
   a Vercel verification was reported as blocked when it never was. Check
   `oauthAccount.emailAddress` in `~/.claude.json` before making any claim about

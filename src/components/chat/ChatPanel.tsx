@@ -221,13 +221,14 @@ export function ChatPanel({
               ? {
                   sport: "soccer" as const,
                   prediction_id: p.prediction_id,
+                  leg_source: p.kind,
                   match: `${p.home} v ${p.away}`.trim(),
                   market: p.market,
                   side: p.side,
                   side_label: sideLabel(p.market, p.side, p.line, p.home, p.away),
                   line: p.line,
-                  confidence: p.confidence,
-                  best_odds: p.best_odds ?? null,
+                  confidence: p.kind === "engine" ? p.confidence : null,
+                  best_odds: (p.kind === "engine" ? p.best_odds : p.odds_taken) ?? null,
                 }
               : {
                   sport: "nba" as const,
