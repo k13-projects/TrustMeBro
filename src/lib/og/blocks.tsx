@@ -37,7 +37,7 @@ export function Footer() {
       }}
     >
       <div style={{ display: "flex", fontFamily: FONT, fontSize: 20, color: "rgba(255,255,255,0.45)" }}>
-        tmb.erenunur.com
+        tmb.k13projects.com
       </div>
       <Wordmark />
     </div>
