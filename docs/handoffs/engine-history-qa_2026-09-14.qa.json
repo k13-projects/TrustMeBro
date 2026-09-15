@@ -1,0 +1,101 @@
+{
+  "report": "engine-history-qa_2026-09-14",
+  "page": "/football/results",
+  "date": "2026-09-14",
+  "tester": "Olga (qa-test-engineer)",
+  "verdict": "PASS",
+  "verdict_notes": "PASS after one fix: non-deterministic ordering in getSettledPicks() (settled_at ties from batch settles) could silently change streak/divider claims between page loads. Fixed with a deterministic secondary sort (id asc). All other areas passed on first pass.",
+  "environment": {
+    "branch": "tmb_sep14_v10",
+    "dev_port": 9136,
+    "browser": "gstack headless ($B), tmb berth",
+    "viewports_tested": [320, 375, 768, 1280]
+  },
+  "accuracy_verification": {
+    "method": "Direct Postgres query via DATABASE_URL (.env.local), independent of the app and of the build agent's own numbers",
+    "rows_checked": 8,
+    "rows_matched": 8,
+    "rows_mismatched": 0,
+    "competitions_covered": ["uefa.champions", "fifa.world"],
+    "outcomes_covered": ["won", "lost"],
+    "records_strip_recomputed_independently": true,
+    "records_strip_matches": {
+      "uefa.champions": {
+        "best_price_won": "match (1.91)",
+        "biggest_upset": "match (0.5347 prob)",
+        "banko_record": "match (2-1, 67%)",
+        "best_streak_before_fix": 6,
+        "best_streak_after_fix": 4,
+        "best_streak_verified_deterministic": true
+      },
+      "fifa.world": {
+        "best_price_won": "match (11.00)",
+        "biggest_upset": "match (0.0924 prob)",
+        "banko_record": "match (33-8, 80%)",
+        "best_streak_before_fix": 13,
+        "best_streak_after_fix": 11,
+        "best_streak_verified_deterministic": true
+      }
+    },
+    "hit_rate_cross_check": {
+      "uefa.champions": { "ledger": "7/3/0", "predictions_count": "7/3/0", "results_page_filters": "7/3/0", "scoreboard_hit_rate": "70%" },
+      "fifa.world": { "ledger": "107/91/0", "predictions_count": "107/91/0", "results_page_total": 198, "scoreboard_hit_rate": "54%" }
+    },
+    "clean_sweep_badge_confirmed_absent": true
+  },
+  "bugs_found": [
+    {
+      "id": "non-deterministic-streak-order",
+      "severity": "P1",
+      "description": "getSettledPicks() ordered only by settled_at, which is identical across an entire settle-job batch. No guaranteed tiebreak means SQL tie order (and therefore streak/divider claims) is not guaranteed stable across requests.",
+      "fixed": true,
+      "fix": "Added .order(\"id\", { ascending: true }) as deterministic secondary sort in src/lib/sports/soccer/queries.ts getSettledPicks().",
+      "verified": "Re-ran the page 3x post-fix, same '4 wins in a row' each time; cross-checked against direct SQL with the same tiebreak."
+    }
+  ],
+  "environment_issues_resolved_not_code_bugs": [
+    {
+      "id": "superlig-theme-stale-cache",
+      "description": "Süper Lig rendered gold instead of its red theme on first load; compiled CSS chunk was missing the [data-competition=\"tur.1\"] rule (committed after the long-running dev server started). Resolved by full `.next` wipe + restart, not a code change.",
+      "resolved": true
+    }
+  ],
+  "checklist": {
+    "volume_cases_world_cup_198_8_pages": "pass",
+    "volume_cases_champions_league_10": "pass",
+    "volume_cases_zero_settled_superlig": "pass",
+    "scoreboard_tiles_all_four_keyboard_and_click": "pass",
+    "filters_sort_url_driven_back_forward": "pass",
+    "highlight_deep_link": "pass",
+    "five_competition_palettes_no_banned_colors": "pass",
+    "mobile_320_up_no_horizontal_overflow": "pass",
+    "tap_targets_44px_floor": "pass",
+    "prefers_reduced_motion_gated": "pass (verified via source + compiled CSS; live OS-level toggle not available in this headless tooling)",
+    "console_errors_scoreboard_picks": "pass (clean)",
+    "regressions_scoreboard_picks": "pass (none found)"
+  },
+  "verification_commands": {
+    "tsc_noEmit": "clean",
+    "lint": "clean",
+    "build": "clean"
+  },
+  "screenshots_dir": ".gstack/browse-reports/2026-09-14-2007/screenshots/",
+  "screenshots": [
+    "ucl-results-desktop.png",
+    "ucl-results-mobile.png",
+    "ucl-results-tablet.png",
+    "ucl-expanded-desktop.jpg",
+    "ucl-results-320.jpg",
+    "ucl-results-320-expanded.jpg",
+    "ucl-highlight-deeplink.jpg",
+    "scoreboard-focus-voids.jpg",
+    "wc-page8.jpg",
+    "superlig-empty.jpg",
+    "superlig-empty-red-fixed.jpg",
+    "europa-results.jpg",
+    "conf-results.jpg",
+    "ucl-results-after-fix.jpg"
+  ],
+  "next": "security-auditor (Irina)",
+  "human_gate": "none"
+}

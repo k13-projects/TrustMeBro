@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import type { Reasoning } from "@/lib/analysis/types";
 import type { MatchSide, SoccerMarket } from "@/lib/sports/types";
 import { sideLabel } from "./labels";
 import { QUALIFYING_STAGES, type SoccerCompetition } from "./competitions";
@@ -477,6 +478,76 @@ export async function getRecentSettledPicks(
     .order("settled_at", { ascending: false })
     .limit(limit);
   return ((data ?? []) as unknown as RawPrediction[]).map(toPredictionDetail);
+}
+
+// ---------------------------------------------------------------------------
+// Settled pick history — /football/results. Needs several columns the
+// compact PREDICTION_SELECT never selected (bookmaker, probability,
+// reasoning, generated_at, settled_side), so it gets its own select rather
+// than bolting them onto every existing caller of PredictionDetail.
+// ---------------------------------------------------------------------------
+export type SettledPickDetail = Omit<PredictionDetail, "status"> & {
+  status: "won" | "lost" | "void";
+  probability: number;
+  bookmaker: string | null;
+  reasoning: Reasoning;
+  generated_at: string;
+  settled_side: MatchSide | null;
+};
+
+type RawSettledPrediction = RawPrediction & {
+  probability: number;
+  bookmaker: string | null;
+  reasoning: Reasoning;
+  generated_at: string;
+  settled_side: MatchSide | null;
+};
+
+const SETTLED_PICK_SELECT =
+  PREDICTION_SELECT + ", probability, bookmaker, reasoning, generated_at, settled_side";
+
+function toSettledPickDetail(p: RawSettledPrediction): SettledPickDetail {
+  return {
+    ...toPredictionDetail(p),
+    status: p.status as "won" | "lost" | "void",
+    probability: Number(p.probability),
+    bookmaker: p.bookmaker,
+    reasoning: (p.reasoning ?? { checks: [], signals: [] }) as Reasoning,
+    generated_at: p.generated_at,
+    settled_side: p.settled_side,
+  };
+}
+
+// Every graded pick for a competition, most recent first — the source for
+// /football/results. Filtering, sorting and pagination happen in the page
+// (same pattern as /football/value), since even the World Cup's full history
+// is a couple hundred rows. The 1000 cap is headroom, not an expected size.
+//
+// `settle-bets` grades an entire matchday in one batch run, so every pick
+// settled in that run shares the exact same `settled_at` timestamp — a
+// single Champions League matchday alone produced 7 identical timestamps
+// (QA 2026-09-15). `order("settled_at")` alone leaves those ties in
+// whatever order Postgres happens to return them, which SQL never
+// guarantees to be stable across requests. The streak dividers and
+// records strip both claim a specific, true order ("6-WIN STREAK"), so an
+// unstable tiebreak would let the exact same underlying history silently
+// render a different streak on a later page load — the one failure mode
+// this page cannot afford. `id` is an arbitrary but *fixed* tiebreaker:
+// it doesn't claim to be the true order among simultaneous settles (there
+// isn't one), it only guarantees today's order is tomorrow's order too.
+export async function getSettledPicks(
+  competition: SoccerCompetition,
+): Promise<SettledPickDetail[]> {
+  const supabase = await createSupabaseServerClient();
+  const { data } = await supabase
+    .from("soccer_predictions")
+    .select(SETTLED_PICK_SELECT)
+    .eq("competition", competition)
+    .in("status", ["won", "lost", "void"])
+    .order("settled_at", { ascending: false })
+    .order("id", { ascending: true })
+    .limit(1000);
+  return ((data ?? []) as unknown as RawSettledPrediction[]).map(toSettledPickDetail);
 }
 
 export type CouponView = {

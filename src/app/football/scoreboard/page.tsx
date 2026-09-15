@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 import { activeCompetition } from "@/lib/sports/soccer/competition-cookie";
 import { COMPETITIONS } from "@/lib/sports/soccer/competitions";
 import {
@@ -11,12 +13,37 @@ import { EngineBreakdown } from "@/components/soccer/EngineBreakdown";
 
 export const dynamic = "force-dynamic";
 
-function Stat({ label, value, tone }: { label: string; value: string; tone?: string }) {
+// Every tile is a real link to the settled history behind the number — the
+// scoreboard is a summary, /football/results is the receipt.
+function Stat({
+  label,
+  value,
+  tone,
+  href,
+  ariaLabel,
+}: {
+  label: string;
+  value: string;
+  tone?: string;
+  href: string;
+  ariaLabel: string;
+}) {
   return (
-    <div className="rounded-2xl border border-border/60 bg-card/40 px-5 py-4 text-center">
+    <Link
+      href={href}
+      aria-label={ariaLabel}
+      className="group rounded-2xl border border-border/60 bg-card/40 px-5 py-4 text-center transition-[transform,border-color] hover:-translate-y-0.5 hover:border-primary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary motion-reduce:transition-colors motion-reduce:hover:translate-y-0"
+    >
       <div className={`text-3xl font-black tabular-nums ${tone ?? ""}`}>{value}</div>
-      <div className="mt-1 text-xs uppercase tracking-wide text-foreground/50">{label}</div>
-    </div>
+      <div className="mt-1 flex items-center justify-center gap-1 text-xs uppercase tracking-wide text-foreground/50">
+        {label}
+        <ArrowRight
+          size={12}
+          className="-mr-3 opacity-0 transition-opacity group-hover:mr-0 group-hover:opacity-100 motion-reduce:transition-none"
+          aria-hidden
+        />
+      </div>
+    </Link>
   );
 }
 
@@ -80,10 +107,32 @@ export default async function ScoreboardPage() {
       )}
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Stat label="Wins" value={String(s.wins)} tone="text-emerald-400" />
-        <Stat label="Losses" value={String(s.losses)} tone="text-rose-400" />
-        <Stat label="Voids" value={String(s.voids)} />
-        <Stat label="Hit Rate" value={`${hitRate}%`} />
+        <Stat
+          label="Wins"
+          value={String(s.wins)}
+          tone="text-emerald-400"
+          href="/football/results?outcome=won"
+          ariaLabel={`View ${s.wins} settled wins for ${meta.label}`}
+        />
+        <Stat
+          label="Losses"
+          value={String(s.losses)}
+          tone="text-rose-400"
+          href="/football/results?outcome=lost"
+          ariaLabel={`View ${s.losses} settled losses for ${meta.label}`}
+        />
+        <Stat
+          label="Voids"
+          value={String(s.voids)}
+          href="/football/results?outcome=void"
+          ariaLabel={`View ${s.voids} settled voids for ${meta.label}`}
+        />
+        <Stat
+          label="Hit Rate"
+          value={`${hitRate}%`}
+          href="/football/results"
+          ariaLabel={`View all ${settled} settled picks for ${meta.label}`}
+        />
       </div>
 
       <EngineBreakdown breakdown={breakdown} />

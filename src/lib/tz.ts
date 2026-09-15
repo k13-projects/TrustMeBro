@@ -15,12 +15,15 @@ export const TZ_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 /** The site's own zone, offered as an explicit alternative to the viewer's. */
 export const SITE_TIMEZONE = PROJECT_TIMEZONE;
 
-export type TimeFormat = "kickoff" | "time" | "dayTime" | "full";
+export type TimeFormat = "kickoff" | "time" | "date" | "dayTime" | "full";
 
 const OPTIONS: Record<TimeFormat, Intl.DateTimeFormatOptions> = {
   // Just the clock, for a banner that already says which day it is.
   kickoff: { hour: "numeric", minute: "2-digit" },
   time: { hour: "numeric", minute: "2-digit" },
+  // Just the day, no clock — a settled-history row cares which day a match
+  // was played, not what time it kicked off.
+  date: { month: "short", day: "numeric" },
   dayTime: {
     weekday: "short",
     month: "short",

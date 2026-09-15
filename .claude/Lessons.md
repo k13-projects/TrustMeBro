@@ -64,3 +64,12 @@ Corrections and hard-won rules for this project. Append; never rewrite history.
   that caveat left open was ultimately answered from the data instead: newest
   `predictions` row was 2026-06-13 and `odds_snapshots` was empty, confirming the
   NBA crons are dormant.
+- **Always hand over the local URL when something is ready to look at**
+  (Kazim, 2026-09-14). Saying "it's on branch X, take a look" is not a
+  handover — he has to go find the port, guess the route, and set a cookie to
+  reach a competition-scoped page. Every message that reports work ready for
+  his eyes must carry the actual clickable link(s): the page itself, plus the
+  one or two states worth seeing (a filtered view, the surface it's reached
+  from). Confirm the dev server is actually answering first, rather than
+  assuming it survived a `.next` wipe or a restart. Applies to any "have a
+  look" message, not just this project's football pages.
