@@ -106,3 +106,30 @@ Corrections and hard-won rules for this project. Append; never rewrite history.
   "lost", and the revert restored the match but not the leg. After any test
   that touches settlement, query for legs/picks graded on unfinished matches
   before calling it done (migration 0036 is the repair).
+
+## 2026-09-16 — A counter you read in JavaScript is a counter you will lose
+- **What happened:** the same day settlement became an on-visit job, three
+  Europa League picks all graded "won" and the ledger finished at **1**
+  instead of 3, while its own `wins` column correctly read 3. All three
+  history rows recorded `score_after = 1`. `settleSoccer` read
+  `soccer_ledgers.score` into JS, added the delta, and wrote it back, once per
+  prediction, with no error check — so two overlapping passes both read the
+  same starting score and the later write discarded the earlier one.
+- **Why it had never bitten:** settlement used to run from exactly one daily
+  cron. Adding `settleOnVisit` meant any two visitors could race it. **A
+  concurrency bug is dormant, not absent, until you add the second caller** —
+  when you make something run more often, re-read what it writes.
+- **Rule:** a running total moves inside Postgres, in one statement. The NBA
+  side had `apply_reward()` doing exactly this since day one; soccer never got
+  the equivalent until migration 0037 (`apply_soccer_reward`). When two sides
+  of the same product disagree about how they write the same shape of data,
+  the older working one is usually right.
+- **Rule:** `.upsert()` / `.update()` without checking `error` is a silent
+  write. Check it or throw.
+- **Revoke from PUBLIC, not just the role.** A new function gets EXECUTE for
+  PUBLIC by default — the trap `refresh_bro_stats` hit in the 2026-09-15
+  audit. 0037 revokes from PUBLIC before granting to `service_role`.
+- **Proving it:** the function was exercised won/lost/void plus the fresh-row
+  insert branch inside a transaction that was always rolled back, so the proof
+  cost no production data. Verify with `score = wins - losses` across every
+  competition; drift is the alarm.

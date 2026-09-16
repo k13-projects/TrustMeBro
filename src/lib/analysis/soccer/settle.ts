@@ -63,9 +63,10 @@ export async function settleSoccer(
     return { predictions_settled: 0, coupons_settled: 0, score_delta: 0 };
   }
 
+  // Counted only for this pass's own return value — the ledger's running
+  // totals are the database's job now (apply_soccer_reward, migration 0037).
   let wins = 0;
   let losses = 0;
-  let voids = 0;
   const now = new Date().toISOString();
 
   for (const r of rows) {
@@ -82,47 +83,27 @@ export async function settleSoccer(
     );
     if (status === "won") wins += 1;
     else if (status === "lost") losses += 1;
-    else voids += 1;
 
     await supabase
       .from("soccer_predictions")
       .update({ status, settled_side: result, settled_at: now })
       .eq("id", r.id);
 
-    if (status !== "void") {
-      const delta = status === "won" ? 1 : -1;
-      const { data: scoreRow } = await supabase
-        .from("soccer_ledgers")
-        .select("score")
-        .eq("competition", competition)
-        .maybeSingle();
-      const scoreAfter = Number(scoreRow?.score ?? 0) + delta;
-      await supabase
-        .from("soccer_ledgers")
-        .upsert({ competition, score: scoreAfter, updated_at: now });
-      await supabase.from("soccer_system_score_history").insert({
-        competition,
-        prediction_id: r.id,
-        delta,
-        outcome: status,
-        score_after: scoreAfter,
-      });
+    // One atomic statement per prediction: score, the win/loss/void counters
+    // and the history row all move together inside Postgres (migration 0037).
+    // This used to read the score into JS, add the delta and write it back,
+    // which quietly lost a result whenever two settlement passes overlapped —
+    // and settlement stopped being a once-a-day cron the moment it also began
+    // running on visit.
+    const { error: rewardError } = await supabase.rpc("apply_soccer_reward", {
+      p_competition: competition,
+      p_prediction_id: r.id,
+      p_outcome: status,
+    });
+    if (rewardError) {
+      throw new Error(`apply_soccer_reward(${r.id}): ${rewardError.message}`);
     }
   }
-
-  // Bump aggregate win/loss/void counts.
-  const { data: agg } = await supabase
-    .from("soccer_ledgers")
-    .select("wins, losses, voids")
-    .eq("competition", competition)
-    .maybeSingle();
-  await supabase.from("soccer_ledgers").upsert({
-    competition,
-    wins: Number(agg?.wins ?? 0) + wins,
-    losses: Number(agg?.losses ?? 0) + losses,
-    voids: Number(agg?.voids ?? 0) + voids,
-    updated_at: now,
-  });
 
   const couponsSettled = await settleCoupons(competition);
 
@@ -240,19 +221,18 @@ export async function voidStaleSoccerRows(): Promise<StalenessResult> {
         predsToVoid.map((p) => p.id),
       );
 
-    const byCompetition = new Map<string, number>();
+    // Same atomic path as settleSoccer above — a void moves no score but it
+    // does move a counter, and a read-add-write counter is exactly what a
+    // concurrent pass clobbers.
     for (const p of predsToVoid) {
-      byCompetition.set(p.competition, (byCompetition.get(p.competition) ?? 0) + 1);
-    }
-    for (const [competition, count] of byCompetition) {
-      const { data: agg } = await supabase
-        .from("soccer_ledgers")
-        .select("voids")
-        .eq("competition", competition)
-        .maybeSingle();
-      await supabase
-        .from("soccer_ledgers")
-        .upsert({ competition, voids: Number(agg?.voids ?? 0) + count, updated_at: now });
+      const { error: voidError } = await supabase.rpc("apply_soccer_reward", {
+        p_competition: p.competition,
+        p_prediction_id: p.id,
+        p_outcome: "void",
+      });
+      if (voidError) {
+        throw new Error(`apply_soccer_reward(void ${p.id}): ${voidError.message}`);
+      }
     }
   }
 
