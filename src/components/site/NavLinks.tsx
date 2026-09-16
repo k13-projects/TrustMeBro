@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronDown } from "lucide-react";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { cx, focusRing } from "@/lib/design/tokens";
 import { isNavGroup, type NavEntry, type NavItem } from "@/lib/sports/registry";
 
@@ -46,14 +46,18 @@ function isItemActive(item: NavItem, pathname: string, urlHash: string): boolean
 }
 
 const linkClass =
-  "relative inline-flex items-center whitespace-nowrap px-3 py-2 text-[12.5px] font-semibold uppercase tracking-[0.12em] transition-colors duration-200";
+  // px-2.5 not px-3: six top-level entries overflowed 1024px by exactly 24px,
+  // and 6 items x 2 sides x 2px is the 24px back. Kept as tight as it can be
+  // without the hover pill crowding the label.
+  "relative inline-flex items-center whitespace-nowrap px-2.5 py-2 text-[12.5px] font-semibold uppercase tracking-[0.12em] transition-colors duration-200";
 
 export function NavLinks({
   items,
-  dense = false,
+  rowClass,
 }: {
   items: ReadonlyArray<NavEntry>;
-  dense?: boolean;
+  /** Visibility classes for this sport's measured tier (NAV_TIER.row). */
+  rowClass: string;
 }) {
   const pathname = usePathname() ?? "/";
   const urlHash = useUrlHash();
@@ -61,7 +65,7 @@ export function NavLinks({
 
   return (
     <div
-      className={cx(dense ? "hidden xl:flex" : "hidden lg:flex", "items-center")}
+      className={cx(rowClass, "items-center")}
       onMouseLeave={() => setHoverKey(null)}
     >
       <nav className="relative flex items-center gap-0.5" aria-label="Primary">
@@ -92,16 +96,24 @@ export function NavLinks({
 }
 
 function HoverPill({ show }: { show: boolean }) {
+  // The pill and the active dot both animate by sharing a `layoutId`, which is
+  // what slides them from one nav item to the next. A CSS
+  // prefers-reduced-motion rule cannot switch that off — the movement is
+  // computed in JS — and the rule that was supposed to cover it targeted class
+  // names this component never used, so it did nothing. Dropping the layoutId
+  // is the real gate: the pill still appears and still marks the right item,
+  // it simply stops travelling. House rule: all motion is gated (genome 2).
+  const reduce = useReducedMotion();
   return (
     <AnimatePresence>
       {show ? (
         <motion.span
-          layoutId="nav-hover-pill"
+          layoutId={reduce ? undefined : "nav-hover-pill"}
           className="pointer-events-none absolute inset-0 rounded-full bg-primary/10 ring-1 ring-primary/30"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.18 }}
+          transition={{ duration: reduce ? 0 : 0.18 }}
         />
       ) : null}
     </AnimatePresence>
@@ -121,6 +133,7 @@ function NavSingleLink({
   hovered: boolean;
   onHover: (key: string | null) => void;
 }) {
+  const reduceMotion = useReducedMotion();
   const isActive = isItemActive(item, pathname, urlHash);
   const [rawPath, fragment] = item.href.split("#");
   const itemPath = rawPath || "/";
@@ -160,7 +173,7 @@ function NavSingleLink({
         {item.label}
         {isActive ? (
           <motion.span
-            layoutId="nav-active-dot"
+            layoutId={reduceMotion ? undefined : "nav-active-dot"}
             className="ml-1.5 size-1.5 rounded-full bg-primary shadow-[0_0_10px_rgba(255,184,0,0.7)]"
           />
         ) : null}
@@ -185,6 +198,7 @@ function NavGroupMenu({
   hovered: boolean;
   onHover: (key: string | null) => void;
 }) {
+  const reduceMotion = useReducedMotion();
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -278,7 +292,7 @@ function NavGroupMenu({
         />
         {activeChild ? (
           <motion.span
-            layoutId="nav-active-dot"
+            layoutId={reduceMotion ? undefined : "nav-active-dot"}
             className="ml-0.5 size-1.5 rounded-full bg-primary shadow-[0_0_10px_rgba(255,184,0,0.7)]"
           />
         ) : null}

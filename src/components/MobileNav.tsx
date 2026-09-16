@@ -27,12 +27,13 @@ type Identity =
 export function MobileNav({
   identity,
   items,
-  dense = false,
+  belowClass,
 }: {
   identity?: Identity;
   items?: ReadonlyArray<NavEntry>;
-  dense?: boolean;
-} = {}) {
+  /** Visibility classes below this sport's measured tier (NAV_TIER.below). */
+  belowClass: string;
+}) {
   const ITEMS: ReadonlyArray<NavEntry> = items ?? DEFAULT_ITEMS;
   const pathname = usePathname() ?? "/";
   const [open, setOpen] = useState(false);
@@ -70,7 +71,7 @@ export function MobileNav({
   return (
     <div
       ref={containerRef}
-      className={cx(dense ? "xl:hidden" : "lg:hidden", "relative")}
+      className={cx(belowClass, "relative")}
     >
       <button
         type="button"
@@ -111,7 +112,12 @@ export function MobileNav({
         <div
           id={menuId}
           role="menu"
-          className="absolute right-0 top-11 z-40 w-56 rounded-2xl border border-white/10 bg-[#0b0d14] p-2 space-y-1 shadow-[0_20px_60px_rgba(0,0,0,0.6)]"
+          // max-h + scroll: this drawer lists every destination, and on a short
+          // phone (375x667) the panel ran ~142px past the bottom of the screen
+          // with no way to reach the last items. BottomBar's "More" sheet
+          // already solved this; same treatment here. The viewport unit is
+          // dvh so an iOS URL bar appearing does not re-hide the tail.
+          className="absolute right-0 top-11 z-40 w-56 max-h-[min(70dvh,calc(100dvh-5rem))] overflow-y-auto overscroll-contain rounded-2xl border border-white/10 bg-[#0b0d14] p-2 space-y-1 shadow-[0_20px_60px_rgba(0,0,0,0.6)]"
         >
           {ITEMS.map((entry) =>
             isNavGroup(entry) ? (

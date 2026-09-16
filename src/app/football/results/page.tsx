@@ -140,7 +140,10 @@ export default async function ResultsPage({ searchParams }: PageProps) {
   return (
     <div className="mx-auto max-w-3xl space-y-8 px-4 py-10">
       <div>
-        <FootballHeader title="Results" competition={competition} />
+        {/* Not "Results": in football that word means match scores, and this
+            page is the engine's graded picks. Naming it that sent people
+            hunting for scores into a bet ledger. The nav label matches. */}
+        <FootballHeader title="Settled Picks" competition={competition} />
         <p className="mt-2 text-sm text-foreground/55">
           {meta.status === "archived"
             ? `Every graded pick from the ${meta.fullName}, exactly as it settled.`

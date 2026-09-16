@@ -4,7 +4,7 @@ import { MobileNav } from "@/components/MobileNav";
 import { IdentityBadge } from "@/components/auth/IdentityBadge";
 import { SportToggle } from "@/components/sports/SportToggle";
 import { SearchTrigger } from "@/components/soccer/SearchTrigger";
-import { SPORTS } from "@/lib/sports/registry";
+import { navForSport, NAV_TIER, SPORTS } from "@/lib/sports/registry";
 import type { Sport } from "@/lib/sports/types";
 
 type IdentityLite = {
@@ -17,21 +17,23 @@ export function Navbar({
   sport,
   competitionLogo,
   competitionLabel,
+  hasBracket,
 }: {
   identity: IdentityLite;
   sport: Sport;
   /** Football's active competition (the toggle knob shows its logo). */
   competitionLogo?: string;
   competitionLabel?: string;
+  /** False for a single-table competition, which has no bracket to show. */
+  hasBracket?: boolean;
 }) {
-  const navItems = SPORTS[sport].nav;
-  // The desktop link row only fits once there's room for every item. Soccer
-  // (few items) clears that bar at lg; the NBA's longer nav needs xl. Below the
-  // threshold the hamburger carries navigation. All three nav surfaces share
-  // this flag so the handoff happens at one breakpoint with no dead zone.
-  const dense = navItems.length > 6;
-  // Football's nav (11 items with Bracket + Value) doesn't fit until 2xl;
-  // below that the hamburger carries it. All three surfaces share the tier.
+  const navItems = navForSport(sport, { hasBracket });
+  // Which width this sport's link row needs is declared and measured on the
+  // sport itself (registry.ts), not inferred from how many entries it has —
+  // a count is not a width, and inferring it clipped the sign-in button at
+  // 1024px the day football gained a sixth group. All three nav surfaces read
+  // the same tier, so the hamburger hands over at exactly one breakpoint.
+  const tier = NAV_TIER[SPORTS[sport].navTier];
   return (
     <header className="sticky top-0 z-30">
       <div
@@ -48,7 +50,7 @@ export function Navbar({
             logo-float keyframe) is identical to the previous inline render. */}
         <LogoLink />
 
-        <NavLinks items={navItems} dense={dense} />
+        <NavLinks items={navItems} rowClass={tier.row} />
 
         <div className="flex items-center gap-2">
           <SearchTrigger />
@@ -57,10 +59,10 @@ export function Navbar({
             competitionLogo={competitionLogo}
             competitionLabel={competitionLabel}
           />
-          <IdentityBadge dense={dense} />
+          <IdentityBadge inlineClass={tier.inline} rowClass={tier.row} />
           <MobileNav
             items={navItems}
-            dense={dense}
+            belowClass={tier.below}
             identity={
               identity
                 ? {
