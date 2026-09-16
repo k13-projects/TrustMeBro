@@ -40,6 +40,28 @@ Karar log'u — değiştirilirse buraya tarih + sebep ekle:
 - **2026-09-15**: **Users can build their own coupons** from any outcome on the odds board, not only from engine picks. The engine's pick is a small marker, never a preselected state — conflating our opinion with the user's choice makes it unclear whose decision it was. Coupon and engine ledgers stay separate, as before.
 - **2026-09-15**: **Publishing is a choice; the record is not.** Sharing a coupon does **not** lock at kickoff — people decide what goes on the board, whenever. But a **graded** score prediction can no longer be deleted (migration 0034), because removing a bad call after the fact turns the leaderboard into a highlights reel. An *ungraded* call can still be deleted: changing your mind before a match is not hiding anything.
 - **2026-09-15**: **Primary address is `tmb.k13projects.com`.** `tmb.erenunur.com` stays attached and serves a **307** (deliberately temporary — a 301 is cached for months and would make the hierarchy painful to reverse). Both hosts are allow-listed in Supabase auth; the app derives its OAuth `redirectTo` from `window.location.origin`, so sign-in follows whichever host the visitor used.
+- **2026-09-16**: **"No retro edits" protects the *graded* record, not pending
+  picks — because pending picks are rewritten daily by design.**
+  `generate-predictions` is not additive: `run.ts` deletes this competition's
+  pending coupons and its pending predictions for the slate, then regenerates
+  from current odds (other competitions are never touched). So a pending pick
+  is a live quote that refreshes as prices move, not a published commitment.
+  This was nearly mis-decided: tightening the engine left 18 pending picks the
+  new gates would refuse, and the first instinct was to "let them ride"
+  untouched — which the daily 15:00 UTC cron would have overwritten anyway,
+  making the rule a fiction. The real line: **settled rows are immutable**
+  (that is what migration 0034 enforces for score calls, and why we never
+  re-grade), **pending rows are regenerated**. Tonight's 8 Europa picks graded
+  before any regeneration and are now part of the permanent record; the 10
+  Süper Lig picks for Sep 18–20 refresh under the new gates on the next
+  scheduled run, with no manual intervention and nothing to un-publish.
+  **Never run `generate-predictions` by hand to "fix" a slate** — it wipes and
+  rebuilds pending rows, and doing that mid-matchday destroys picks against
+  matches already under way.
+- **2026-09-16**: **The elevated tier stays "Banko", the rest are "Leans".**
+  Considered renaming to literal "Pick"/"Lean"; rejected because *banko* is
+  already the word used in the results filter, the chat and the glossary, and
+  one vocabulary beats a more literal one. `TierBadge` renders both.
 - **2026-05-14**: Canonical timezone = **America/Los_Angeles**. NBA maçları US saatinde oynanıyor ve PT gece yarısı sleyt'in en geç kapanma anı, dolayısıyla "bugün" tüm sayfa/cron/chat için LA günü demektir. `todayIsoDate()` LA tarihini döndürür; sabit `PROJECT_TIMEZONE` ifadesi [src/lib/date.ts](src/lib/date.ts)'te.
 
 ## Stack
