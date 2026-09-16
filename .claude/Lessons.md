@@ -212,3 +212,38 @@ Corrections and hard-won rules for this project. Append; never rewrite history.
   unbounded new consumer does not degrade itself, it starves the core feed.
   Budget any new consumer against the *peak* month and write the projection
   down where it will be checked.
+
+## 2026-09-16 — A count is not a width, and a label is not a name
+- **What happened (findability):** the top nav was hard to use not because the
+  dropdowns were broken — hover, click, Escape and arrow keys all worked — but
+  because its words meant the opposite of what they mean in football.
+  "Results" and "Scoreboard" both sat under Picks and both meant *our graded
+  bets*, so anyone hunting match scores opened the wrong menu and landed in a
+  bet ledger. Three more labels disagreed with the heading of the page they
+  opened (Standings/League Table, Odds/Match Odds, Predictions/Call the Scores).
+- **Rule:** a nav label must match the `<h1>` of the page it opens. When they
+  drift, the menu is lying, and no amount of dropdown polish fixes it.
+- **Rule:** in a domain with its own vocabulary, check every label against the
+  domain meaning first. "Results", "Scoreboard", "Table", "Fixtures" are taken
+  words in football; using them for our own concepts guarantees a wrong turn.
+- **Rule:** one group, one question. "Picks" held our opinion, the market's
+  prices, our track record and a help page. Splitting forward-looking (Picks)
+  from the record (Record) is what actually made things findable.
+- **What happened (layout):** `dense = navItems.length > 6` decided which
+  breakpoint the row used. **A count is not a width.** The file carried two
+  stale comments contradicting each other *and* the code — the signature of a
+  rule nobody has ever checked — and a sixth group overflowed 1024px by 24px,
+  clipping the sign-in button.
+- **Rule:** a breakpoint is measured (`scrollWidth` vs `clientWidth` at real
+  viewports) and then *declared* next to the thing it describes, with the
+  number written down. Re-measure when a top-level label changes.
+- **Ask for pixels, not opinions.** "Does the nav fit?" gets a yes. "Measure
+  scrollWidth against clientWidth at 1024, 1152, 1280" gets the bug. And when
+  picking the new boundary, measure it rather than interpolating between two
+  other measurements — the interpolation said "probably fine", the measurement
+  said 42px of clearance, and only one of those is checkable.
+- **Motion that moves via JS cannot be gated by CSS.** The nav's hover pill and
+  active dot travel by sharing a framer `layoutId`. The
+  `prefers-reduced-motion` rule meant to cover them targeted class names the
+  component never used, so it did nothing for months and looked handled.
+  Gating means dropping the `layoutId`, via `useReducedMotion`.
