@@ -104,13 +104,21 @@ async function fetchJson<T>(
   if (!res.ok) {
     const body = await res.text().catch(() => "");
     const message = `ESPN soccer ${res.status} ${res.statusText} on ${path}: ${body.slice(0, 200)}`;
-    // Every other non-ok response still records a failure before throwing --
-    // not only 403/5xx. The 2026-09-16 date-range 400 is exactly what this
+    // Every other non-ok response records a failure before throwing -- not
+    // only 403/5xx. The 2026-09-16 date-range 400 is exactly what this
     // closes: fetchJson used to only ever call recordFailure on the
-    // host-switch path above, so a status class it had never seen (400, or
-    // a second host also failing after the retry) threw silently and
+    // host-switch path above, so a status class it had never seen (400, or a
+    // second host also failing after the retry) threw silently and
     // soccer_provider_health stayed green through the whole outage.
-    await recordFailure(sourceOf(base), message);
+    //
+    // 404 is the deliberate exception: it means "this match/resource isn't
+    // there", which is an upstream coverage gap, not the feed being down, and
+    // one missing match summary must not paint a degraded banner across the
+    // whole site. A structural 404 (a bad league slug, say) still can't hide:
+    // it throws, the cron fails, and that lands in cron_runs -> /api/health.
+    if (res.status !== 404) {
+      await recordFailure(sourceOf(base), message);
+    }
     throw new Error(message);
   }
   // Always report which host actually served it, so a recovery onto the
