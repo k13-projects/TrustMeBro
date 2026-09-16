@@ -214,6 +214,15 @@ type Reasoning = {
 
 Two separate ledgers, both surfaced on `/score`:
 
+**Atomicity (2026-09-16).** Both ledgers move inside Postgres, one statement
+per graded pick: NBA through `apply_reward()`, soccer through
+`apply_soccer_reward(competition, prediction_id, outcome)` (migration 0037),
+which updates score, the win/loss/void counters and the history row together
+and returns the new score. Never read a ledger value into JavaScript, add to
+it and write it back — that lost two Europa wins the day settlement also
+started running on visit. Invariant to check after any settlement change:
+`score = wins - losses` for every row in `soccer_ledgers`.
+
 **Engine picks** (`system_score` + `system_score_history`)
 - Settled by `/api/cron/settle-bets` after games finalize via the `apply_reward` RPC.
 - **Won**: `score += 1.0`
