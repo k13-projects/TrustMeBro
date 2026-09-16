@@ -101,18 +101,30 @@ function buildSurpriseCoupon(predictions: SoccerPrediction[]): EngineCoupon | nu
   };
 }
 
+// Coupons are built from banko legs only (2026-09-16). Graded record: World
+// Cup engine coupons went 8W-2L, Champions League went 0W-3L — the
+// difference was leg quality, and a parlay is only as strong as its weakest
+// leg. `selectBanko` already returns at most one leg per match
+// (BANKO_MIN_CONFIDENCE floor, sorted by confidence desc, capped at
+// BANKO_COUNT), and both coupon builders below already require >=2 (or >=3
+// for the surprise stack) legs before returning anything — so a matchday
+// with fewer than 2 banko legs naturally produces no coupon, not a special
+// case to add. One consequence worth noting: the surprise coupon targets
+// long prices (best_odds >= 2.2) and banko legs are, by construction, the
+// engine's shortest-priced favorites, so it will rarely — possibly never —
+// find enough legs to fire under this rule. That is accepted, not a bug:
+// stacking longshots we don't trust at banko level is exactly the kind of
+// volume this pivot retires.
 export function buildCoupons(predictions: SoccerPrediction[]): CouponBundle {
   const banko = selectBanko(predictions);
 
-  // Favorites first for the multiplier coupons — likeliest parlay to a target.
-  const favorites = [...predictions].sort(byConfidenceDesc);
   const coupons: EngineCoupon[] = [];
   for (const target of MULTIPLIER_TARGETS) {
-    const coupon = buildMultiplierCoupon(favorites, target);
+    const coupon = buildMultiplierCoupon(banko, target);
     if (coupon) coupons.push(coupon);
   }
 
-  const surprise = buildSurpriseCoupon(predictions);
+  const surprise = buildSurpriseCoupon(banko);
   if (surprise) coupons.push(surprise);
 
   return { banko, coupons };

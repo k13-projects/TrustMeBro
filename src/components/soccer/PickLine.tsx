@@ -4,10 +4,12 @@ import { sideLabel } from "@/lib/sports/soccer/labels";
 import { AddToCouponButton } from "@/components/cart/AddToCouponButton";
 import { toSoccerCartPick } from "@/lib/sports/soccer/cart";
 import { MatchBanner } from "./MatchBanner";
+import { TierBadge } from "./TierBadge";
 
-// One engine pick: the matchup (compact versus banner), the chosen side, the
-// price + confidence, and an add-to-coupon control so users can lift a single
-// leg into their own coupon.
+// One engine pick: the matchup (compact versus banner), the tier (Banko vs
+// Lean — see TierBadge), the chosen side, the price + confidence, and an
+// add-to-coupon control so users can lift a single leg into their own
+// coupon.
 export function PickLine({ pick }: { pick: PredictionDetail }) {
   return (
     <div className="space-y-1.5 py-2.5">
@@ -20,8 +22,11 @@ export function PickLine({ pick }: { pick: PredictionDetail }) {
         />
       </Link>
       <div className="flex items-center justify-between gap-3">
-        <span className="truncate text-sm font-semibold">
-          {sideLabel(pick.market, pick.side, pick.line, pick.home, pick.away)}
+        <span className="flex min-w-0 items-center gap-1.5">
+          <TierBadge isBanko={pick.is_banko} />
+          <span className="truncate text-sm font-semibold">
+            {sideLabel(pick.market, pick.side, pick.line, pick.home, pick.away)}
+          </span>
         </span>
         <span className="flex shrink-0 items-center gap-3">
           <span className="rounded-full bg-white/8 px-2 py-0.5 text-xs font-bold tabular-nums">

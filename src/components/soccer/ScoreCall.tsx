@@ -44,7 +44,21 @@ export type ScoreCallProps = {
   finalScore: { home: number; away: number } | null;
   /** Signed-in bros' call distribution — only meaningful once locked. */
   publicSummary?: ScoreCallPublicSummary | null;
+  /** A hint, never a preselected state (house rule, 2026-09-15): the
+   *  engine's own pending pick for this match, if it has one. Shown as a
+   *  small marker only — it must never seed homeVal/awayVal. */
+  enginePick?: { label: string; isBanko: boolean } | null;
 };
+
+function EngineMarker({ pick }: { pick: { label: string; isBanko: boolean } }) {
+  return (
+    <p className="flex items-center gap-1 text-[11px] text-primary/80">
+      <span aria-hidden>★</span>
+      Engine leans: {pick.label}
+      {pick.isBanko ? <span className="text-primary/50">· lock</span> : null}
+    </p>
+  );
+}
 
 function kickoffLabel(iso: string): string {
   const d = new Date(iso);
@@ -125,6 +139,7 @@ export function ScoreCall({
   locked,
   finalScore,
   publicSummary = null,
+  enginePick = null,
 }: ScoreCallProps) {
   const pathname = usePathname();
   const [call, setCall] = useState<ScoreCallValue | null>(initial);
@@ -169,6 +184,7 @@ export function ScoreCall({
     return (
       <div className="space-y-2.5 min-w-0 rounded-2xl border border-border/60 bg-card/40 p-4">
         <MatchBanner size="sm" competition={competition} home={home} away={away} />
+        {enginePick ? <EngineMarker pick={enginePick} /> : null}
         <div className="flex items-center justify-between text-sm">
           <span className="text-foreground/55">Your call</span>
           {call ? (
@@ -231,6 +247,7 @@ export function ScoreCall({
     return (
       <div className="space-y-2.5 min-w-0 rounded-2xl border border-border/60 bg-card/40 p-4">
         <MatchBanner size="sm" competition={competition} home={home} away={away} />
+        {enginePick ? <EngineMarker pick={enginePick} /> : null}
         <div className="flex items-center justify-between">
           <span className="text-sm text-foreground/55">Your call</span>
           <span className="font-bold tabular-nums">
@@ -263,6 +280,7 @@ export function ScoreCall({
   return (
     <div className="space-y-3 min-w-0 rounded-2xl border border-border/60 bg-card/40 p-4">
       <MatchBanner size="sm" competition={competition} home={home} away={away} />
+      {enginePick ? <EngineMarker pick={enginePick} /> : null}
       <div className="flex items-center justify-center gap-3">
         <Stepper
           label={home.abbreviation || home.name}

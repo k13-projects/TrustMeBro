@@ -140,7 +140,12 @@ export default async function RootLayout({
           />
 
           <CartShell isSignedIn={isSignedIn}>
-            <main id="main" className="relative z-10 flex-1">
+            {/* Reserves room for the floating Ask Bro / My Coupon stack
+                (ChatLauncher + CouponDrawerLauncher, both `fixed` bottom-
+                right) so a short page's last content doesn't render right
+                under them — the pair's own breakpoint (`md:`) and combined
+                height at each size, plus a little slack. */}
+            <main id="main" className="relative z-10 flex-1 pb-48 md:pb-32">
               {children}
             </main>
             <Footer />

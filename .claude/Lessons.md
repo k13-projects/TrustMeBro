@@ -77,3 +77,32 @@ Corrections and hard-won rules for this project. Append; never rewrite history.
   from). Confirm the dev server is actually answering first, rather than
   assuming it survived a `.next` wipe or a restart. Applies to any "have a
   look" message, not just this project's football pages.
+
+## 2026-09-16 — A 400 is an outage too; log the job, not just the host
+- **What happened:** ESPN started answering HTTP 400 ("Failed to get events
+  endpoint.") to every date-range scoreboard query (`dates=YYYYMMDD-YYYYMMDD`)
+  on both hosts. Only `listMatchesInRange` used that form, and only the
+  sync-fixtures and settle-bets crons call it, so both died in half a second
+  while the news and odds crons kept running. The health monitor stayed green
+  because `fetchJson` only recorded a failure on 403/5xx/network errors; a
+  status class it had never seen threw silently. Diagnosed by counting
+  standings writes per hour: the 09:00 and 11:30 rows were simply missing.
+- **Rule:** any non-2xx from an upstream records a provider failure before it
+  throws. Never enumerate the "bad" statuses; enumerate the good one.
+- **Rule:** every cron writes one row to `cron_runs` (migration 0035) at start
+  and finish. "Did the cron fire" must be a five-second query, not an hour of
+  inference from side effects. `/api/health` folds it in: a failed or overdue
+  job (no success in 26h) turns `status` non-ok, which the War Room canary
+  reads.
+- **Rule:** a multi-competition cron wraps each competition in its own
+  try/catch. One league's upstream problem must not stop the others.
+- **Rule:** ESPN scoreboard is fetched one day at a time. The range form is
+  dead; do not bring it back even if it starts answering again.
+- **Grading waits for nobody.** Picks now also settle on visit (`settleOnVisit`
+  behind `maybeRefresh`, 5-minute throttle), so a finished match grades the
+  next time anyone opens the football page instead of at 11:30 UTC tomorrow.
+- **Test leftovers are data bugs.** The Sep 15 fallback test marked a
+  pre-kickoff Europa match finished, settlement graded a bro's coupon leg
+  "lost", and the revert restored the match but not the leg. After any test
+  that touches settlement, query for legs/picks graded on unfinished matches
+  before calling it done (migration 0036 is the repair).

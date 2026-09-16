@@ -2,7 +2,8 @@ import Link from "next/link";
 import { hasKickedOff, todayIsoDate } from "@/lib/date";
 import { getRequester } from "@/lib/identity";
 import { activeCompetition } from "@/lib/sports/soccer/competition-cookie";
-import { currentRound, getRounds } from "@/lib/sports/soccer/queries";
+import { sideLabel } from "@/lib/sports/soccer/labels";
+import { currentRound, getPredictionsForMatches, getRounds } from "@/lib/sports/soccer/queries";
 import {
   getOwnCompetitionStats,
   getOwnScoreCalls,
@@ -24,13 +25,15 @@ export default async function PredictionsPage() {
   const matches = round?.matches ?? [];
   const matchIds = matches.map((m) => m.id);
 
-  const [requester, stats, ownCalls, publicSummary, leaderboard] = await Promise.all([
-    getRequester(),
-    getOwnCompetitionStats(competition),
-    getOwnScoreCalls(matchIds),
-    getPublicCallSummary(matchIds),
-    loadPredictionLeaderboard(competition, 25),
-  ]);
+  const [requester, stats, ownCalls, publicSummary, leaderboard, enginePicksByMatch] =
+    await Promise.all([
+      getRequester(),
+      getOwnCompetitionStats(competition),
+      getOwnScoreCalls(matchIds),
+      getPublicCallSummary(matchIds),
+      loadPredictionLeaderboard(competition, 25),
+      getPredictionsForMatches(matchIds),
+    ]);
   const viewerUserId = requester?.kind === "auth" ? requester.user_id : null;
   const isAuth = requester?.kind === "auth";
 
@@ -86,6 +89,19 @@ export default async function PredictionsPage() {
             {matches.map((m) => {
               const own = ownCalls.get(m.id) ?? null;
               const locked = Boolean(m.datetime && hasKickedOff(m.datetime));
+              // The engine's own pick, if it has one — a hint marker only,
+              // never a preselected score (house rule, 2026-09-15). Strongest
+              // pending pick wins; getPredictionsForMatches already orders by
+              // confidence descending.
+              const topPick = (enginePicksByMatch.get(m.id) ?? []).find(
+                (p) => p.status === "pending",
+              );
+              const enginePick = topPick
+                ? {
+                    label: sideLabel(topPick.market, topPick.side, topPick.line, m.home.name, m.away.name),
+                    isBanko: topPick.is_banko,
+                  }
+                : null;
               return (
                 <ScoreCall
                   key={m.id}
@@ -98,6 +114,7 @@ export default async function PredictionsPage() {
                   locked={locked}
                   finalScore={m.finished ? { home: m.home_score, away: m.away_score } : null}
                   publicSummary={publicSummary.get(m.id) ?? null}
+                  enginePick={enginePick}
                 />
               );
             })}

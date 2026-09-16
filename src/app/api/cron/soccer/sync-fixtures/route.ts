@@ -8,6 +8,7 @@ import {
   type SoccerCompetition,
 } from "@/lib/sports/soccer/competitions";
 import { syncCompetition } from "@/lib/sports/soccer/live";
+import { runCronJob } from "@/lib/ingest/cron-runs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -66,10 +67,33 @@ export async function GET(req: Request) {
     competitions = liveCompetitions();
   }
 
-  const results: Record<string, unknown> = {};
-  for (const competition of competitions) {
-    results[competition] = await syncCompetition({ competition, from, to });
-  }
+  const outcome = await runCronJob("soccer/sync-fixtures", async () => {
+    const results: Record<string, unknown> = {};
+    const errors: Record<string, string> = {};
+    for (const competition of competitions) {
+      try {
+        results[competition] = await syncCompetition({ competition, from, to });
+      } catch (err) {
+        // One competition's upstream trouble (a bad host, a malformed
+        // range) must not stop the rest from syncing (2026-09-16).
+        errors[competition] = err instanceof Error ? err.message : String(err);
+      }
+    }
+    const failedCount = Object.keys(errors).length;
+    if (competitions.length > 0 && failedCount === competitions.length) {
+      throw new Error(`every competition failed: ${JSON.stringify(errors)}`);
+    }
+    return {
+      from,
+      to,
+      competitions: results,
+      errors: failedCount > 0 ? errors : undefined,
+    };
+  });
 
-  return NextResponse.json({ ok: true, from, to, competitions: results });
+  if (!outcome.ok) {
+    return NextResponse.json({ ok: false, from, to, error: outcome.error }, { status: 500 });
+  }
+  const anyFailed = outcome.summary.errors !== undefined;
+  return NextResponse.json({ ok: !anyFailed, ...outcome.summary });
 }

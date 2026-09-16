@@ -126,12 +126,16 @@ export function Hero({
   subtitle = "Real bookmaker odds. Real expected value. Every pick graded the morning after, win or lose.",
   primaryCta = { href: "/#picks", label: "Get Today's Picks" },
   secondaryCta = { href: "/scorecard", label: "View Scorecard" },
+  live = true,
 }: {
   stats: EngineStats;
   eyebrow?: string;
   subtitle?: string;
   primaryCta?: HeroCta;
   secondaryCta?: HeroCta;
+  /** False for an archived competition (e.g. the World Cup record) — the
+   *  ledger card then reads "final" instead of a pulsing "live". */
+  live?: boolean;
 }) {
   const tiles = buildStatTiles(stats);
 
@@ -206,7 +210,7 @@ export function Hero({
         </div>
 
         <div className="lg:col-start-2 lg:row-start-4 w-full flex justify-center lg:justify-start">
-          <StatLedgerPanel tiles={tiles} firstPickDate={stats.first_pick_date} />
+          <StatLedgerPanel tiles={tiles} firstPickDate={stats.first_pick_date} live={live} />
         </div>
       </div>
     </section>
@@ -265,9 +269,11 @@ function MascotStage() {
 function StatLedgerPanel({
   tiles,
   firstPickDate,
+  live,
 }: {
   tiles: StatTile[];
   firstPickDate: string | null;
+  live: boolean;
 }) {
   return (
     <motion.div
@@ -285,10 +291,16 @@ function StatLedgerPanel({
         <span className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
           {firstPickDate ? `Tracking since ${firstPickDate}` : "First slate today"}
         </span>
-        <span className="inline-flex items-center gap-1 text-[10px] text-positive">
-          <span className="size-1.5 rounded-full bg-positive soft-pulse" />
-          live
-        </span>
+        {live ? (
+          <span className="inline-flex items-center gap-1 text-[10px] text-positive">
+            <span className="size-1.5 rounded-full bg-positive soft-pulse" />
+            live
+          </span>
+        ) : (
+          <span className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+            final
+          </span>
+        )}
       </div>
     </motion.div>
   );

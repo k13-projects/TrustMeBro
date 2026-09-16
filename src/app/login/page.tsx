@@ -82,7 +82,7 @@ function LoginForm() {
           </div>
           <div className="space-y-1.5">
             <p className="text-[10px] font-semibold tracking-[0.28em] uppercase text-primary/85">
-              TrustMeBro · NBA
+              TrustMeBro
             </p>
             <h1 className="font-display uppercase text-3xl sm:text-4xl tracking-tight leading-[0.95]">
               Sign in <span className="text-primary">/ Sign up</span>

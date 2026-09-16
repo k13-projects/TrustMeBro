@@ -166,6 +166,17 @@ the consensus, picks the best price on the chosen side, and computes
 synthetic line has been retired — confidence is now a probability against
 the price you'd actually bet.
 
+**Soccer emission gates (2026-09-16, `src/lib/analysis/soccer/engine.ts`).**
+Measured on 208 graded picks: 60% had negative expected value and lost as a
+group; draws hit 18%; unders hit 48% against a 54% breakeven; banko picks hit
+80% while everything else hit 48%. The engine now emits only picks with
+`0 <= expected_value <= 0.25` (a larger edge reads as miscalibration, not
+value), never draws or unders (flag `ENABLE_DRAW_AND_UNDER_PICKS`), and
+builds coupons from banko legs only. Non-banko rows are labelled **Lean** in
+the UI (`TierBadge`), banko rows **Banko**. Backtest: 208 picks at 55% and
++4.8 units becomes 60 picks at 63% and +5.3 units; banko alone 17W–2L.
+Fewer picks is the intended trade (see the 2026-05-20 win-rate pivot).
+
 A `Prediction` must include:
 ```ts
 type Prediction = {
@@ -360,6 +371,25 @@ API key, logo, theme.
 - **ESPN host (2026-09-13).** `site.api.espn.com` returns 403 to Vercel;
   every call goes through `site.web.api.espn.com` with a 403 fallback to the
   other host (`src/lib/sports/soccer/espn.ts`). See `.claude/Lessons.md`.
+- **ESPN date ranges are dead (2026-09-16).** `dates=YYYYMMDD-YYYYMMDD`
+  answers 400 on both hosts; `listMatchesInRange` walks the window one day at
+  a time. Any non-2xx now records a provider failure before throwing.
+- **Cron run log (2026-09-16).** Every soccer cron runs inside `runCronJob`
+  (`src/lib/ingest/cron-runs.ts`, table `cron_runs`, migration 0035): one row
+  per invocation with summary or error. `/api/health` reports the last run
+  per job and marks it `overdue` after 26h without a success; a failed or
+  overdue job makes `status` non-ok, which the War Room canary picks up.
+  Multi-competition crons wrap each competition separately so one league's
+  failure cannot stop the others.
+- **Settle on visit (2026-09-16).** `settleOnVisit(competition)`
+  (`src/lib/ingest/soccer-settle.ts`) runs behind `maybeRefresh` on the
+  football home with a 5-minute throttle and grades only when a pending pick's
+  match has finished. The cron and the on-visit path share the same sequence
+  so they cannot drift.
+- **Default competition (2026-09-16).** With no `tmb_competition` cookie, the
+  landing competition is the live one with a match in play, else the nearest
+  upcoming kickoff, never a fixed default that can be 26 days from action. The
+  `CompetitionBar` shows a live dot on any tab with a match in play.
 - **Pages (Wave 1, 2026-09-13).** `/football/match/[id]` (ESPN summary:
   form, stats, lineups, commentary + our picks, rates, odds movement),
   `/football/club/[id]` (profile, cross-competition schedule, squad, engine
