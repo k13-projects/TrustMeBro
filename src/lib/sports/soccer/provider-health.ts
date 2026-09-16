@@ -82,11 +82,14 @@ export async function recordSuccess(source: SourceId): Promise<void> {
       active_source: source,
       since: sourceChanged ? now : (row?.since ?? now),
       last_ok_at: now,
-      // A success clears the stale error text -- without this a row could
-      // read status:"ok" while last_error still showed whatever last failed
-      // (verified live: a simulated-outage row stayed "ok" with a leftover
-      // 'simulated outage for testing' message after recovering).
-      last_error: null,
+      // Clear the error text only once we are actually healthy again, i.e.
+      // back on the primary. A success on the *fallback* host must keep it:
+      // that row is still degraded, and last_error is the only thing that
+      // says why -- both the on-site banner and /api/health read it, and
+      // wiping it left a live "degraded" state with a null explanation.
+      // Clearing it on recovery is still needed, though: a recovered row used
+      // to read status:"ok" while last_error showed a long-dead failure.
+      ...(source === PRIMARY_SOURCE ? { last_error: null } : {}),
       consecutive_failures: 0,
       updated_at: now,
     })
