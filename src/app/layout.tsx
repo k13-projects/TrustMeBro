@@ -21,7 +21,7 @@ import { getRequester } from "@/lib/identity";
 import { getEngineStats, getSoccerEngineStats } from "@/lib/scoring/stats";
 import { touchProfilePresence } from "@/lib/bros/presence";
 import { activeSport } from "@/lib/sports/sport-cookie";
-import { SPORTS } from "@/lib/sports/registry";
+import { navForSport } from "@/lib/sports/registry";
 import { BottomBar } from "@/components/site/BottomBar";
 import { activeCompetition } from "@/lib/sports/soccer/competition-cookie";
 import { COMPETITIONS } from "@/lib/sports/soccer/competitions";
@@ -129,6 +129,7 @@ export default async function RootLayout({
             sport={sport}
             competitionLogo={competitionMeta.logo}
             competitionLabel={competitionMeta.label}
+            hasBracket={competitionMeta.hasBracket}
             identity={
               requester
                 ? {
@@ -152,7 +153,10 @@ export default async function RootLayout({
             <ChatLauncher sport={sport} />
           </CartShell>
 
-          <BottomBar sport={sport} entries={SPORTS[sport].nav} />
+          <BottomBar
+            sport={sport}
+            entries={navForSport(sport, { hasBracket: competitionMeta.hasBracket })}
+          />
           <Toaster />
         </TooltipProvider>
 

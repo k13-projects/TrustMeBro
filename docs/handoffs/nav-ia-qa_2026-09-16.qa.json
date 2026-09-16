@@ -1,0 +1,69 @@
+{
+  "date": "2026-09-16",
+  "project": "TrustMeBro",
+  "feature": "Football nav restructure — Matches/Picks/Record/Play/News regroup + conditional Bracket",
+  "branch": "main (uncommitted working tree)",
+  "reviewer": "Olga (qa-test-engineer)",
+  "verdict": "PASS",
+  "verdict_history": [
+    { "verdict": "FAIL", "reason": "Task 1: 24px overflow at 1024px from count-based dense heuristic" },
+    { "verdict": "PASS", "reason": "Re-verified after fix: navTier replaced count heuristic (navTier=wide, min-[1100px] for football), padding trimmed px-3->px-2.5; 1024px now clean (hamburger, no overflow), 1100px boundary has 42px margin (26px above the gap-4 floor), no dead zone 900-1440, NBA lg-tier unchanged" }
+  ],
+  "gate": "two-agent Chrome QA gate",
+  "p0_checks": [
+    {
+      "item": "Desktop nav row fits at 1024/1152/1280/1440/1920 without wrap/overlap/clip",
+      "result": "PASS (was FAIL, fixed and re-verified same day)",
+      "detail": "Original: 1024px scrollWidth 1048 vs clientWidth 1024 (-24px overflow), Sign In/Sign Up clipped. Fix: navTier registry (football=wide, min-[1100px]) replaced the navItems.length>6 count heuristic; px-3->px-2.5 link padding trim. Re-measured 900-1440 in ~14 steps incl. exact boundary pixels 1099/1100/1101: page overflow 0 everywhere, exactly one of {row,hamburger} visible at every width (no dead zone), 1100px boundary has 42px gap between nav row and right-control group (26px above the flex gap-4 floor -- not a tight margin), NBA's lg tier at 1024 unchanged/unaffected."
+    },
+    {
+      "item": "Dropdown groups: hover-after-a-beat, click, Escape, outside-click, route-change close, arrow-key nav",
+      "result": "PASS",
+      "detail": "Verified via click/keyboard automation on the new Record group; hover-timer mechanism verified by code inspection only (unchanged NavGroupMenu code, no coordinate-hover primitive available)."
+    },
+    {
+      "item": "Active-state highlighting matches new grouping",
+      "result": "PASS",
+      "detail": "/football/results -> Record active; /football/rates -> Picks active"
+    },
+    {
+      "item": "All 15 football destinations return 200 and nav label matches page <h1>",
+      "result": "PASS",
+      "detail": "One page (/football/news) has no <h1> at all -- pre-existing, outside the 4 scoped nav files"
+    },
+    {
+      "item": "Conditional Bracket link correct on all 3 nav surfaces",
+      "result": "PASS",
+      "detail": "Absent for tur.1 (desktop dropdown, mobile drawer, bottom-bar More sheet); present for uefa.champions/uefa.europa/uefa.europa.conf/fifa.world"
+    },
+    {
+      "item": "Mobile 390px: drawer + bottom bar reachable, tap targets, no horizontal overflow",
+      "result": "PASS",
+      "detail": "scrollWidth === clientWidth === 390; drawer rows 206x36px, bottom-bar tabs 78x51px, both clear WCAG 2.5.8"
+    }
+  ],
+  "bugs_found_and_fixed": [
+    "Desktop nav overflowed by 24px at 1024px viewport, clipping Sign In/Sign Up -- fixed by the coordinator (navTier registry replacing the count heuristic, px-2.5 padding trim) and re-verified by QA same day: PASS at 1024, PASS at the new 1100 boundary with 42px margin, no dead zone 900-1440, NBA unaffected"
+  ],
+  "found_not_fixed": [
+    {
+      "item": "MobileNav.tsx drawer has no max-height/overflow-y-auto, overflows viewport bottom by ~142px at 375x667 (iPhone SE)",
+      "reason": "pre-existing (flattened item count ~unchanged by today's relabeling); out of scope for a 390px-only mobile task",
+      "recommendation": "add overflow-y-auto + max-height to the drawer, matching BottomBar.tsx's More sheet pattern"
+    },
+    {
+      "item": "Nav hover-pill/active-dot motion in NavLinks.tsx not gated by prefers-reduced-motion",
+      "reason": "pre-existing -- globals.css targets .nav-pill/.nav-link classes the component no longer uses; NavLinks.tsx is not in today's diff",
+      "recommendation": "wrap NavLinks in a MotionConfig reducedMotion=\"user\" or branch the layoutId animations on useReducedMotion()"
+    }
+  ],
+  "verification": {
+    "console_errors_on_football_pages": "none observed (only pre-existing unrelated image-preload warnings)",
+    "routes_tested": 15,
+    "routes_200": 15
+  },
+  "viewports_tested": ["900x900", "950x900", "1000x900", "1023x900", "1024x900", "1050x900", "1080x900", "1099x900", "1100x900", "1101x900", "1120x900", "1150x900", "1152x900", "1200x900", "1280x900", "1350x900", "1440x900", "1920x900", "390x844", "375x667 (spot-check)"],
+  "competitions_tested": ["tur.1", "uefa.champions", "uefa.europa", "uefa.europa.conf", "fifa.world"],
+  "screenshots_dir": "/private/tmp/claude-501/-Users-k13-Desktop-PROJECTS-TrustMeBro/9e62fb5e-0b4e-45b4-80c7-b5748503c145/scratchpad/nav/",
+  "handoff_doc": "docs/handoffs/nav-ia-qa_2026-09-16.md"
+}

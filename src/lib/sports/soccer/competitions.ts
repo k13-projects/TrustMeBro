@@ -72,6 +72,14 @@ export type CompetitionMeta = {
    *  bleeding onto a competition where they'd describe something that isn't
    *  real. */
   qualificationZones: boolean;
+  /**
+   * Does this competition ever produce a knockout bracket? The Süper Lig is
+   * eighteen clubs and one table, so /football/bracket has nothing to draw
+   * there and the nav hides the link rather than offering a dead end. The
+   * World Cup archive keeps it: the tournament is over, but its bracket is
+   * part of the record people browse.
+   */
+  hasBracket: boolean;
 };
 
 export const COMPETITIONS: Record<SoccerCompetition, CompetitionMeta> = {
@@ -93,6 +101,7 @@ export const COMPETITIONS: Record<SoccerCompetition, CompetitionMeta> = {
     tagline: "The best of Europe, every matchday",
     phaseLabel: "League Phase",
     qualificationZones: true,
+    hasBracket: true,
   },
   "uefa.europa": {
     id: "uefa.europa",
@@ -112,6 +121,7 @@ export const COMPETITIONS: Record<SoccerCompetition, CompetitionMeta> = {
     tagline: "Thursday nights, the long road to the final",
     phaseLabel: "League Phase",
     qualificationZones: true,
+    hasBracket: true,
   },
   "uefa.europa.conf": {
     id: "uefa.europa.conf",
@@ -131,6 +141,7 @@ export const COMPETITIONS: Record<SoccerCompetition, CompetitionMeta> = {
     tagline: "Europe's third tier, first-time finalists every year",
     phaseLabel: "League Phase",
     qualificationZones: true,
+    hasBracket: true,
   },
   "fifa.world": {
     id: "fifa.world",
@@ -150,6 +161,7 @@ export const COMPETITIONS: Record<SoccerCompetition, CompetitionMeta> = {
     tagline: "Tournament complete — the full record, preserved",
     phaseLabel: "Final",
     qualificationZones: false,
+    hasBracket: true,
   },
   "tur.1": {
     id: "tur.1",
@@ -175,6 +187,7 @@ export const COMPETITIONS: Record<SoccerCompetition, CompetitionMeta> = {
     tagline: "18 clubs, one table, every Turkish derby",
     phaseLabel: "Regular Season",
     qualificationZones: false,
+    hasBracket: false,
   },
 };
 
