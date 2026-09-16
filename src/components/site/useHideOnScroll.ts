@@ -16,29 +16,50 @@ export function useHideOnScroll({
   idleDelayMs = 500,
   hideThresholdPx = 6,
   armAfterPx = 64,
+  narrowBreakpointPx = 640,
+  narrowSafeScrollPx = 140,
 }: {
   revealDelayMs?: number;
   idleDelayMs?: number;
   hideThresholdPx?: number;
   armAfterPx?: number;
+  /** Below this viewport width, `narrowSafeScrollPx` applies (see below). No
+   *  page's hero reaches this stack at or above it (checked at 1440px on the
+   *  live site), so wider viewports keep the original, unconditional
+   *  behavior untouched. */
+  narrowBreakpointPx?: number;
+  /** On a narrow viewport, every reveal path below (the initial timer,
+   *  scroll-up, idle-settle) is forced hidden while `window.scrollY` is at
+   *  or under this — a full-bleed mobile hero can fill almost the entire
+   *  first screen, right up to where this fixed stack sits, so revealing on
+   *  a timer (or the instant a visitor scrolls back up to the very top)
+   *  settles it on top of that hero's own copy. `armAfterPx` isn't reused
+   *  here on purpose: it's tuned for arming the hide-while-scrolling-down
+   *  behavior a few px into any scroll, not for a hero's height. */
+  narrowSafeScrollPx?: number;
 } = {}) {
   const [visible, setVisible] = useState(false);
   const lastY = useRef(0);
   const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    const revealTimer = setTimeout(() => setVisible(true), revealDelayMs);
     lastY.current = window.scrollY;
+
+    const isNearTop = () =>
+      window.innerWidth < narrowBreakpointPx && window.scrollY <= narrowSafeScrollPx;
+    const apply = (next: boolean) => setVisible(next && !isNearTop());
+
+    const revealTimer = setTimeout(() => apply(true), revealDelayMs);
 
     const onScroll = () => {
       const y = window.scrollY;
       const delta = y - lastY.current;
       if (Math.abs(delta) > hideThresholdPx) {
-        setVisible(!(delta > 0 && y > armAfterPx));
+        apply(!(delta > 0 && y > armAfterPx));
         lastY.current = y;
       }
       if (idleTimer.current) clearTimeout(idleTimer.current);
-      idleTimer.current = setTimeout(() => setVisible(true), idleDelayMs);
+      idleTimer.current = setTimeout(() => apply(true), idleDelayMs);
     };
 
     window.addEventListener("scroll", onScroll, { passive: true });
@@ -47,7 +68,7 @@ export function useHideOnScroll({
       if (idleTimer.current) clearTimeout(idleTimer.current);
       window.removeEventListener("scroll", onScroll);
     };
-  }, [revealDelayMs, idleDelayMs, hideThresholdPx, armAfterPx]);
+  }, [revealDelayMs, idleDelayMs, hideThresholdPx, armAfterPx, narrowBreakpointPx, narrowSafeScrollPx]);
 
   return visible;
 }

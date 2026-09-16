@@ -53,22 +53,44 @@ export async function finishSoccerSettlement(): Promise<SoccerSettlementFinish> 
 }
 
 /**
- * Cheap existence check: does this competition have a pending engine pick
- * whose match has already finished? Mirrors settleSoccer's own query
- * (soccer_predictions × soccer_matches!inner) so "is there work" and "do the
- * work" never disagree about what counts.
+ * Cheap existence check: does this competition have a pending engine pick, or
+ * a pending user-built coupon leg, whose match has already finished? Mirrors
+ * settleSoccer's own query (soccer_predictions × soccer_matches!inner) for
+ * the engine side so "is there work" and "do the work" never disagree about
+ * what counts.
+ *
+ * The coupon-leg check closes a real gap: a match that finishes with only a
+ * user-built leg pending (no engine prediction row involved) previously had
+ * no representation here, so settleOnVisit skipped it and it waited for the
+ * once-daily settle-bets cron. Both checks run concurrently — this stays one
+ * additional bounded query (soccer_coupon_legs_pending_idx makes it cheap),
+ * and neither branch writes anything.
  */
 export async function hasSettleWork(competition: SoccerCompetition): Promise<boolean> {
   const supabase = supabaseAdmin();
-  const { data, error } = await supabase
-    .from("soccer_predictions")
-    .select("id, soccer_matches!inner(finished)")
-    .eq("competition", competition)
-    .eq("status", "pending")
-    .eq("soccer_matches.finished", true)
-    .limit(1);
-  if (error) throw new Error(`check pending finished predictions: ${error.message}`);
-  return (data?.length ?? 0) > 0;
+  const [predictionWork, legWork] = await Promise.all([
+    supabase
+      .from("soccer_predictions")
+      .select("id, soccer_matches!inner(finished)")
+      .eq("competition", competition)
+      .eq("status", "pending")
+      .eq("soccer_matches.finished", true)
+      .limit(1),
+    supabase
+      .from("soccer_coupon_legs")
+      .select("id, soccer_matches!inner(finished, competition)")
+      .eq("status", "pending")
+      .eq("soccer_matches.finished", true)
+      .eq("soccer_matches.competition", competition)
+      .limit(1),
+  ]);
+  if (predictionWork.error) {
+    throw new Error(`check pending finished predictions: ${predictionWork.error.message}`);
+  }
+  if (legWork.error) {
+    throw new Error(`check pending finished coupon legs: ${legWork.error.message}`);
+  }
+  return (predictionWork.data?.length ?? 0) > 0 || (legWork.data?.length ?? 0) > 0;
 }
 
 export type VisitSettleResult =

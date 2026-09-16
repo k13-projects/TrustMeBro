@@ -64,6 +64,25 @@ export function buildPrediction(input: PredictionInput): Prediction {
     expected_value = (confidence / 100) * best_odds.price_decimal - 1;
   }
 
+  // No emission gate here (2026-09-16) — deliberately, after backtesting the
+  // soccer engine's EV floor/ceiling + side gate (engine.ts) against all 337
+  // graded NBA picks with real odds (May16-Jun13, season since ended):
+  // baseline is 73.9% hit / -21.37u flat-stake. Soccer's exact gate
+  // (0<=EV<=0.25) makes it worse per pick (68.7% / -8.08u over 67 — a worse
+  // rate than doing nothing), because the EV ceiling here removes NBA's
+  // *best* band (EV 25%+: 55.6% hit but +1.54u) instead of a miscalibrated
+  // one — the opposite of what it does in soccer. Root cause: soccer's EV
+  // is priced off a de-vigged market consensus (calibrated by construction),
+  // while NBA's `expected_value` above is confidence/100 (a heuristic
+  // composite score) treated as a probability — the two aren't the same
+  // kind of number, so a soccer-shaped EV gate doesn't transfer. The real
+  // loss driver is short-priced favorites (points/over, assists/over) not
+  // clearing their own breakeven price despite ~70% hit rates — a pricing
+  // problem, not a confidence problem — and no market/side cut tested beat
+  // noise (best found: dropping assists/over + points/over ⇒ +0.13u/164,
+  // i.e. breakeven). Full numbers: docs/handoffs/nba-gates-backtest_2026-09-16.md.
+  // Re-test before copying any future soccer-engine gate here on faith.
+
   return {
     game_id: game.id,
     player_id: player.id,

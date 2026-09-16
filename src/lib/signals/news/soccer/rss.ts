@@ -5,6 +5,7 @@ import {
   COMPETITIONS,
   type SoccerCompetition,
 } from "@/lib/sports/soccer/competitions";
+import { normalizeTeamName } from "@/lib/sports/soccer/team-match";
 import type { SoccerNewsFetcher, SoccerNewsItem } from "./types";
 
 /**
@@ -110,28 +111,35 @@ function trimToSentences(text: string, max = 3): string {
 }
 
 type TeamRow = { id: number; name: string; abbreviation: string };
+type MatchLite = { id: number; date: string; home_team_id: number; away_team_id: number };
 
 // Teams that actually play in the competition — derived from its fixtures so
 // a club that shows up in the Champions League feed is tagged, and a World Cup
-// country never gets tagged onto a Champions League story.
-async function loadTeams(competition: SoccerCompetition): Promise<TeamRow[]> {
+// country never gets tagged onto a Champions League story. Also returns the
+// fixture list itself (home/away/date), reused by tagMentions to corroborate
+// an ambiguous club token and by resolveMatchId to attach a story to a
+// specific fixture — one query serves both.
+async function loadCompetitionData(
+  competition: SoccerCompetition,
+): Promise<{ teams: TeamRow[]; matches: MatchLite[] }> {
   const supabase = supabaseAdmin();
   const { data: matches } = await supabase
     .from("soccer_matches")
-    .select("home_team_id, away_team_id")
+    .select("id, date, home_team_id, away_team_id")
     .eq("competition", competition)
     .limit(2000);
+  const matchRows = (matches ?? []) as MatchLite[];
   const ids = new Set<number>();
-  for (const m of matches ?? []) {
+  for (const m of matchRows) {
     ids.add(m.home_team_id);
     ids.add(m.away_team_id);
   }
-  if (ids.size === 0) return [];
+  if (ids.size === 0) return { teams: [], matches: matchRows };
   const { data } = await supabase
     .from("soccer_teams")
     .select("id, name, abbreviation")
     .in("id", [...ids]);
-  return (data ?? []) as TeamRow[];
+  return { teams: (data ?? []) as TeamRow[], matches: matchRows };
 }
 
 // English/colloquial aliases for country names that won't substring-match the
@@ -271,34 +279,171 @@ function containsWord(lowered: string, needle: string): boolean {
   return new RegExp(`(^|[^a-z])${escaped}([^a-z]|$)`, "i").test(lowered);
 }
 
+// Same diacritic + Turkish dotless-ı folding as normalizeTeamName (team-match.ts)
+// — reused so "Kasımpaşa" in a headline lines up with the "Kasimpasa" alias —
+// but WITHOUT its apostrophe-stripping: normalizeTeamName deletes apostrophes
+// because it canonicalizes isolated name tokens ("Cote d'Ivoire"), but running
+// Turkish prose glues a possessive/dative suffix onto a name with one
+// ("Sporting'e", "Galatasaray'a"). Deleting the apostrophe there fuses the
+// suffix onto the name ("sportinge"), which breaks containsWord's word
+// boundary and silently drops the very mention this exists to catch. Keeping
+// the apostrophe preserves it as a boundary, exactly like the plain
+// `.toLowerCase()` this replaces already did.
+function foldForScan(text: string): string {
+  return text
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/\p{Diacritic}/gu, "")
+    .replace(/ø/g, "o")
+    .replace(/ł/g, "l")
+    .replace(/đ/g, "d")
+    .replace(/æ/g, "ae")
+    .replace(/ß/g, "ss")
+    .replace(/ı/g, "i");
+}
+
+// Club aliases that are also ordinary English words, city names, or the
+// generic half of some OTHER real club's name (Sporting Kansas City, Inter
+// Miami, Orlando City, Newcastle/West Ham/Leeds United, Atlético Madrid).
+// A whole-word hit on one of these proves nothing about which club is meant,
+// so it must never tag on its own — see tagMentions. Measured against
+// soccer_news on 2026-09-16: at least 58 live-competition rows carried a
+// team_id from exactly this failure (e.g. a Guardian MLS roundup tagging
+// Sporting CP + Manchester City + Internazionale via "Sporting KC" / "Orlando
+// City" / "Inter Miami", and 38 rows tagging Real Madrid off "Atlético
+// Madrid" alone).
+const AMBIGUOUS_CLUB_ALIASES = new Set([
+  "sporting",
+  "inter",
+  "city",
+  "united",
+  "athletic",
+  "dynamo",
+  "rangers",
+  "madrid",
+]);
+
+// Corroboration window for an ambiguous alias: a real fixture between the
+// ambiguous club and another club the story confidently mentions, within
+// this many days of publication (pre-match buildup through post-match
+// reaction). Wider than MATCH_ID_WINDOW_DAYS on purpose — this only decides
+// whether to keep the tag, not which exact fixture to attach.
+const OPPONENT_CORROBORATION_DAYS = 10;
+
+// Window for confidently attaching a story to one specific fixture. Tighter
+// than the corroboration window because a wrong match_id is worse than a
+// missing one.
+const MATCH_ID_WINDOW_DAYS = 4;
+
+function daysBetween(a: Date, b: Date): number {
+  return Math.abs(a.getTime() - b.getTime()) / 86_400_000;
+}
+
+function haveFixtureNear(
+  matches: MatchLite[],
+  teamA: number,
+  teamB: number,
+  around: Date,
+  windowDays: number,
+): boolean {
+  return matches.some((m) => {
+    const pair =
+      (m.home_team_id === teamA && m.away_team_id === teamB) ||
+      (m.home_team_id === teamB && m.away_team_id === teamA);
+    return pair && daysBetween(new Date(m.date), around) <= windowDays;
+  });
+}
+
 function tagMentions(
   text: string,
   teams: TeamRow[],
   kind: "national" | "club",
+  context: { matches: MatchLite[]; publishedAt: Date },
 ): { team_ids: number[]; player_names: string[] } {
-  const lowered = text.toLowerCase();
-  const team_ids = new Set<number>();
+  // Club/country names go through the same diacritic + Turkish dotless-ı
+  // folding as normalizeTeamName (team-match.ts, see foldForScan above), so
+  // "Kasımpaşa" in a headline matches the "Kasimpasa" alias either way.
+  // Player names stay on plain lowercasing: several curated stars are listed
+  // both accented and plain (e.g. "Leão"/"Leao") specifically so a
+  // surname-only mention still hits, and folding would collapse that.
+  const lowered = foldForScan(text);
+  const loweredPlain = text.toLowerCase();
+  const strong = new Set<number>();
+  const weak = new Set<number>();
   const player_names = new Set<string>();
   const aliasTable = kind === "club" ? CLUB_ALIASES : TEAM_ALIASES;
   const starTable = kind === "club" ? CLUB_STARS : STAR_PLAYERS;
   for (const t of teams) {
     const aliases = [t.name, ...(aliasTable[t.name] ?? [])];
     // Countries match on substring so adjective forms land ("Portuguese").
-    // Clubs match on whole words: "Como" must not fire inside "become", and
-    // "City" / "United" only count as the full name.
-    const hit =
-      kind === "club"
-        ? aliases.some((a) => a.length >= 3 && containsWord(lowered, a))
-        : aliases.some((a) => a.length >= 4 && lowered.includes(a.toLowerCase()));
-    if (hit) team_ids.add(t.id);
-    for (const star of starTable[t.name] ?? []) {
-      if (containsWord(lowered, star)) {
-        player_names.add(star);
-        team_ids.add(t.id);
+    // Clubs match on whole words: "Como" must not fire inside "become".
+    // A club alias in the ambiguous stoplist only counts as a *weak* hit —
+    // real unless corroborated below.
+    let matchedStrong = false;
+    let matchedWeak = false;
+    for (const a of aliases) {
+      const normalizedAlias = normalizeTeamName(a);
+      const hit =
+        kind === "club"
+          ? normalizedAlias.length >= 3 && containsWord(lowered, normalizedAlias)
+          : normalizedAlias.length >= 4 && lowered.includes(normalizedAlias);
+      if (!hit) continue;
+      if (kind === "club" && AMBIGUOUS_CLUB_ALIASES.has(normalizedAlias)) {
+        matchedWeak = true;
+      } else {
+        matchedStrong = true;
+        break;
       }
     }
+    for (const star of starTable[t.name] ?? []) {
+      if (containsWord(loweredPlain, star)) {
+        player_names.add(star);
+        matchedStrong = true;
+      }
+    }
+    if (matchedStrong) strong.add(t.id);
+    else if (matchedWeak) weak.add(t.id);
   }
+
+  const team_ids = new Set(strong);
+  // Prefer competition context: an ambiguous alias only survives when the
+  // same story also confidently names a club this team actually plays
+  // around that date — i.e. the story is genuinely about one of this club's
+  // real fixtures, not a coincidental word match.
+  for (const id of weak) {
+    const corroborated = [...strong].some((otherId) =>
+      haveFixtureNear(context.matches, id, otherId, context.publishedAt, OPPONENT_CORROBORATION_DAYS),
+    );
+    if (corroborated) team_ids.add(id);
+  }
+
   return { team_ids: [...team_ids], player_names: [...player_names] };
+}
+
+// Attaches a story to one specific fixture only when it's unambiguous: exactly
+// two clubs tagged, a real match between them exists, and exactly one such
+// match falls within the window — never guess between two candidates.
+function resolveMatchId(matches: MatchLite[], teamIds: number[], publishedAt: Date): number | null {
+  if (teamIds.length !== 2) return null;
+  const [a, b] = teamIds;
+  let best: MatchLite | null = null;
+  let bestDelta = Infinity;
+  let tie = false;
+  for (const m of matches) {
+    const pair = (m.home_team_id === a && m.away_team_id === b) || (m.home_team_id === b && m.away_team_id === a);
+    if (!pair) continue;
+    const delta = daysBetween(new Date(m.date), publishedAt);
+    if (delta > MATCH_ID_WINDOW_DAYS) continue;
+    if (delta < bestDelta) {
+      best = m;
+      bestDelta = delta;
+      tie = false;
+    } else if (delta === bestDelta) {
+      tie = true;
+    }
+  }
+  if (!best || tie) return null;
+  return best.id;
 }
 
 /** Best-effort author from a writer-styled headline ("Marcotti: …"). */
@@ -445,7 +590,7 @@ export class SoccerRssNewsFetcher implements SoccerNewsFetcher {
     const items = parseRss(xml);
     if (items.length === 0) return [];
 
-    const teams = await loadTeams(this.competition);
+    const { teams, matches } = await loadCompetitionData(this.competition);
     const kind = COMPETITIONS[this.competition].kind;
     const out: SoccerNewsItem[] = [];
 
@@ -455,7 +600,7 @@ export class SoccerRssNewsFetcher implements SoccerNewsFetcher {
       if (published < since) continue;
 
       const text = `${it.title}. ${it.description}`;
-      const tags = tagMentions(text, teams, kind);
+      const tags = tagMentions(text, teams, kind, { matches, publishedAt: published });
       // Drop items that don't reference one of the competition's sides —
       // generic football (transfers, domestic leagues) isn't what this is for.
       if (tags.team_ids.length === 0) continue;
@@ -473,7 +618,7 @@ export class SoccerRssNewsFetcher implements SoccerNewsFetcher {
         headline: it.title || null,
         summary,
         image_url: extractImage(it.block),
-        match_id: null,
+        match_id: resolveMatchId(matches, tags.team_ids, published),
         team_ids: tags.team_ids,
         player_names: tags.player_names,
         is_engine_take: false,

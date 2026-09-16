@@ -133,3 +133,59 @@ Corrections and hard-won rules for this project. Append; never rewrite history.
   insert branch inside a transaction that was always rolled back, so the proof
   cost no production data. Verify with `score = wins - losses` across every
   competition; drift is the alarm.
+
+## 2026-09-16 — Know whether a job is additive before you reason about its output
+- **What happened:** after tightening the engine, 18 pending picks remained
+  that the new gates would refuse. A decision was recorded to "let them ride,
+  no retro edits" — which read well and was wrong, because
+  `generate-predictions` deletes this competition's pending coupons and
+  pending predictions for the slate and rebuilds them from current odds. The
+  daily 15:00 UTC run would have overwritten them regardless, so the rule
+  described behaviour the system does not have. Caught by asking whether the
+  cron was safe to run by hand, not by reading the decision again.
+- **Rule:** before deciding what should happen to rows, read the writer. Is it
+  insert-only, upsert, or delete-and-rebuild? A policy that contradicts the
+  job's actual behaviour is not a policy, it is a surprise waiting for the
+  next scheduled run.
+- **The real distinction:** *settled* rows are the record and are immutable
+  (migration 0034). *Pending* rows are live quotes and are refreshed. "No
+  retro edits" is a promise about the former only. Stating it about both
+  sounds stronger and means less.
+- **Never hand-run `generate-predictions` to fix a slate.** It is scoped to
+  pending rows in the window, so running it mid-matchday deletes picks
+  attached to matches already kicked off.
+- **A null result is a result.** Soccer's new EV gates were backtested against
+  513 graded NBA picks and made things *worse*: NBA's only profitable band is
+  the high-EV one soccer discards, because soccer's EV comes from a de-vigged
+  market consensus while NBA's is a confidence score wearing a probability's
+  clothes. Same field name, different meaning. Nothing was shipped for NBA,
+  and the numbers were written into the code so the next season does not
+  re-derive it. **Do not port a constant between two engines because the
+  column names match.**
+
+## 2026-09-16 — Measure a cleanup rule before you trust it, especially on accented text
+- **What happened:** the news-tagging repair (0038) deliberately removed only
+  the 163 (row, team) pairs it could *prove* wrong, leaving anything it merely
+  could not corroborate. Reviewing it, one known-bad row survived, and the
+  obvious "tighten it up" rule was: drop any tag whose club name never appears
+  in the stored text. Measured first: that rule hit **713 rows**, and the
+  sample was almost entirely *correct* tags — "Fenerbahçe" vs stored
+  `Fenerbahce`, "Atlético Madrid" vs `Atletico Madrid`, Turkish suffixed forms.
+  The rule was not stricter, it was just diacritic-blind. Running it would have
+  stripped hundreds of good tags to remove one bad one.
+- **Rule:** any text rule touching club, player or place names goes through
+  the project's folding (`normalizeTeamName`, or `foldForScan` where running
+  prose means apostrophes must survive). Turkish is the tripwire here: dotless
+  ı has no NFKD decomposition, and a possessive suffix glued on with an
+  apostrophe ("Sporting'e") breaks a naive word-boundary match.
+- **Rule:** before applying a data-cleanup predicate, run it as a SELECT and
+  *read the rows it would change*. A count alone would have looked like a
+  bigger, better cleanup.
+- **Under-removal beats over-removal on a shared record.** Leaving a wrong tag
+  is a visible blemish on one page; deleting a right one silently loses
+  information nobody will think to look for again.
+- **Known residual (accepted, 2026-09-16):** one Guardian piece about Leeds is
+  still tagged Sporting CP, almost certainly from the phrase "sporting
+  director" in the untrimmed body the stored summary no longer contains. It is
+  one row of 2,044, it ages out of a recency-ordered list, and the code fix
+  stops new ones. Not worth hand-curating a single row.
