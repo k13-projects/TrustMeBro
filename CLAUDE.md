@@ -35,6 +35,11 @@ Karar log'u — değiştirilirse buraya tarih + sebep ekle:
 - **2026-05-14**: History: kullanıcı tek tıkla "ben bu beti oynadım" işaretler, sonucu kaydeder.
 - **2026-05-14**: Pattern engine: anomalileri/döngüleri yakalamalı (örn. "her 6 maçta sıfırlanma"). Sapma alert'i: "ortalama 8 ama önceki maç 5 yaptı".
 - **2026-09-09**: Champions League added as the live football competition; World Cup 2026 archived (frozen, browsable, exportable). Per-competition ledgers. See "Football competitions" below.
+- **2026-09-14**: **Turkish Süper Lig (`tur.1`) added as a live competition.** ESPN carries it on the same feed shape as the UEFA competitions, so fixtures, standings, clubs and news cost nothing. Odds are the only metered part; see the cadence note under "Football competitions".
+- **2026-09-14**: **Turkish bookmakers rejected as an odds source.** Bilyoner, Tuttur, Misli and iddaa publish rates but all price off the same state betting pool, so they would supply one opinion wearing four logos — and the engine finds value by shopping between *independent* books. The Odds API already carries 33 for this league, Pinnacle included. None of them publishes an API, and iddaa operates under Turkey's state betting monopoly, so scraping them would also breach the house ToS rule.
+- **2026-09-15**: **Users can build their own coupons** from any outcome on the odds board, not only from engine picks. The engine's pick is a small marker, never a preselected state — conflating our opinion with the user's choice makes it unclear whose decision it was. Coupon and engine ledgers stay separate, as before.
+- **2026-09-15**: **Publishing is a choice; the record is not.** Sharing a coupon does **not** lock at kickoff — people decide what goes on the board, whenever. But a **graded** score prediction can no longer be deleted (migration 0034), because removing a bad call after the fact turns the leaderboard into a highlights reel. An *ungraded* call can still be deleted: changing your mind before a match is not hiding anything.
+- **2026-09-15**: **Primary address is `tmb.k13projects.com`.** `tmb.erenunur.com` stays attached and serves a **307** (deliberately temporary — a 301 is cached for months and would make the hierarchy painful to reverse). Both hosts are allow-listed in Supabase auth; the app derives its OAuth `redirectTo` from `window.location.origin`, so sign-in follows whichever host the visitor used.
 - **2026-05-14**: Canonical timezone = **America/Los_Angeles**. NBA maçları US saatinde oynanıyor ve PT gece yarısı sleyt'in en geç kapanma anı, dolayısıyla "bugün" tüm sayfa/cron/chat için LA günü demektir. `todayIsoDate()` LA tarihini döndürür; sabit `PROJECT_TIMEZONE` ifadesi [src/lib/date.ts](src/lib/date.ts)'te.
 
 ## Stack
@@ -259,7 +264,7 @@ monitoring service. If a feature needs money, it does not get built; say so and
 stop. This is why outage alerting goes through the War Room rather than a
 hosted pager.
 
-- `ODDS_API_KEY` — The Odds API (https://the-odds-api.com). Load-bearing: `/api/cron/track-odds` needs it to pull player-prop snapshots, and `/api/cron/generate-predictions` produces zero picks without it (real odds gated). Free tier = 500 req/mo and player props cost 10x — expect to upgrade to ~$30/mo for steady-state.
+- `ODDS_API_KEY` — The Odds API (https://the-odds-api.com). Load-bearing: `/api/cron/track-odds` needs it to pull player-prop snapshots, and `/api/cron/generate-predictions` produces zero picks without it (real odds gated). Free tier = 500 req/mo and player props cost 10x. **The old note here said "expect to upgrade to ~$30/mo" — that is superseded by the No-paid-APIs rule above.** If the free tier runs short, the answer is to spend fewer credits (narrow the cadence, drop a competition), never to buy a tier. Usage on 2026-09-15: ~40 of 500 used, with four live football competitions.
 - `CRON_SECRET` — to protect `/api/cron/*` endpoints from unauthorized invocation
 - `NBA_LIGHT_MODE` — off-season toggle. `"true"` makes every NBA cron early-exit (`{skipped:true}`) via `src/app/api/cron/_light-mode.ts`. The Vercel schedule is left intact; unset to wake the NBA side. Soccer crons ignore it.
 
@@ -297,18 +302,36 @@ API key, logo, theme.
   "Slavia Prague"). `team-match.ts` reconciles them (aliases + token overlap,
   both sides must clear the bar, ties refuse to guess); `track-odds` reports
   `unmatched` per run — check it after each matchday's first pull.
-- **Cron cost.** One Odds API call per live competition per day (4 credits),
-  skipped on days a competition has no unfinished match inside the 8-day
-  window ⇒ roughly 150–250/month of the 500 free with three UEFA competitions
-  live (matchdays cluster, so most days cost nothing).
+- **Cron cost.** One Odds API call per live competition per day (4 credits =
+  2 markets × 2 regions), skipped on days a competition has no unfinished match
+  inside the 8-day window. That gate works for UEFA because matchdays cluster,
+  so most days cost nothing.
+- **Odds cadence (2026-09-14).** It does **not** work for a weekly domestic
+  league: the Süper Lig plays Fri–Mon nearly every week Aug–May, so an 8-day
+  window is satisfied almost daily (~120 credits/month on its own). Narrowing
+  the window does not fix it — even 2 days still fires ~6 days a week. The fix
+  is a **cadence limit**, not a smaller window: `oddsCadence`
+  (`{minHours, freshWithinHours}`) on `CompetitionMeta`, `null` for UEFA and the
+  archive (unthrottled, unchanged). Süper Lig runs `{78, 24}` — at most one pull
+  every ~3.25 days, and the near-kickoff refresh may only bring the *next
+  scheduled* pull forward, never add one, which is what stops it firing on all
+  four days of a round. Simulated over a full season: **~35 credits/month**.
+  Last-pull clock lives in `ingest_state`; see `soccer/odds-cadence.ts`.
+- **Club name matching (2026-09-14).** Turkish clubs carry sponsor prefixes and
+  suffixes the books use and ESPN does not (`Torku Konyaspor` vs `Konyaspor`,
+  `Kasimpasa SK` vs `Kasimpasa`), plus diacritics. Aliases live in
+  `team-match.ts`; `normalizeTeamName()` also folds **dotless ı**, which has no
+  NFKD decomposition and therefore does not fold on its own — without that,
+  search returned nothing for `Kasımpaşa` spelled the way Turks spell it.
 - **Odds movement.** Raw snapshots are still pruned after 48h; `track-odds`
   also writes one compact consensus row per (match, market, side) per run to
   `soccer_odds_history` (migration 0023), never pruned — that is the series
   the match page charts. The window is 8 days ahead so a matchday gets a daily
   point once books list it.
-- **Live competitions (2026-09-10):** Champions League, Europa League,
+- **Live competitions (2026-09-14):** Champions League, Europa League,
   Conference League (`uefa.champions`, `uefa.europa`, `uefa.europa.conf`, each
-  with its `*_qual` ESPN feed). World Cup archived.
+  with its `*_qual` ESPN feed) and the **Turkish Süper Lig** (`tur.1`, no
+  qualifying feed, ESPN logo id 18, red `#E30A17` theme). World Cup archived.
 - **Provider health + fallback (2026-09-14).** Four tiers, always preferring
   the first: `site.web.api.espn.com` → `site.api.espn.com` → **UEFA's own feed**
   (`match.uefa.com/v5/matches`, `soccer/uefa.ts`) → ESPN's core API
@@ -361,6 +384,64 @@ API key, logo, theme.
   3 pts exact / 1 pt result, graded in settle-bets via `grade-calls.ts`),
   share cards (`next/og`: match OG image, `/api/og/pick/[id]`,
   `/api/og/coupon/[id]`, `ShareButton`).
+
+## Deploy
+
+Verify deploy state from Vercel itself, never from this section — these lines
+go stale, which is the whole point of the house rule. They are here so a fresh
+session knows *where* to look, not so it can skip looking.
+
+- **Vercel project:** `trustmebro` (`prj_JGTOgBzCdEgOx5iGPcohKolbOkHh`), on the
+  K13 account. Never the hosted Vercel MCP — that one is on Halil's account.
+- **Production branch:** `main`. A merge to `main` redeploys on its own.
+- **Primary address:** **https://tmb.k13projects.com**
+- **Secondary:** `tmb.erenunur.com` → **307** to the primary. Temporary on
+  purpose: browsers cache a 301 for months, which would make the hierarchy hard
+  to reverse. Both hosts are allow-listed in Supabase auth and the app builds
+  its OAuth `redirectTo` from `window.location.origin`, so sign-in works on
+  either and follows whichever the visitor used.
+- **No canonical/sitemap machinery to keep in sync:** the site is deliberately
+  `disallow: /` in `robots.ts` with a hard bot block in `proxy.ts` (crawlers were
+  ~95% of traffic and drained the transfer tier). The address is written down in
+  exactly one place in the app: the share-card footer in `src/lib/og/blocks.tsx`.
+
+---
+
+## User-built coupons (2026-09-15)
+
+Every outcome on the odds board is selectable, not just the engine's picks.
+`MatchRates.tsx` is client-side; a **★** marks an outcome we have a prediction
+row for, and nothing is ever preselected. A leg is `engine` or `user`
+(`leg_source`), both on `soccer_coupon_legs`, both graded by the same pure
+`outcome()` against final scores. Contract: `soccer/coupon-legs.ts`.
+
+**The trust model is the important part, and it is structural, not a list of
+rules.** Three audit rounds landed on it:
+
+- `INSERT`/`UPDATE`/`DELETE` on `user_coupons`, `user_coupon_picks` and
+  `soccer_coupon_legs` are **revoked from `authenticated`** (migration 0032).
+  A browser client holds `SELECT` only. Every write goes through
+  `POST /api/coupons` (service-role, verifies odds, line and kickoff) or a
+  `SECURITY DEFINER` RPC. The API is the only door, not a politely suggested one.
+- Round 1 patched columns instead, and the next hole was found within the hour:
+  attach a leg to a **match that already finished**, pick the side that already
+  won, leave `status` unset — every rule satisfied, and our own settlement grades
+  it honestly. **The lesson: as long as a client can write to a table, every
+  invariant has to be restated as a predicate, and forgetting one is the whole
+  vulnerability.** Take the door away instead of enumerating the rules.
+- Defense-in-depth binds **privileged writers too**, because a rule that only
+  constrains ordinary users stops being a rule the day the server has a bug: a
+  `BEFORE INSERT` trigger re-reads `soccer_matches.state`, `stake <= 10000`, and
+  settlement recomputes payout from the legs it can actually see rather than
+  trusting `potential_payout`.
+- `soccer_score_predictions` had the identical shape and is fixed the same way
+  (0033), plus a `BEFORE DELETE` guard on graded rows (0034).
+- Note `refresh_bro_stats()`: Postgres grants `EXECUTE` to `PUBLIC` by default,
+  so revoking only the named role would not have closed it.
+
+Full record: `docs/reports/TrustMeBro_Security-Audit_2026-09-15.html`.
+
+---
 
 ## Cron Schedule (Vercel)
 
