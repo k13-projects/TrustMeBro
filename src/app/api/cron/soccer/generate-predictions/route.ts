@@ -9,6 +9,7 @@ import {
   liveCompetitions,
   type SoccerCompetition,
 } from "@/lib/sports/soccer/competitions";
+import { runCronJob } from "@/lib/ingest/cron-runs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -58,13 +59,20 @@ export async function GET(req: Request) {
     competitions = liveCompetitions();
   }
 
-  const results: Record<string, unknown> = {};
-  for (const competition of competitions) {
-    if (COMPETITIONS[competition].oddsKey === null) {
-      results[competition] = { skipped: "no odds source for this competition yet (oddsKey null)" };
-      continue;
+  const outcome = await runCronJob("soccer/generate-predictions", async () => {
+    const results: Record<string, unknown> = {};
+    for (const competition of competitions) {
+      if (COMPETITIONS[competition].oddsKey === null) {
+        results[competition] = { skipped: "no odds source for this competition yet (oddsKey null)" };
+        continue;
+      }
+      results[competition] = await generateSoccerPredictions(competition, dates);
     }
-    results[competition] = await generateSoccerPredictions(competition, dates);
+    return { dates, competitions: results };
+  });
+
+  if (!outcome.ok) {
+    return NextResponse.json({ ok: false, dates, error: outcome.error }, { status: 500 });
   }
-  return NextResponse.json({ ok: true, dates, competitions: results });
+  return NextResponse.json({ ok: true, ...outcome.summary });
 }

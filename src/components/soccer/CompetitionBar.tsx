@@ -3,17 +3,22 @@ import {
   COMPETITIONS,
   type SoccerCompetition,
 } from "@/lib/sports/soccer/competitions";
+import type { CompetitionLiveSignal } from "@/lib/sports/soccer/live-signals";
 import { CompetitionSwitcher } from "./CompetitionSwitcher";
 
 // The strip at the top of every /football page: which competition you're in,
 // what phase it's at, and the switch to the other one. `phase` is the live
 // round label ("Matchday 1 · 12 of 18 played") computed by the layout.
+// `liveSignals` (plain object — Server → Client Component props stay
+// serializable) drives the switcher's per-tab live/today dots.
 export function CompetitionBar({
   competition,
   phase,
+  liveSignals,
 }: {
   competition: SoccerCompetition;
   phase: string | null;
+  liveSignals: Partial<Record<SoccerCompetition, CompetitionLiveSignal>>;
 }) {
   const meta = COMPETITIONS[competition];
   const archived = meta.status === "archived";
@@ -61,7 +66,7 @@ export function CompetitionBar({
           </div>
         </div>
       </div>
-      <CompetitionSwitcher active={competition} />
+      <CompetitionSwitcher active={competition} liveSignals={liveSignals} />
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { after } from "next/server";
 import Link from "next/link";
 import { todayIsoDate } from "@/lib/date";
 import { maybeRefresh } from "@/lib/ingest/refresh";
+import { settleOnVisit } from "@/lib/ingest/soccer-settle";
 import { activeCompetition } from "@/lib/sports/soccer/competition-cookie";
 import {
   COMPETITIONS,
@@ -96,6 +97,18 @@ export default async function FootballHome() {
         key: `soccer_fixtures:${competition}`,
         staleAfterMs: 2 * 60_000,
         run: () => refreshFixturesWindow(competition),
+      }),
+    );
+    // Picks otherwise only grade at the daily settle-bets cron (11:30 UTC,
+    // Hobby's once-a-day cap) — this closes most of the gap for a match that
+    // finishes mid-day while someone's actually on the page. Throttled to
+    // once every 5 min and single-flight; a no-op write when nothing's
+    // pending on a finished match (see settleOnVisit).
+    after(() =>
+      maybeRefresh({
+        key: `soccer_settle:${competition}`,
+        staleAfterMs: 5 * 60_000,
+        run: () => settleOnVisit(competition),
       }),
     );
   }
@@ -541,6 +554,7 @@ async function ArchiveHome({
         subtitle="Tournament complete. Every pick, price and result stays exactly as it was graded — switch to the Champions League for the live slate."
         primaryCta={{ href: "/football/scoreboard", label: "Final Ledger" }}
         secondaryCta={{ href: "/football/schedule", label: "Every Result" }}
+        live={false}
       />
 
       {finalMatch ? (

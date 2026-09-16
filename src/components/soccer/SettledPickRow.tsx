@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Check, Minus, X } from "lucide-react";
 import type { PredictionDetail } from "@/lib/sports/soccer/queries";
 import { marketLabel, sideLabel } from "@/lib/sports/soccer/labels";
+import { TierBadge } from "./TierBadge";
 
 // One graded pick. "Over 2.5 goals — LOST" on its own makes a reader go and
 // look up what happened, so the row carries the final score and, where the
@@ -46,8 +47,11 @@ export function SettledPickRow({ pick }: { pick: PredictionDetail }) {
       </span>
 
       <div className="min-w-0 flex-1">
-        <div className="truncate text-sm font-semibold">
-          {sideLabel(pick.market, pick.side, pick.line, pick.home, pick.away)}
+        <div className="flex min-w-0 items-center gap-1.5">
+          <TierBadge isBanko={pick.is_banko} />
+          <span className="truncate text-sm font-semibold">
+            {sideLabel(pick.market, pick.side, pick.line, pick.home, pick.away)}
+          </span>
         </div>
         <div className="truncate text-xs text-foreground/50">
           {played ? (

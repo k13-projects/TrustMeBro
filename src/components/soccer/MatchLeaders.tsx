@@ -8,6 +8,23 @@ import { CountryFlag } from "./CountryFlag";
 // short lists — which is honest, and better than padding them out.
 const CATEGORY_ORDER = ["goalsLeaders", "assistsLeaders", "totalShots", "saves"];
 
+// The competition's own leaderboards are still ≤1 goal/assist/shot deep for
+// everyone shown — true early in a season, not a broken query. Surfaced as a
+// one-line note rather than hiding the table, which is still the honest
+// picture of "who's ahead so far."
+function maxLeaderValue(blocks: (TeamLeaders | null)[]): number {
+  let max = 0;
+  for (const block of blocks) {
+    for (const category of block?.categories ?? []) {
+      for (const entry of category.entries) {
+        const n = parseFloat(entry.value);
+        if (Number.isFinite(n) && n > max) max = n;
+      }
+    }
+  }
+  return max;
+}
+
 export function MatchLeaders({
   match,
   leaders,
@@ -23,6 +40,7 @@ export function MatchLeaders({
   const home = forTeam(match.home.id);
   const away = forTeam(match.away.id);
   if (!home && !away) return null;
+  const seasonYoung = maxLeaderValue([home, away]) <= 1;
 
   return (
     <section className="space-y-4">
@@ -32,6 +50,11 @@ export function MatchLeaders({
           {competitionLabel} only, this season
         </span>
       </div>
+      {seasonYoung ? (
+        <p className="text-xs text-foreground/45">
+          Early in the season — these numbers will fill out as {competitionLabel} continues.
+        </p>
+      ) : null}
       <div className="grid gap-3 md:grid-cols-2">
         <TeamColumn team={match.home} block={home} national={national} />
         <TeamColumn team={match.away} block={away} national={national} />

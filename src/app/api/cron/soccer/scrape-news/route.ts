@@ -7,6 +7,7 @@ import {
   type SoccerCompetition,
 } from "@/lib/sports/soccer/competitions";
 import { runSoccerNewsIngest } from "@/lib/signals/news/soccer";
+import { runCronJob } from "@/lib/ingest/cron-runs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -36,16 +37,16 @@ export async function GET(req: Request) {
     competitions = liveCompetitions();
   }
 
-  try {
+  const outcome = await runCronJob("soccer/scrape-news", async () => {
     const results: Record<string, unknown> = {};
     for (const competition of competitions) {
       results[competition] = await runSoccerNewsIngest({ competition, sinceHours: 24 });
     }
-    return NextResponse.json({ ok: true, competitions: results });
-  } catch (err) {
-    return NextResponse.json(
-      { ok: false, error: err instanceof Error ? err.message : String(err) },
-      { status: 500 },
-    );
+    return { competitions: results };
+  });
+
+  if (!outcome.ok) {
+    return NextResponse.json({ ok: false, error: outcome.error }, { status: 500 });
   }
+  return NextResponse.json({ ok: true, ...outcome.summary });
 }

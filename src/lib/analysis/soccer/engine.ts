@@ -59,6 +59,46 @@ const MAX_FORM_NUDGE = 0.04;
 // and overs that actually win and drops the rest.
 const MIN_SIDE_PROBABILITY = 0.5;
 
+// Emission gates (2026-09-16), tuned against the 208 graded soccer picks
+// (World Cup + Champions League) — see
+// docs/handoffs/engine-tuning_2026-09-16.md for the backing numbers.
+
+// EV floor: never ship a pick the model itself doesn't think is worth the
+// price. 124 of 208 graded picks (60%) had expected_value < 0 and hit only
+// 56% for a combined -5.5 units, while the 0-10% EV band hit 59% for +15.1u.
+// A negative-EV "pick" is a contradiction — the engine would be recommending
+// a bet it calculates as a loser on average.
+const MIN_EXPECTED_VALUE = 0;
+
+// EV ceiling: a very large EV is a miscalibration signal, not free value.
+// 10-25% EV picks hit 13% (1 of 8) and 25%+ EV picks hit 40% (2 of 5) — both
+// small samples, but both say the same thing: when the model's edge estimate
+// gets large, the model's probability read is usually the thing that's
+// wrong, not the market's price. Picks above this are skipped rather than
+// confidence-clamped: confidence is read directly off `top.p`, which also
+// drives the reasoning checks below it, so clamping would either decouple
+// the badge from the explanation or require inventing an anchor with no
+// backtest behind it. Skipping only removes the emission, the same
+// treatment already given to sub-coinflip sides above.
+const MAX_TRUSTED_EV = 0.25;
+
+// Side/market gate. Draws hit 18% (3 of 17) — a product whose promise is a
+// high win rate can't ship 18% picks, even though the draw bucket shows
+// +4.1 units on paper: that's entirely 12x-odds luck on 3 wins, not a
+// repeatable edge. total_goals/under hit 48% against a ~54% breakeven bar at
+// its average price (1.84) for -7.0 units, while total_goals/over — the
+// same market, opposite side — hit 60% for +4.9 units. Gated behind a flag
+// instead of deleted so either side can come back if the market re-prices;
+// flip this on to re-enable.
+const ENABLE_DRAW_AND_UNDER_PICKS = false;
+
+function isGatedSide(market: SoccerMarket, side: MatchSide): boolean {
+  if (ENABLE_DRAW_AND_UNDER_PICKS) return false;
+  if (market === "match_winner" && side === "draw") return true;
+  if (market === "total_goals" && side === "under") return true;
+  return false;
+}
+
 function round(n: number, dp = 3): number {
   const f = 10 ** dp;
   return Math.round(n * f) / f;
@@ -202,6 +242,7 @@ export function predictMatch(input: MatchEngineInput): SoccerPrediction[] {
     // Score every priced side, then keep only the strongest one.
     let top: { side: MatchSide; p: number; edgeApplies: boolean } | null = null;
     for (const side of sides) {
+      if (isGatedSide(market, side)) continue;
       const base = prob.get(side);
       const best = bestOdds.get(side);
       if (base === undefined || !best) continue;
@@ -221,6 +262,12 @@ export function predictMatch(input: MatchEngineInput): SoccerPrediction[] {
 
     const best = bestOdds.get(top.side)!;
     const ev = top.p * best.odds - 1;
+
+    // Never ship a pick the model prices as -EV, and skip picks whose EV is
+    // so large it reads as a miscalibrated probability rather than value —
+    // see MIN_EXPECTED_VALUE / MAX_TRUSTED_EV above.
+    if (ev < MIN_EXPECTED_VALUE || ev > MAX_TRUSTED_EV) continue;
+
     out.push({
       match_id: input.match_id,
       market,

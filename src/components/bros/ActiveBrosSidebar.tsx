@@ -24,9 +24,13 @@ export function ActiveBrosSidebar({
 
   return (
     <aside className="space-y-5 lg:sticky lg:top-24">
+      {/* No empty-state copy here on purpose — a lone "Online now / 0" card
+          reads as a dead board with a small bro count. The section simply
+          doesn't render until someone actually is online; the Leaderboard
+          below always has something to show. */}
       <Section
         title="Online now"
-        emptyText="No bros active right now. They'll surface here when they hit the site."
+        emptyText={null}
         bros={online}
         dotTone="emerald"
         canFollow={canFollow}

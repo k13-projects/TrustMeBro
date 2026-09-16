@@ -8,9 +8,8 @@ import {
   type SoccerCompetition,
 } from "@/lib/sports/soccer/competitions";
 import { syncCompetition } from "@/lib/sports/soccer/live";
-import { settleSoccer, voidStaleSoccerRows } from "@/lib/analysis/soccer/settle";
-import { gradeScoreCalls } from "@/lib/analysis/soccer/grade-calls";
-import { settleSoccerCoupons, settleSoccerCouponLegs } from "@/lib/scoring/settle-coupons";
+import { runCronJob } from "@/lib/ingest/cron-runs";
+import { finishSoccerSettlement, settleOneCompetition } from "@/lib/ingest/soccer-settle";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -28,6 +27,13 @@ const QuerySchema = z.object({ competition: z.string().optional() });
 // own status, not a join through soccer_predictions, has to be the source of
 // truth here. NBA's ledger and archived competitions' ledgers are never
 // touched.
+//
+// Each competition runs inside its own try/catch (2026-09-16) so one
+// competition's fixture sync failing (e.g. an upstream outage) doesn't stop
+// the others from settling. The whole run is logged via runCronJob
+// (cron_runs, migration 0035); the route itself returns 200 with ok:false
+// and a per-competition `errors` map when some (not all) competitions
+// failed, and 500 only when every competition failed.
 export async function GET(req: Request) {
   const unauth = assertCronAuth(req);
   if (unauth) return unauth;
@@ -48,32 +54,44 @@ export async function GET(req: Request) {
   const today = todayIsoDate();
   const from = isoDateOffset(today, -1);
 
-  const results: Record<string, unknown> = {};
-  for (const competition of competitions) {
-    const sync = await syncCompetition({
-      competition,
-      from,
-      to: today,
-      standings: true,
-    });
-    // No skip guard needed here for an oddsKey: null competition — with no
-    // engine predictions ever generated (see generate-predictions), this is
-    // already a zero-row no-op, and fixture sync + score-call grading below
-    // must still run regardless of odds.
-    const settled = await settleSoccer(competition);
-    // Bros' score calls grade off the same final scores (3 exact / 1 result).
-    const calls_graded = await gradeScoreCalls(competition);
-    results[competition] = { refreshed_matches: sync.matches, ...settled, calls_graded };
-  }
-  const staleness = await voidStaleSoccerRows();
-  const legsSettled = await settleSoccerCouponLegs();
-  const userCoupons = await settleSoccerCoupons();
-
-  return NextResponse.json({
-    ok: true,
-    competitions: results,
-    staleness,
-    coupon_legs_settled: legsSettled,
-    user_coupons: userCoupons,
+  const outcome = await runCronJob("soccer/settle-bets", async () => {
+    const results: Record<string, unknown> = {};
+    const errors: Record<string, string> = {};
+    for (const competition of competitions) {
+      try {
+        const sync = await syncCompetition({
+          competition,
+          from,
+          to: today,
+          standings: true,
+        });
+        // No skip guard needed here for an oddsKey: null competition — with
+        // no engine predictions ever generated (see generate-predictions),
+        // this is already a zero-row no-op, and fixture sync + score-call
+        // grading below must still run regardless of odds.
+        const settled = await settleOneCompetition(competition);
+        results[competition] = { refreshed_matches: sync.matches, ...settled };
+      } catch (err) {
+        errors[competition] = err instanceof Error ? err.message : String(err);
+      }
+    }
+    const finishing = await finishSoccerSettlement();
+    const failedCount = Object.keys(errors).length;
+    if (competitions.length > 0 && failedCount === competitions.length) {
+      throw new Error(
+        `every competition failed: ${JSON.stringify(errors)}`,
+      );
+    }
+    return {
+      competitions: results,
+      errors: failedCount > 0 ? errors : undefined,
+      ...finishing,
+    };
   });
+
+  if (!outcome.ok) {
+    return NextResponse.json({ ok: false, error: outcome.error }, { status: 500 });
+  }
+  const anyFailed = outcome.summary.errors !== undefined;
+  return NextResponse.json({ ok: !anyFailed, ...outcome.summary });
 }

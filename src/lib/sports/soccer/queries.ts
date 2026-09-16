@@ -757,6 +757,29 @@ export async function getPredictionsForMatch(matchId: number): Promise<Predictio
   return ((data ?? []) as unknown as RawPrediction[]).map(toPredictionDetail);
 }
 
+// Batched sibling of getPredictionsForMatch — one query for a whole round
+// instead of N, for pages that only need a marker per card (e.g. Call the
+// Scores) rather than a full per-match breakdown.
+export async function getPredictionsForMatches(
+  matchIds: number[],
+): Promise<Map<number, PredictionDetail[]>> {
+  const byMatch = new Map<number, PredictionDetail[]>();
+  if (matchIds.length === 0) return byMatch;
+  const supabase = await createSupabaseServerClient();
+  const { data } = await supabase
+    .from("soccer_predictions")
+    .select(PREDICTION_SELECT)
+    .in("match_id", matchIds)
+    .order("confidence", { ascending: false });
+  for (const raw of (data ?? []) as unknown as RawPrediction[]) {
+    const detail = toPredictionDetail(raw);
+    const list = byMatch.get(detail.match_id) ?? [];
+    list.push(detail);
+    byMatch.set(detail.match_id, list);
+  }
+  return byMatch;
+}
+
 export type OddsPoint = {
   market: SoccerMarket;
   side: MatchSide;
@@ -822,20 +845,65 @@ export type NewsLite = {
 
 const NEWS_COLS =
   "id, source_url, outlet, headline, summary, image_url, is_engine_take, published_at";
+const NEWS_COLS_WITH_MATCH = `${NEWS_COLS}, match_id`;
 
+export type MatchNews = {
+  /** About this match specifically (match_id) or either club (team_ids) —
+   *  match_id items sort first, both tiers by recency within themselves. */
+  relevant: NewsLite[];
+  /** Competition-wide news used only to top a thin `relevant` list up to
+   *  `minTotal` — kept separate so the page can label it ("Around the
+   *  competition") instead of passing it off as being about this match. */
+  fallback: NewsLite[];
+};
+
+// A club's news can be thin (a lower-profile fixture, early in the window
+// the scraper covers), so this always tries to hand the page at least
+// `minTotal` items — real relevance first, competition news only to fill the
+// gap, and the two kept apart so the caller never has to guess which is
+// which.
 export async function getNewsForMatch(
   matchId: number,
   teamIds: number[],
+  competition: SoccerCompetition,
+  minTotal = 4,
   limit = 8,
-): Promise<NewsLite[]> {
+): Promise<MatchNews> {
   const supabase = await createSupabaseServerClient();
-  const { data } = await supabase
+  const { data: relevantData } = await supabase
     .from("soccer_news")
-    .select(NEWS_COLS)
+    .select(NEWS_COLS_WITH_MATCH)
     .or(`match_id.eq.${matchId},team_ids.ov.{${teamIds.join(",")}}`)
     .order("published_at", { ascending: false })
     .limit(limit);
-  return (data ?? []) as NewsLite[];
+
+  const relevant = ((relevantData ?? []) as (NewsLite & { match_id: number | null })[])
+    .slice()
+    .sort((a, b) => {
+      const aMatch = a.match_id === matchId ? 1 : 0;
+      const bMatch = b.match_id === matchId ? 1 : 0;
+      if (aMatch !== bMatch) return bMatch - aMatch;
+      return new Date(b.published_at).getTime() - new Date(a.published_at).getTime();
+    });
+
+  if (relevant.length >= minTotal) {
+    return { relevant, fallback: [] };
+  }
+
+  const excludeIds = relevant.map((n) => n.id);
+  let fallbackQuery = supabase
+    .from("soccer_news")
+    .select(NEWS_COLS)
+    .eq("competition", competition)
+    .order("published_at", { ascending: false })
+    .limit(minTotal - relevant.length + excludeIds.length);
+  if (excludeIds.length > 0) {
+    fallbackQuery = fallbackQuery.not("id", "in", `(${excludeIds.join(",")})`);
+  }
+  const { data: fallbackData } = await fallbackQuery;
+  const fallback = ((fallbackData ?? []) as NewsLite[]).slice(0, minTotal - relevant.length);
+
+  return { relevant, fallback };
 }
 
 export async function getNewsForTeam(teamId: number, limit = 10): Promise<NewsLite[]> {

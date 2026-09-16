@@ -28,6 +28,7 @@ import { shouldPullOdds } from "@/lib/sports/soccer/odds-cadence";
 import { resolveMatch } from "@/lib/sports/soccer/team-match";
 import { consensus, modalLine, SIDES, type EngineQuote } from "@/lib/analysis/soccer/engine";
 import type { SoccerMarket } from "@/lib/sports/types";
+import { runCronJob } from "@/lib/ingest/cron-runs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -110,15 +111,6 @@ export async function GET(req: Request) {
     for (let i = 1; i <= ahead; i++) dates.push(isoDateOffset(today, i));
   }
 
-  if (!process.env.ODDS_API_KEY) {
-    return NextResponse.json({
-      ok: true,
-      skipped: true,
-      reason: "ODDS_API_KEY not configured",
-      dates,
-    });
-  }
-
   let competitions: SoccerCompetition[];
   if (parsed.data.competition) {
     if (!isCompetition(parsed.data.competition)) {
@@ -129,70 +121,17 @@ export async function GET(req: Request) {
     competitions = liveCompetitions();
   }
 
-  const supabase = supabaseAdmin();
-  const results: Record<string, CompetitionOddsResult> = {};
-
-  for (const competition of competitions) {
-    const oddsKey = COMPETITIONS[competition].oddsKey;
-    if (oddsKey === null) {
-      results[competition] = {
-        events_returned: 0,
-        quotes_collected: 0,
-        snapshots_inserted: 0,
-        history_rows: 0,
-        unmatched: [],
-        credits: null,
-        skipped: "no odds source for this competition yet (oddsKey null)",
-      };
-      continue;
-    }
-    const { data: matches, error } = await supabase
-      .from("soccer_matches")
-      .select(
-        "id, date, datetime, home:soccer_teams!soccer_matches_home_team_id_fkey(name), away:soccer_teams!soccer_matches_away_team_id_fkey(name)",
-      )
-      .eq("competition", competition)
-      .in("date", dates)
-      .eq("finished", false);
-    if (error) {
-      return NextResponse.json(
-        { ok: false, error: `load matches: ${error.message}` },
-        { status: 500 },
-      );
-    }
-    const candidates = ((matches ?? []) as unknown as Array<{
-      id: number;
-      date: string;
-      datetime: string | null;
-      home: { name: string } | { name: string }[] | null;
-      away: { name: string } | { name: string }[] | null;
-    }>).map((m) => ({
-      match: { id: m.id, date: m.date, datetime: m.datetime },
-      home: (Array.isArray(m.home) ? m.home[0] : m.home)?.name ?? "",
-      away: (Array.isArray(m.away) ? m.away[0] : m.away)?.name ?? "",
-    }));
-    if (candidates.length === 0) {
-      results[competition] = {
-        events_returned: 0,
-        quotes_collected: 0,
-        snapshots_inserted: 0,
-        history_rows: 0,
-        unmatched: [],
-        credits: null,
-        skipped: "no unfinished matches in window — no credits spent",
-      };
-      continue;
+  const outcome = await runCronJob("soccer/track-odds", async () => {
+    if (!process.env.ODDS_API_KEY) {
+      return { skipped: true, reason: "ODDS_API_KEY not configured", dates };
     }
 
-    const cadence = COMPETITIONS[competition].oddsCadence;
-    if (cadence) {
-      const lastPulledAt = await getLastOddsPullAt(competition);
-      const earliestKickoff = candidates.reduce<Date | null>((min, c) => {
-        if (!c.match.datetime) return min;
-        const dt = new Date(c.match.datetime);
-        return !min || dt < min ? dt : min;
-      }, null);
-      if (!shouldPullOdds(cadence, lastPulledAt, earliestKickoff, new Date())) {
+    const supabase = supabaseAdmin();
+    const results: Record<string, CompetitionOddsResult> = {};
+
+    for (const competition of competitions) {
+      const oddsKey = COMPETITIONS[competition].oddsKey;
+      if (oddsKey === null) {
         results[competition] = {
           events_returned: 0,
           quotes_collected: 0,
@@ -200,60 +139,116 @@ export async function GET(req: Request) {
           history_rows: 0,
           unmatched: [],
           credits: null,
-          skipped: `cadence: next pull not due yet (min ${cadence.minHours}h between pulls, last pulled ${lastPulledAt?.toISOString() ?? "never"})`,
+          skipped: "no odds source for this competition yet (oddsKey null)",
         };
         continue;
       }
-    }
-
-    const { data: events, credits } = await fetchSoccerOdds(oddsKey);
-    if (cadence) await recordOddsPull(competition);
-
-    const rows: SoccerOddsRow[] = [];
-    const history: OddsHistoryRow[] = [];
-    const unmatched: string[] = [];
-    for (const ev of events) {
-      const day = isoDateInProjectTz(ev.commence_time);
-      if (!dates.includes(day)) continue;
-      const match = resolveMatch(
-        ev,
-        candidates.filter((c) => c.match.date === day),
-      );
-      if (!match) {
-        unmatched.push(`${ev.home_team} v ${ev.away_team} (${day})`);
+      const { data: matches, error } = await supabase
+        .from("soccer_matches")
+        .select(
+          "id, date, datetime, home:soccer_teams!soccer_matches_home_team_id_fkey(name), away:soccer_teams!soccer_matches_away_team_id_fkey(name)",
+        )
+        .eq("competition", competition)
+        .in("date", dates)
+        .eq("finished", false);
+      if (error) {
+        throw new Error(`load matches: ${error.message}`);
+      }
+      const candidates = ((matches ?? []) as unknown as Array<{
+        id: number;
+        date: string;
+        datetime: string | null;
+        home: { name: string } | { name: string }[] | null;
+        away: { name: string } | { name: string }[] | null;
+      }>).map((m) => ({
+        match: { id: m.id, date: m.date, datetime: m.datetime },
+        home: (Array.isArray(m.home) ? m.home[0] : m.home)?.name ?? "",
+        away: (Array.isArray(m.away) ? m.away[0] : m.away)?.name ?? "",
+      }));
+      if (candidates.length === 0) {
+        results[competition] = {
+          events_returned: 0,
+          quotes_collected: 0,
+          snapshots_inserted: 0,
+          history_rows: 0,
+          unmatched: [],
+          credits: null,
+          skipped: "no unfinished matches in window — no credits spent",
+        };
         continue;
       }
-      for (const q of ev.quotes) {
-        rows.push({
-          match_id: match.id,
-          market: q.market,
-          side: q.side,
-          line: q.line,
-          bookmaker: q.bookmaker,
-          odds: q.odds,
-        });
+
+      const cadence = COMPETITIONS[competition].oddsCadence;
+      if (cadence) {
+        const lastPulledAt = await getLastOddsPullAt(competition);
+        const earliestKickoff = candidates.reduce<Date | null>((min, c) => {
+          if (!c.match.datetime) return min;
+          const dt = new Date(c.match.datetime);
+          return !min || dt < min ? dt : min;
+        }, null);
+        if (!shouldPullOdds(cadence, lastPulledAt, earliestKickoff, new Date())) {
+          results[competition] = {
+            events_returned: 0,
+            quotes_collected: 0,
+            snapshots_inserted: 0,
+            history_rows: 0,
+            unmatched: [],
+            credits: null,
+            skipped: `cadence: next pull not due yet (min ${cadence.minHours}h between pulls, last pulled ${lastPulledAt?.toISOString() ?? "never"})`,
+          };
+          continue;
+        }
       }
-      history.push(...historyRows(match.id, ev.quotes));
+
+      const { data: events, credits } = await fetchSoccerOdds(oddsKey);
+      if (cadence) await recordOddsPull(competition);
+
+      const rows: SoccerOddsRow[] = [];
+      const history: OddsHistoryRow[] = [];
+      const unmatched: string[] = [];
+      for (const ev of events) {
+        const day = isoDateInProjectTz(ev.commence_time);
+        if (!dates.includes(day)) continue;
+        const match = resolveMatch(
+          ev,
+          candidates.filter((c) => c.match.date === day),
+        );
+        if (!match) {
+          unmatched.push(`${ev.home_team} v ${ev.away_team} (${day})`);
+          continue;
+        }
+        for (const q of ev.quotes) {
+          rows.push({
+            match_id: match.id,
+            market: q.market,
+            side: q.side,
+            line: q.line,
+            bookmaker: q.bookmaker,
+            odds: q.odds,
+          });
+        }
+        history.push(...historyRows(match.id, ev.quotes));
+      }
+
+      const { inserted } = await insertSoccerOdds(rows);
+      const historyInserted = await insertOddsHistory(history);
+      results[competition] = {
+        events_returned: events.length,
+        quotes_collected: rows.length,
+        snapshots_inserted: inserted,
+        history_rows: historyInserted,
+        unmatched,
+        credits,
+      };
     }
 
-    const { inserted } = await insertSoccerOdds(rows);
-    const historyInserted = await insertOddsHistory(history);
-    results[competition] = {
-      events_returned: events.length,
-      quotes_collected: rows.length,
-      snapshots_inserted: inserted,
-      history_rows: historyInserted,
-      unmatched,
-      credits,
-    };
-  }
+    const { deleted } = await pruneSoccerOdds();
 
-  const { deleted } = await pruneSoccerOdds();
-
-  return NextResponse.json({
-    ok: true,
-    dates,
-    competitions: results,
-    snapshots_pruned: deleted,
+    return { dates, competitions: results, snapshots_pruned: deleted };
   });
+
+  if (!outcome.ok) {
+    return NextResponse.json({ ok: false, dates, error: outcome.error }, { status: 500 });
+  }
+  return NextResponse.json({ ok: true, ...outcome.summary });
 }

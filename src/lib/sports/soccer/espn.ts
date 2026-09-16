@@ -1,6 +1,6 @@
 import "server-only";
 
-import { isoDateInProjectTz } from "@/lib/date";
+import { isoDateInProjectTz, isoDateOffset } from "@/lib/date";
 import { countryCrestUrl } from "./branding";
 import { recordFailure, recordSuccess, type SourceId } from "./provider-health";
 import {
@@ -88,8 +88,9 @@ async function fetchJson<T>(
     throw err;
   }
 
-  // The primary host answering 403 is exactly how the September outage
-  // looked: the other host serves the same payload, so switch and say so.
+  // The primary host answering 403 or 5xx is exactly how the September
+  // outage looked: the other host serves the same payload, so switch and
+  // say so, unless this is already the retry.
   if ((res.status === 403 || res.status >= 500) && !retried) {
     const alt = alternateHost(base);
     if (alt) {
@@ -102,9 +103,15 @@ async function fetchJson<T>(
   }
   if (!res.ok) {
     const body = await res.text().catch(() => "");
-    throw new Error(
-      `ESPN soccer ${res.status} ${res.statusText} on ${path}: ${body.slice(0, 200)}`,
-    );
+    const message = `ESPN soccer ${res.status} ${res.statusText} on ${path}: ${body.slice(0, 200)}`;
+    // Every other non-ok response still records a failure before throwing --
+    // not only 403/5xx. The 2026-09-16 date-range 400 is exactly what this
+    // closes: fetchJson used to only ever call recordFailure on the
+    // host-switch path above, so a status class it had never seen (400, or
+    // a second host also failing after the retry) threw silently and
+    // soccer_provider_health stayed green through the whole outage.
+    await recordFailure(sourceOf(base), message);
+    throw new Error(message);
   }
   // Always report which host actually served it, so a recovery onto the
   // primary is noticed as soon as it happens.
@@ -334,19 +341,28 @@ export class EspnSoccerProvider implements SoccerProvider {
     return out;
   }
 
+  // ESPN's `dates=YYYYMMDD-YYYYMMDD` range form started answering 400
+  // ("Failed to get events endpoint.") on both hosts on 2026-09-16 for any
+  // range, while the single-date form (`dates=YYYYMMDD`) kept working. So
+  // this walks the range day by day with the single-date form instead,
+  // de-duping events that show up on more than one day's response (has
+  // happened with postponed/rescheduled fixtures). Same signature, same
+  // return shape -- syncCompetition (live.ts) doesn't need to change.
   async listMatchesInRange(from: string, to: string): Promise<Match[]> {
-    const data = await fetchJson<{ events?: EspnEvent[] }>(
-      this.siteBase,
-      "/scoreboard",
-      { dates: `${ymd(from)}-${ymd(to)}`, limit: "500" },
-      { revalidate: 60 },
-    );
-    const out: Match[] = [];
-    for (const ev of data.events ?? []) {
-      const m = this.matchFrom(ev);
-      if (m) out.push(m);
+    const seen = new Map<number, Match>();
+    for (let day = from; day <= to; day = isoDateOffset(day, 1)) {
+      const data = await fetchJson<{ events?: EspnEvent[] }>(
+        this.siteBase,
+        "/scoreboard",
+        { dates: ymd(day) },
+        { revalidate: 60 },
+      );
+      for (const ev of data.events ?? []) {
+        const m = this.matchFrom(ev);
+        if (m) seen.set(m.id, m);
+      }
     }
-    return out;
+    return Array.from(seen.values());
   }
 
   async getMatch(id: number): Promise<Match | null> {

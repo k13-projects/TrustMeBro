@@ -9,6 +9,7 @@ import {
   COMPETITION_ORDER,
   type SoccerCompetition,
 } from "@/lib/sports/soccer/competitions";
+import type { CompetitionLiveSignal } from "@/lib/sports/soccer/live-signals";
 import { cx, focusRing } from "@/lib/design/tokens";
 
 function rememberCompetition(next: SoccerCompetition) {
@@ -34,9 +35,11 @@ function destinationFor(pathname: string) {
 export function CompetitionSwitcher({
   active,
   className,
+  liveSignals,
 }: {
   active: SoccerCompetition;
   className?: string;
+  liveSignals?: Partial<Record<SoccerCompetition, CompetitionLiveSignal>>;
 }) {
   const [current, setCurrent] = useState<SoccerCompetition>(active);
 
@@ -67,6 +70,12 @@ export function CompetitionSwitcher({
         const meta = COMPETITIONS[id];
         const selected = id === current;
         const archived = meta.status === "archived";
+        const signal = liveSignals?.[id];
+        const statusLabel = signal?.inPlay
+          ? " — live now"
+          : signal?.today
+            ? " — playing today"
+            : "";
         return (
           <button
             key={id}
@@ -74,7 +83,11 @@ export function CompetitionSwitcher({
             role="tab"
             aria-selected={selected}
             onClick={() => choose(id)}
-            title={archived ? `${meta.fullName} — archived record` : meta.fullName}
+            title={
+              archived
+                ? `${meta.fullName} — archived record`
+                : `${meta.fullName}${statusLabel}`
+            }
             className={cx(
               "group inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] transition-all duration-200",
               focusRing,
@@ -83,19 +96,44 @@ export function CompetitionSwitcher({
                 : "text-foreground/60 hover:text-foreground hover:bg-white/5",
             )}
           >
-            <Image
-              src={meta.logo}
-              alt=""
-              width={18}
-              height={18}
-              className={cx(
-                "size-[18px] object-contain transition-all",
-                selected ? "" : "opacity-60 grayscale group-hover:opacity-90 group-hover:grayscale-0",
-              )}
-              unoptimized
-            />
-            <span className="hidden sm:inline">{meta.label}</span>
-            <span className="sm:hidden">{meta.shortLabel}</span>
+            <span className="relative inline-flex shrink-0">
+              <Image
+                src={meta.logo}
+                alt=""
+                width={18}
+                height={18}
+                className={cx(
+                  "size-[18px] object-contain transition-all",
+                  selected ? "" : "opacity-60 grayscale group-hover:opacity-90 group-hover:grayscale-0",
+                )}
+                unoptimized
+              />
+              {signal?.inPlay ? (
+                <span
+                  aria-hidden
+                  className={cx(
+                    "absolute -right-0.5 -top-0.5 size-2 rounded-full ring-2 animate-pulse motion-reduce:animate-none",
+                    selected ? "bg-primary-foreground ring-primary" : "bg-primary ring-black/40",
+                  )}
+                />
+              ) : signal?.today ? (
+                <span
+                  aria-hidden
+                  className={cx(
+                    "absolute -right-0.5 -top-0.5 size-1.5 rounded-full ring-2",
+                    selected ? "bg-primary-foreground/70 ring-primary" : "bg-foreground/50 ring-black/40",
+                  )}
+                />
+              ) : null}
+            </span>
+            <span className="hidden sm:inline">
+              {meta.label}
+              <span className="sr-only">{statusLabel}</span>
+            </span>
+            <span className="sm:hidden">
+              {meta.shortLabel}
+              <span className="sr-only">{statusLabel}</span>
+            </span>
             {archived ? (
               <span
                 className={cx(

@@ -1,6 +1,7 @@
 import { todayIsoDate } from "@/lib/date";
 import { activeCompetition } from "@/lib/sports/soccer/competition-cookie";
 import { COMPETITIONS } from "@/lib/sports/soccer/competitions";
+import { getLiveCompetitionSignals } from "@/lib/sports/soccer/live-signals";
 import { currentRound, getRounds } from "@/lib/sports/soccer/queries";
 import { CompetitionBar } from "@/components/soccer/CompetitionBar";
 import { ProviderBanner } from "@/components/soccer/ProviderBanner";
@@ -16,7 +17,13 @@ export default async function FootballLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const competition = await activeCompetition();
+  // activeCompetition() already calls getLiveCompetitionSignals() when there
+  // is no cookie to pick the default — both calls hit the same cache() entry
+  // for this request, so this costs nothing extra.
+  const [competition, { byCompetition: liveSignals }] = await Promise.all([
+    activeCompetition(),
+    getLiveCompetitionSignals(),
+  ]);
   const meta = COMPETITIONS[competition];
 
   let phase: string | null = null;
@@ -39,7 +46,11 @@ export default async function FootballLayout({
       className={meta.theme === "wc" ? undefined : "ucl-starfield"}
     >
       <div className="relative">
-        <CompetitionBar competition={competition} phase={phase} />
+        <CompetitionBar
+          competition={competition}
+          phase={phase}
+          liveSignals={Object.fromEntries(liveSignals)}
+        />
         <ProviderBanner />
         {children}
       </div>

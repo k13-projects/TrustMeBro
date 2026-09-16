@@ -11,6 +11,7 @@ import {
   getPredictionsForMatch,
   getRounds,
   roundLabelFor,
+  type MatchNews,
   type MatchRow,
   type NewsLite,
   type PredictionDetail,
@@ -114,7 +115,7 @@ export default async function MatchPage({ params }: PageProps) {
     getRounds(match.competition),
     getSoccerRates([matchId]),
     getHeadToHead(match.home.id, match.away.id, matchId),
-    getNewsForMatch(matchId, [match.home.id, match.away.id]),
+    getNewsForMatch(matchId, [match.home.id, match.away.id], match.competition),
     leagueSlug
       ? (async () => {
           const provider = soccerProvider(match.competition, leagueSlug);
@@ -280,9 +281,7 @@ export default async function MatchPage({ params }: PageProps) {
             <StatsSection match={match} detail={detail} />
           ) : null}
 
-          {detail && detail.lineups.length > 0 ? (
-            <LineupsSection match={match} detail={detail} />
-          ) : null}
+          {detail ? <LineupsSection match={match} detail={detail} /> : null}
 
           <TimelineSection match={match} detail={detail} />
         </div>
@@ -566,10 +565,17 @@ function StatsSection({ match, detail }: { match: MatchRow; detail: MatchDetail 
 function LineupsSection({ match, detail }: { match: MatchRow; detail: MatchDetail }) {
   const home = detail.lineups.find((l) => l.side === "home");
   const away = detail.lineups.find((l) => l.side === "away");
+  const hasAnyLineup =
+    (home?.players.length ?? 0) > 0 || (away?.players.length ?? 0) > 0;
 
   return (
     <section className="space-y-4">
       <h2 className="font-display text-xl uppercase tracking-tight">Lineups</h2>
+      {!hasAnyLineup ? (
+        <p className="rounded-2xl border border-dashed border-border/60 bg-card/20 px-4 py-6 text-center text-sm text-foreground/45">
+          Lineups are confirmed about an hour before kickoff.
+        </p>
+      ) : (
       <div className="grid gap-4 sm:grid-cols-2">
         {[
           { team: match.home, lineup: home },
@@ -625,6 +631,7 @@ function LineupsSection({ match, detail }: { match: MatchRow; detail: MatchDetai
           );
         })}
       </div>
+      )}
     </section>
   );
 }
@@ -708,16 +715,32 @@ function NewsCard({ item }: { item: NewsLite }) {
   );
 }
 
-function NewsAside({ news }: { news: NewsLite[] }) {
-  if (news.length === 0) return null;
+function NewsAside({ news }: { news: MatchNews }) {
+  if (news.relevant.length === 0 && news.fallback.length === 0) return null;
   return (
     <section className="space-y-3">
-      <h2 className="text-xs font-semibold uppercase tracking-[0.2em] text-foreground/45">News</h2>
-      <div className="space-y-3">
-        {news.map((n) => (
-          <NewsCard key={n.id} item={n} />
-        ))}
-      </div>
+      {news.relevant.length > 0 ? (
+        <>
+          <h2 className="text-xs font-semibold uppercase tracking-[0.2em] text-foreground/45">News</h2>
+          <div className="space-y-3">
+            {news.relevant.map((n) => (
+              <NewsCard key={n.id} item={n} />
+            ))}
+          </div>
+        </>
+      ) : null}
+      {news.fallback.length > 0 ? (
+        <div className="space-y-3">
+          <h2 className="text-xs font-semibold uppercase tracking-[0.2em] text-foreground/45">
+            Around the competition
+          </h2>
+          <div className="space-y-3">
+            {news.fallback.map((n) => (
+              <NewsCard key={n.id} item={n} />
+            ))}
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }

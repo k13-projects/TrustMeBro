@@ -9,9 +9,12 @@ import type { RowBadge } from "@/lib/sports/soccer/results";
 import { sideLabel } from "@/lib/sports/soccer/labels";
 import { LocalTime } from "@/components/site/LocalTime";
 import { TeamCrest } from "./TeamCrest";
+import { TierBadge } from "./TierBadge";
 
-const BADGE_COPY: Record<RowBadge, { icon: string; label: string }> = {
-  banko: { icon: "★", label: "BANKO" },
+// "banko" is handled by TierBadge below (shown on every row, Banko or Lean,
+// not just as an occasional achievement badge), so it's excluded from this
+// map — see the filter where `badges` is rendered.
+const BADGE_COPY: Record<Exclude<RowBadge, "banko">, { icon: string; label: string }> = {
   upset: { icon: "⚡", label: "Upset Called" },
   "best-price": { icon: "🎯", label: "Best Price" },
 };
@@ -85,15 +88,18 @@ export function ResultsRow({
               <tone.Icon size={11} strokeWidth={3} aria-hidden />
               {tone.text}
             </span>
-            {badges.map((b) => (
-              <span
-                key={b}
-                className="inline-flex shrink-0 items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em] text-primary ring-1 ring-primary/30"
-              >
-                <span aria-hidden>{BADGE_COPY[b].icon}</span>
-                {BADGE_COPY[b].label}
-              </span>
-            ))}
+            <TierBadge isBanko={pick.is_banko} />
+            {badges
+              .filter((b): b is Exclude<RowBadge, "banko"> => b !== "banko")
+              .map((b) => (
+                <span
+                  key={b}
+                  className="inline-flex shrink-0 items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em] text-primary ring-1 ring-primary/30"
+                >
+                  <span aria-hidden>{BADGE_COPY[b].icon}</span>
+                  {BADGE_COPY[b].label}
+                </span>
+              ))}
           </div>
 
           <Link

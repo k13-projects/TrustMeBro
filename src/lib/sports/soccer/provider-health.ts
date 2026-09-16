@@ -82,6 +82,11 @@ export async function recordSuccess(source: SourceId): Promise<void> {
       active_source: source,
       since: sourceChanged ? now : (row?.since ?? now),
       last_ok_at: now,
+      // A success clears the stale error text -- without this a row could
+      // read status:"ok" while last_error still showed whatever last failed
+      // (verified live: a simulated-outage row stayed "ok" with a leftover
+      // 'simulated outage for testing' message after recovering).
+      last_error: null,
       consecutive_failures: 0,
       updated_at: now,
     })
