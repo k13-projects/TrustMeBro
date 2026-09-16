@@ -195,6 +195,24 @@ export async function loadLatestSoccerOdds(
   return out;
 }
 
+// Which of these matches already have a stored `btts` snapshot — the
+// per-event BTTS pull is billed per match (unlike the bulk h2h/totals pull,
+// which is a flat cost per competition), so this is the credit-control gate:
+// a match already in this set is never fetched again, full stop.
+export async function loadMatchIdsWithBttsSnapshot(
+  matchIds: number[],
+): Promise<Set<number>> {
+  if (matchIds.length === 0) return new Set();
+  const supabase = supabaseAdmin();
+  const { data, error } = await supabase
+    .from("soccer_odds_snapshots")
+    .select("match_id")
+    .eq("market", "btts")
+    .in("match_id", matchIds);
+  if (error) throw new Error(`soccer_odds_snapshots btts read: ${error.message}`);
+  return new Set((data ?? []).map((r) => r.match_id as number));
+}
+
 // Odds-pull cadence bookkeeping (see odds-cadence.ts), reusing the
 // competition-agnostic ingest_state table (migration 0021) rather than a new
 // one — one row per competition, keyed "soccer_odds:<competition>".

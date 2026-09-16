@@ -83,7 +83,7 @@ type RawEventResponse = {
   away_team: string;
 };
 
-type RawEventOddsResponse = {
+export type RawEventOddsResponse = {
   id: string;
   commence_time: string;
   home_team: string;
@@ -102,6 +102,26 @@ type RawEventOddsResponse = {
     }>;
   }>;
 };
+
+// Generic per-event odds fetch — the only endpoint that carries "additional"
+// markets (BTTS, alternate lines, etc). Sport-agnostic on purpose: the NBA
+// player-prop pull above and soccer's BTTS pull (src/lib/signals/odds/soccer.ts)
+// both hit this same shape, they just ask for different markets/regions.
+// Confirmed live (2026-09-16): the bulk `/sports/{sport}/odds` endpoint 422s
+// on any market outside its own small allow-list, so this per-event path is
+// the only way to price something like BTTS at all.
+export async function fetchEventOdds(
+  sportKey: string,
+  eventId: string,
+  markets: string[],
+  regions: string,
+): Promise<FetchResult<RawEventOddsResponse>> {
+  return request<RawEventOddsResponse>(`/sports/${sportKey}/events/${eventId}/odds`, {
+    regions,
+    markets: markets.join(","),
+    oddsFormat: "decimal",
+  });
+}
 
 export class TheOddsApiProvider implements OddsProvider {
   async listEvents(): Promise<FetchResult<RawEvent[]>> {

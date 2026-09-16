@@ -1,16 +1,25 @@
 import "server-only";
 
 import type { MatchSide, SoccerMarket } from "@/lib/sports/types";
+import { fetchEventOdds, type RawEventOddsResponse } from "./the-odds-api";
 import type { RequestCredits } from "./types";
 
 const BASE_URL = "https://api.the-odds-api.com/v4";
 
 // European club + national books are thickest in UK/EU. We request only the
-// cheap bulk markets (h2h = 1X2, totals = O/U goals); BTTS is an "additional
-// market" that needs the per-event endpoint + higher tier, deferred per the
-// frugality note. One call = markets × regions = 4 credits.
+// cheap bulk markets (h2h = 1X2, totals = O/U goals) here — the bulk endpoint
+// 422s on anything else (verified live 2026-09-16, docs/handoffs/odds-markets-
+// proposal_2026-09-16.md §1). One call = markets × regions = 4 credits.
 const SOCCER_MARKETS = ["h2h", "totals"] as const;
 const REGIONS = "uk,eu";
+
+// BTTS only exists on the per-event endpoint (see fetchEventOdds), which is
+// billed per match, not per competition. `uk` alone carried every book that
+// quoted BTTS in the live check that shipped this (betfred_uk, leovegas,
+// livescorebet, virginbet, williamhill, coral, ladbrokes_uk — all UK-market
+// brands), so `eu` is skipped to keep this at 1 credit/match, not 2.
+const BTTS_MARKETS = ["btts"] as const;
+const BTTS_REGIONS = "uk";
 
 export type SoccerOddsQuote = {
   market: SoccerMarket;
@@ -124,4 +133,45 @@ export async function fetchSoccerOdds(sportKey: string): Promise<{
   }
   const raw = (await res.json()) as RawBulkEvent[];
   return { data: raw.map(parseEvent), credits };
+}
+
+function parseBttsQuotes(ev: RawEventOddsResponse): SoccerOddsQuote[] {
+  const quotes: SoccerOddsQuote[] = [];
+  for (const bm of ev.bookmakers ?? []) {
+    for (const market of bm.markets ?? []) {
+      if (market.key !== "btts") continue;
+      for (const o of market.outcomes ?? []) {
+        const side = o.name.toLowerCase();
+        if (side !== "yes" && side !== "no") continue;
+        quotes.push({
+          market: "btts",
+          side: side as MatchSide,
+          line: null,
+          bookmaker: bm.key,
+          odds: o.price,
+        });
+      }
+    }
+  }
+  return quotes;
+}
+
+// Per-event BTTS pull for one already-resolved match. Billed per call
+// (markets × regions = 1 credit at `uk`-only), unlike the bulk pull above —
+// callers are responsible for only calling this once per match, ever (see
+// loadMatchIdsWithBttsSnapshot in sports/soccer/repo.ts and the dedup gate in
+// the track-odds cron). `eventId` is the same id The Odds API assigned the
+// match in the bulk pull's response, so no extra `/events` list call is
+// needed to find it.
+export async function fetchBttsOddsForEvent(
+  sportKey: string,
+  eventId: string,
+): Promise<{ quotes: SoccerOddsQuote[]; credits: RequestCredits }> {
+  const { data, credits } = await fetchEventOdds(
+    sportKey,
+    eventId,
+    [...BTTS_MARKETS],
+    BTTS_REGIONS,
+  );
+  return { quotes: parseBttsQuotes(data), credits };
 }

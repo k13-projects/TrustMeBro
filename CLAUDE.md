@@ -306,7 +306,7 @@ monitoring service. If a feature needs money, it does not get built; say so and
 stop. This is why outage alerting goes through the War Room rather than a
 hosted pager.
 
-- `ODDS_API_KEY` — The Odds API (https://the-odds-api.com). Load-bearing: `/api/cron/track-odds` needs it to pull player-prop snapshots, and `/api/cron/generate-predictions` produces zero picks without it (real odds gated). Free tier = 500 req/mo and player props cost 10x. **The old note here said "expect to upgrade to ~$30/mo" — that is superseded by the No-paid-APIs rule above.** If the free tier runs short, the answer is to spend fewer credits (narrow the cadence, drop a competition), never to buy a tier. Usage on 2026-09-15: ~40 of 500 used, with four live football competitions.
+- `ODDS_API_KEY` — The Odds API (https://the-odds-api.com). Load-bearing: `/api/cron/track-odds` needs it to pull player-prop snapshots, and `/api/cron/generate-predictions` produces zero picks without it (real odds gated). Free tier = 500 req/mo and player props cost 10x. **The old note here said "expect to upgrade to ~$30/mo" — that is superseded by the No-paid-APIs rule above.** If the free tier runs short, the answer is to spend fewer credits (narrow the cadence, drop a competition), never to buy a tier. **Usage on 2026-09-16: 69 of 500**, four live football competitions, before BTTS lands. Projected with BTTS: **~190/500 in a busy month** (Oct/Nov are the peak at ~135 matches). Re-check this number against real `x-requests-used` after the first full week — it is a projection, and the whole point of writing it down is to find out where it was wrong.
 - `CRON_SECRET` — to protect `/api/cron/*` endpoints from unauthorized invocation
 - `NBA_LIGHT_MODE` — off-season toggle. `"true"` makes every NBA cron early-exit (`{skipped:true}`) via `src/app/api/cron/_light-mode.ts`. The Vercel schedule is left intact; unset to wake the NBA side. Soccer crons ignore it.
 
@@ -365,6 +365,22 @@ API key, logo, theme.
   `team-match.ts`; `normalizeTeamName()` also folds **dotless ı**, which has no
   NFKD decomposition and therefore does not fold on its own — without that,
   search returned nothing for `Kasımpaşa` spelled the way Turks spell it.
+- **Both Teams To Score (2026-09-16).** `btts` existed everywhere — the
+  `soccer_market` enum, the engine's `SIDES`, settlement, coupon legs, labels,
+  glossary, even the chat FAQ — and was never once priced, because nothing
+  fetched it: **zero `btts` rows had ever been stored.** The app advertised a
+  market it did not deliver. Now fetched, but note the cost shape is the
+  *opposite* of the bulk pull: extra markets exist only on The Odds API's
+  **per-event** endpoint, billed per match (markets × regions), where the bulk
+  `/odds` endpoint is a flat ~4 credits per competition and 422s on `btts`.
+  Two gates bound the spend and both are load-bearing: a match is fetched only
+  within `BTTS_LEAD_HOURS` (48) of kickoff, and never again once it carries a
+  `btts` snapshot. The lead gate exists because the dedup gate cannot skip a
+  match that returned *no* quotes — without it, an unpriced match is retried
+  every run across the whole 8-day window. Region `uk` only. No
+  odds-movement history: one pull per match means there is no second point to
+  chart. `btts: "no"` is deliberately **not** side-gated — the draw and under
+  gates were earned with graded numbers and there are none for BTTS yet.
 - **Odds movement.** Raw snapshots are still pruned after 48h; `track-odds`
   also writes one compact consensus row per (match, market, side) per run to
   `soccer_odds_history` (migration 0023), never pruned — that is the series
