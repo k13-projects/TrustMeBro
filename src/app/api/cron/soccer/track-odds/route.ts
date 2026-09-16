@@ -8,7 +8,7 @@ import {
   todayIsoDate,
 } from "@/lib/date";
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { fetchSoccerOdds } from "@/lib/signals/odds/soccer";
+import { fetchBttsOddsForEvent, fetchSoccerOdds } from "@/lib/signals/odds/soccer";
 import {
   COMPETITIONS,
   isCompetition,
@@ -19,6 +19,7 @@ import {
   getLastOddsPullAt,
   insertOddsHistory,
   insertSoccerOdds,
+  loadMatchIdsWithBttsSnapshot,
   pruneSoccerOdds,
   recordOddsPull,
   type OddsHistoryRow,
@@ -70,6 +71,37 @@ function historyRows(matchId: number, quotes: EngineQuote[]): OddsHistoryRow[] {
   return out;
 }
 
+// BTTS is billed per match, and the "already priced" gate can only skip a
+// match we actually got quotes for. A match no book has posted BTTS on yet
+// stores nothing, so it stays a candidate and is retried on the next run —
+// across the full 8-day odds window that is up to 8 credits for a match that
+// may never be quoted at all. At ~135 matches in a busy month that pathology
+// alone could outrun the 500-credit free tier and take the *bulk* pull down
+// with it, which is the pipeline we actually depend on.
+//
+// So BTTS is only attempted near kickoff. With daily runs a match falls in
+// this lead twice, giving at most two attempts instead of eight, while the
+// common case stays one credit because books post BTTS well in advance
+// (verified: 7 UK books quoting a month out). Picks still get their lead
+// time: track-odds runs at 13:30 UTC and generate-predictions at 15:00 UTC
+// the same day.
+const BTTS_LEAD_HOURS = 48;
+
+function withinBttsLead(commenceTime: string): boolean {
+  const kickoff = new Date(commenceTime).getTime();
+  if (Number.isNaN(kickoff)) return false;
+  const hoursAway = (kickoff - Date.now()) / 3_600_000;
+  return hoursAway <= BTTS_LEAD_HOURS;
+}
+
+type BttsResult = {
+  matches_considered: number;
+  already_priced: number;
+  fetched: number;
+  snapshots_inserted: number;
+  credits_spent: number;
+};
+
 type CompetitionOddsResult = {
   events_returned: number;
   quotes_collected: number;
@@ -77,13 +109,17 @@ type CompetitionOddsResult = {
   history_rows: number;
   unmatched: string[];
   credits: unknown;
+  btts?: BttsResult;
   skipped?: string;
 };
 
 // Pulls match odds (1X2 + totals) from The Odds API for every LIVE competition
 // and stores a snapshot per (match, market, side, bookmaker). Bookmaker events
 // are resolved to our ESPN-keyed matches by fuzzy team name on the same LA-day
-// (see team-match.ts). No ODDS_API_KEY ⇒ no-op. 4 credits per competition.
+// (see team-match.ts). No ODDS_API_KEY ⇒ no-op. 4 credits per competition for
+// h2h + totals, plus at most 1 credit per *unpriced* match for BTTS (see the
+// per-competition loop below) — BTTS never runs on a day the bulk pull above
+// it was skipped for.
 export async function GET(req: Request) {
   const unauth = assertCronAuth(req);
   if (unauth) return unauth;
@@ -206,6 +242,9 @@ export async function GET(req: Request) {
       const rows: SoccerOddsRow[] = [];
       const history: OddsHistoryRow[] = [];
       const unmatched: string[] = [];
+      // Same event ↔ match resolution as the bulk rows above, collected once
+      // so the BTTS pull below never re-derives (or disagrees on) a match.
+      const bttsCandidates: Array<{ matchId: number; eventId: string }> = [];
       for (const ev of events) {
         const day = isoDateInProjectTz(ev.commence_time);
         if (!dates.includes(day)) continue;
@@ -228,10 +267,57 @@ export async function GET(req: Request) {
           });
         }
         history.push(...historyRows(match.id, ev.quotes));
+        if (withinBttsLead(ev.commence_time)) {
+          bttsCandidates.push({ matchId: match.id, eventId: ev.event_id });
+        }
       }
 
       const { inserted } = await insertSoccerOdds(rows);
       const historyInserted = await insertOddsHistory(history);
+
+      // BTTS lives only on the per-event endpoint, billed per match — the
+      // opposite cost shape from the bulk pull above. Two gates bound it,
+      // and both are needed:
+      //   1. `withinBttsLead` above, which caps how many times an *unpriced*
+      //      match can be retried (see BTTS_LEAD_HOURS).
+      //   2. this query, which means a match we already have BTTS for is
+      //      never fetched again for the life of the match.
+      // Neither adds a pull on a day the competition would otherwise have
+      // cost nothing: this branch is only reached once the cadence and
+      // window checks above decided the bulk pull was worth its own credits.
+      const alreadyPriced = await loadMatchIdsWithBttsSnapshot(
+        bttsCandidates.map((c) => c.matchId),
+      );
+      const toFetch = bttsCandidates.filter((c) => !alreadyPriced.has(c.matchId));
+
+      let bttsSnapshotsInserted = 0;
+      let bttsCreditsSpent = 0;
+      for (const candidate of toFetch) {
+        const { quotes, credits: bttsCredits } = await fetchBttsOddsForEvent(
+          oddsKey,
+          candidate.eventId,
+        );
+        if (typeof bttsCredits.requests_last === "number") {
+          bttsCreditsSpent += bttsCredits.requests_last;
+        }
+        if (quotes.length === 0) continue;
+        const { inserted: bttsInserted } = await insertSoccerOdds(
+          quotes.map((q) => ({
+            match_id: candidate.matchId,
+            market: q.market,
+            side: q.side,
+            line: q.line,
+            bookmaker: q.bookmaker,
+            odds: q.odds,
+          })),
+        );
+        bttsSnapshotsInserted += bttsInserted;
+        // Deliberately no soccer_odds_history rows here: BTTS is pulled at
+        // most once per match, ever, so there is never a second point to
+        // plot — a one-point "movement" series would just be noise on the
+        // match-page chart, unlike h2h/totals which repull daily.
+      }
+
       results[competition] = {
         events_returned: events.length,
         quotes_collected: rows.length,
@@ -239,6 +325,13 @@ export async function GET(req: Request) {
         history_rows: historyInserted,
         unmatched,
         credits,
+        btts: {
+          matches_considered: bttsCandidates.length,
+          already_priced: alreadyPriced.size,
+          fetched: toFetch.length,
+          snapshots_inserted: bttsSnapshotsInserted,
+          credits_spent: bttsCreditsSpent,
+        },
       };
     }
 

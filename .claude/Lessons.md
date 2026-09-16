@@ -189,3 +189,26 @@ Corrections and hard-won rules for this project. Append; never rewrite history.
   director" in the untrimmed body the stored summary no longer contains. It is
   one row of 2,044, it ages out of a recency-ordered list, and the code fix
   stops new ones. Not worth hand-curating a single row.
+
+## 2026-09-16 — A skip-if-done gate does not bound a job that can produce nothing
+- **What happened:** BTTS odds are billed per match, so the credit control was
+  "never fetch a match that already has a BTTS snapshot." Correct, and not
+  sufficient: a match no bookmaker has priced yet stores nothing, stays a
+  candidate, and is retried on every run across the full 8-day odds window —
+  up to 8 credits for a match that may never be quoted at all. At ~135 matches
+  in a peak month that pathology alone could outrun the 500-credit free tier
+  and take the *bulk* pull down with it, which is the pipeline we actually
+  depend on. Caught in review, before it ever ran.
+- **Rule:** when a job's skip condition is "we already have the result", ask
+  what happens when the result is legitimately empty. An empty result is not a
+  completed one, and the retry is invisible because nothing is written.
+- **The fix is a bound, not a better memory.** BTTS is attempted only within
+  `BTTS_LEAD_HOURS` of kickoff, so an unpriced match gets at most two attempts
+  instead of eight. Same shape as the Süper Lig `oddsCadence` fix (2026-09-14):
+  when a window keeps re-satisfying itself, narrowing the window is not the
+  answer — cap the number of attempts.
+- **Free tiers fail closed, and they take their neighbours with them.** The
+  ceiling is shared across every competition and every market, so an
+  unbounded new consumer does not degrade itself, it starves the core feed.
+  Budget any new consumer against the *peak* month and write the projection
+  down where it will be checked.
