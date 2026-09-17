@@ -247,3 +247,35 @@ Corrections and hard-won rules for this project. Append; never rewrite history.
   `prefers-reduced-motion` rule meant to cover them targeted class names the
   component never used, so it did nothing for months and looked handled.
   Gating means dropping the `layoutId`, via `useReducedMotion`.
+
+## 2026-09-16 — The session refresh must reach the render, not just the browser
+- **What happened:** Kazim kept being signed out. Nothing was expiring: the
+  auth cookies last 400 days by default, `auth.sessions.not_after` was null on
+  every row, and there was no inactivity timeout. The bug was one missing line
+  in `src/proxy.ts`.
+- **The mechanism, because it is worth understanding once:**
+  `NextResponse.next({ request })` captures the request headers *at the moment
+  it is called* — Next's own proxy docs are explicit that
+  `{ request: { headers } }` is what forwards headers upstream. The proxy built
+  its response *before* refreshing, then mutated `request.cookies` inside
+  `setAll`. So the browser received the rotated cookies, but **the render still
+  saw the old ones**. Refreshing revokes the previous refresh token, so the
+  render then called `getUser()` with a dead access token and tried to refresh
+  using a token that had just been revoked. Supabase treats revoked-token reuse
+  as a compromise signal and kills the whole session family. An ordinary visit
+  an hour after the last one logged you out.
+- **Fix:** rebuild the response inside `setAll`, after mutating the request
+  cookies — the documented `@supabase/ssr` pattern, and the reason that pattern
+  looks redundant is exactly this.
+- **Rule:** only the proxy may refresh a Supabase session. A Server Component
+  cannot write cookies (`lib/supabase/server.ts` swallows the failure by
+  necessity), so a refresh that happens there rotates the token and then throws
+  the new one away — the same breakage by a different route.
+- **The tell was in the data.** 52 revoked refresh tokens against 5 live ones,
+  with one session burning 10 tokens in a day. Rotation is normal; that ratio
+  is not.
+- **Silence again.** No alert, no log, no error — the user simply found
+  themselves signed out, which is why it lasted. The proxy now logs a failed
+  refresh when an auth cookie was present, so the next one shows up in the
+  logs instead of in a complaint. Third time today that a silent failure was
+  the real bug (ESPN's 400, the ledger race, this).
