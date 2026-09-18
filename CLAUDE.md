@@ -605,4 +605,28 @@ python3 -c "import json;print(json.load(open('/Users/k13/.claude.json'))['oauthA
 
 **Wrong is wrong in both directions.** The Gold Rule guards against touching Halil's EDISYN accounts, but the opposite failure is just as real: falsely blocking legitimate K13 work, leaving a verification undone, and burying an untrue blocker in a deliverable. Neither counts as the safe side.
 
+<!--bc:name-the-request-2026-09-18-->
+### 2026-09-18 · Every change names the request that caused it
+**Every change names the request that caused it.** When you ship a change that a person can see,
+record where the ask actually came from: a line in the project's scope, an item in `tasks/todo.md`,
+a dated email or call note, or `Kazim, verbal, <date>`. If the change was ours (our own QA fix, our
+own improvement), say `K13 initiated`, honestly. Never leave it blank and never invent one.
+
+**If the ask has no home yet, writing it into the project's scope or `tasks/todo.md` is the first
+step, before the work ships.** That is the whole point: the rule exists to catch asks that were
+never written down anywhere.
+
+**Why:** the Cosmos intake audit on 2026-09-16 found four of Lorena's requests that had survived two
+full feedback rounds and several QA gates without existing in any list, any handoff or any todo. They
+did not slip past a bad process; they slipped past because nothing in the process was obliged to
+point back at them. A request nobody wrote down is a request that evaporates, and no QA gate can
+catch what was never recorded.
+
+This became a house rule on 2026-09-18, alongside the studio's new **Before & After** visual change
+log in the War Room, which carries the request line on every capture. The rule is not limited to
+that feature: it applies to every shipping agent in every project, whether or not a screenshot is
+involved.
+
+Full record: `K13-WarRoom/docs/BEFORE_AND_AFTER.md`.
+
 <!--K13_BROADCAST_END-->
